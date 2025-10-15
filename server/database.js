@@ -91,7 +91,12 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                 db.get("SELECT COUNT(*) as count FROM accounts", (err, row) => {
                     if (row.count === 0) {
                         console.log("Seeding: Creando cuentas iniciales...");
-                        db.run(`INSERT INTO accounts (name, type) VALUES ('Caja Principal', 'Efectivo'), ('Banco', 'Digital')`);
+                        db.run(`INSERT INTO accounts (name, type) VALUES 
+                            ('Caja Principal', 'Efectivo'),
+                            ('Débito', 'Digital'),
+                            ('Crédito', 'Digital'),
+                            ('Cuenta DNI', 'Digital')
+                        `);
                     }
                 });
 

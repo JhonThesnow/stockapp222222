@@ -132,10 +132,18 @@ const useSalesStore = create((set, get) => ({
             const { accounts } = useAccountStore.getState();
             let accountId = null;
 
+            // Busca una cuenta que coincida con el nombre del método de pago
+            let accountToUse = accounts.find(acc => acc.name.toLowerCase() === saleData.paymentMethod.toLowerCase());
+
+            // Caso especial para 'Efectivo' -> 'Caja Principal'
             if (saleData.paymentMethod === 'Efectivo') {
-                const cashAccount = accounts.find(acc => acc.type === 'Efectivo');
-                accountId = cashAccount ? cashAccount.id : (accounts[0]?.id || null);
+                accountToUse = accounts.find(acc => acc.type === 'Efectivo');
+            }
+
+            if (accountToUse) {
+                accountId = accountToUse.id;
             } else {
+                // Fallback a la primera cuenta digital si no se encuentra una coincidencia directa
                 const digitalAccount = accounts.find(acc => acc.type === 'Digital');
                 accountId = digitalAccount ? digitalAccount.id : (accounts[0]?.id || null);
             }
