@@ -222,54 +222,55 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                         `, (err) => {
                             if (err) return console.error("Error inserting products:", err.message);
 
-                            // Solo insertar ventas si los productos se insertaron correctamente
+                            // Insertar ventas usando transacciones y Prepared Statements (Más seguro y eficiente)
                             db.all("SELECT id, name, subtype, purchasePrice, salePrices FROM products", [], (err, allProducts) => {
                                 if (err) return console.error("Error fetching products for sales seeding:", err.message);
 
-                                const salesToInsert = [];
-                                const startDate = new Date('2025-01-01T00:00:00Z');
-                                const endDate = new Date('2025-10-13T23:59:59Z');
-                                const paymentMethods = ['Efectivo', 'Débito', 'Crédito', 'Cuenta DNI'];
+                                db.serialize(() => {
+                                    db.run('BEGIN TRANSACTION');
+                                    const stmt = db.prepare(`
+                                        INSERT INTO sales (accountId, date, items, subtotal, discount, totalAmount, status, paymentMethod, finalDiscount, finalAmount, appliedTax)
+                                        VALUES (?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?, ?)
+                                    `);
 
-                                for (let i = 0; i < 1000; i++) {
-                                    const randomDate = new Date(startDate.getTime() + Math.random() * (endDate.getTime() - startDate.getTime()));
-                                    const itemsCount = Math.floor(Math.random() * 4) + 1;
-                                    const items = [];
-                                    let subtotal = 0;
+                                    const startDate = new Date('2025-01-01T00:00:00Z');
+                                    const endDate = new Date('2025-10-13T23:59:59Z');
+                                    const paymentMethods = ['Efectivo', 'Débito', 'Crédito', 'Cuenta DNI'];
 
-                                    for (let j = 0; j < itemsCount; j++) {
-                                        const randomProduct = allProducts[Math.floor(Math.random() * allProducts.length)];
-                                        const quantity = Math.floor(Math.random() * 3) + 1;
-                                        const salePrices = JSON.parse(randomProduct.salePrices);
-                                        const unitPrice = salePrices[0]?.price || 0;
+                                    for (let i = 0; i < 1000; i++) {
+                                        const randomDate = new Date(startDate.getTime() + Math.random() * (endDate.getTime() - startDate.getTime()));
+                                        const itemsCount = Math.floor(Math.random() * 4) + 1;
+                                        const items = [];
+                                        let subtotal = 0;
 
-                                        items.push({
-                                            productId: randomProduct.id,
-                                            fullName: `${randomProduct.name} - ${randomProduct.subtype}`,
-                                            quantity: quantity,
-                                            unitPrice: unitPrice,
-                                            purchasePrice: randomProduct.purchasePrice,
-                                        });
-                                        subtotal += unitPrice * quantity;
+                                        for (let j = 0; j < itemsCount; j++) {
+                                            const randomProduct = allProducts[Math.floor(Math.random() * allProducts.length)];
+                                            const quantity = Math.floor(Math.random() * 3) + 1;
+                                            const salePrices = JSON.parse(randomProduct.salePrices);
+                                            const unitPrice = salePrices[0]?.price || 0;
+
+                                            items.push({
+                                                productId: randomProduct.id,
+                                                fullName: `${randomProduct.name} - ${randomProduct.subtype}`,
+                                                quantity: quantity,
+                                                unitPrice: unitPrice,
+                                                purchasePrice: randomProduct.purchasePrice,
+                                            });
+                                            subtotal += unitPrice * quantity;
+                                        }
+
+                                        const paymentMethod = paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
+                                        const accountId = (paymentMethod === 'Efectivo') ? 1 : 2;
+
+                                        stmt.run(accountId, randomDate.toISOString(), JSON.stringify(items), subtotal, 0, subtotal, paymentMethod, 0, subtotal, 0);
                                     }
 
-                                    const paymentMethod = paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
-                                    const accountId = (paymentMethod === 'Efectivo') ? 1 : 2;
-
-                                    salesToInsert.push(
-                                        `(${accountId}, '${randomDate.toISOString()}', '${JSON.stringify(items).replace(/'/g, "''")}', ${subtotal}, 0, ${subtotal}, 'completed', '${paymentMethod}', 0, ${subtotal}, 0)`
-                                    );
-                                }
-
-                                if (salesToInsert.length > 0) {
-                                    db.run(`
-                                        INSERT INTO "sales" ("accountId", "date", "items", "subtotal", "discount", "totalAmount", "status", "paymentMethod", "finalDiscount", "finalAmount", "appliedTax")
-                                        VALUES ${salesToInsert.join(',\n')};
-                                    `, (err) => {
-                                        if (err) console.error("Error inserting sales:", err.message);
-                                        else console.log(`${salesToInsert.length} sales inserted successfully.`);
+                                    stmt.finalize();
+                                    db.run('COMMIT', (commitErr) => {
+                                        if (commitErr) console.error("Error commiting seeded sales:", commitErr.message);
+                                        else console.log("1000 sales inserted successfully.");
                                     });
-                                }
+                                });
                             });
                         });
 

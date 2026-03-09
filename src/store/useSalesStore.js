@@ -132,8 +132,9 @@ const useSalesStore = create((set, get) => ({
             const { accounts } = useAccountStore.getState();
             let accountId = null;
 
-            // Busca una cuenta que coincida con el nombre del método de pago
-            let accountToUse = accounts.find(acc => acc.name.toLowerCase() === saleData.paymentMethod.toLowerCase());
+            // Búsqueda más robusta eliminando espacios extra y forzando minúsculas
+            const normalizedMethodName = saleData.paymentMethod.trim().toLowerCase();
+            let accountToUse = accounts.find(acc => acc.name.trim().toLowerCase() === normalizedMethodName);
 
             // Caso especial para 'Efectivo' -> 'Caja Principal'
             if (saleData.paymentMethod === 'Efectivo') {

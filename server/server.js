@@ -41,7 +41,10 @@ app.get('/api/dashboard-summary', (req, res) => {
 
 // --- Endpoints de PRODUCTOS (CON PAGINACIÓN) ---
 app.get('/api/products', (req, res) => {
-    const { page = 1, limit = 10, brand, name, sortBy, searchTerm } = req.query;
+    // TIPADO ESTRICTO AQUÍ: parseInt previene bugs en SQLite al usar LIMIT/OFFSET
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const { brand, name, sortBy, searchTerm } = req.query;
     const offset = (page - 1) * limit;
 
     let whereClauses = [];
@@ -91,7 +94,7 @@ app.get('/api/products', (req, res) => {
                 message: "success",
                 data: products,
                 totalPages,
-                currentPage: parseInt(page, 10),
+                currentPage: page,
             });
         });
     });
@@ -173,7 +176,7 @@ app.delete('/api/products/:id', (req, res) => {
 // --- Nuevos Endpoints de INVENTARIO ---
 
 app.post('/api/products/batch-restock', (req, res) => {
-    const { products } = req.body; // Array de { id, amountToAdd, name, subtype }
+    const { products } = req.body;
     if (!Array.isArray(products) || products.length === 0) {
         return res.status(400).json({ error: "Se requiere un array de productos." });
     }
@@ -418,7 +421,7 @@ app.get('/api/sales', (req, res) => {
 
 app.put('/api/sales/:id/complete', (req, res) => {
     const { id } = req.params;
-    const { paymentMethod, finalDiscountPercentage, accountId } = req.body; // Recibir accountId
+    const { paymentMethod, finalDiscountPercentage, accountId } = req.body;
 
     if (!accountId) {
         return res.status(400).json({ error: "No se proporcionó una cuenta para la venta." });
@@ -433,7 +436,7 @@ app.put('/api/sales/:id/complete', (req, res) => {
             }
             const finalAmount = sale.totalAmount - (sale.totalAmount * ((finalDiscountPercentage || 0) / 100));
             const items = JSON.parse(sale.items);
-            // Actualizar la venta para incluir el accountId
+
             const updateSaleSql = `UPDATE sales SET status = 'completed', paymentMethod = ?, finalDiscount = ?, finalAmount = ?, date = ?, accountId = ? WHERE id = ?`;
             db.run(updateSaleSql, [paymentMethod, (finalDiscountPercentage || 0), finalAmount, new Date().toISOString(), accountId, id], function (err) {
                 if (err) { db.run('ROLLBACK'); return res.status(500).json({ error: 'Error al actualizar la venta', details: err.message }); }
@@ -759,7 +762,6 @@ app.get('/api/movement-categories', (req, res) => {
     });
 });
 
-// CORREGIDO Y MEJORADO
 app.get('/api/account/summary', (req, res) => {
     const { startDate, endDate, accountId } = req.query;
     if (!startDate || !endDate) {
