@@ -1,18 +1,40 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ProductForm from '../components/ProductForm.jsx';
 import RestockModal from '../components/RestockModal.jsx';
-import { FiPlusCircle, FiBox, FiEdit, FiTrash2, FiChevronDown, FiChevronRight, FiDollarSign, FiTrendingUp, FiSearch, FiPlus, FiCamera } from 'react-icons/fi';
+import ConfirmModal from '../components/ConfirmModal.jsx'; // Nuevo Modal
+import { FiPlusCircle, FiBox, FiEdit, FiTrash2, FiChevronDown, FiChevronUp, FiDollarSign, FiTrendingUp, FiSearch, FiPlus, FiCamera, FiFilter } from 'react-icons/fi';
 import useProductStore from '../store/useProductStore.js';
 import { formatNumber } from '../utils/formatting.js';
 import BarcodeScannerModal from '../components/BarcodeScannerModal.jsx';
 import StockIncome from '../components/StockIncome.jsx';
 import PriceIncreases from '../components/PriceIncreases.jsx';
 
+// --- Componente Skeleton Loader ---
+const InventorySkeleton = () => (
+    <div className="space-y-3">
+        {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="bg-white p-4 rounded-lg shadow-sm flex items-center justify-between animate-pulse">
+                <div className="flex items-center gap-4 flex-1">
+                    <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                    <div className="space-y-2 flex-1">
+                        <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                    </div>
+                </div>
+                <div className="flex gap-2">
+                    <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                    <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                </div>
+            </div>
+        ))}
+    </div>
+);
+
 const ProductDetailView = ({ product }) => {
     if (!product) return null;
     return (
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mt-2 ml-4 md:ml-10">
-            <h4 className="font-bold text-gray-800">Detalles del Producto</h4>
+        <div className="bg-blue-50 border-t border-blue-100 p-4 mt-2 rounded-b-lg animate-fade-in">
+            <h4 className="font-bold text-gray-800 mb-2">Detalles del Producto</h4>
             <p className="text-sm text-gray-600 mb-3">ID: {product.id} - Código: {product.code || 'N/A'}</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className='space-y-2'>
@@ -21,7 +43,7 @@ const ProductDetailView = ({ product }) => {
                         const profit = currentSalePrice - product.purchasePrice;
                         const profitMargin = product.purchasePrice > 0 ? (profit / product.purchasePrice) * 100 : Infinity;
                         return (
-                            <div key={index} className="bg-white p-3 rounded-md shadow-sm border">
+                            <div key={index} className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
                                 <p className="font-semibold text-gray-700">{salePrice.name}: <span className="font-bold text-blue-600">${formatNumber(currentSalePrice)}</span></p>
                                 <div className={`flex items-center text-sm ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                     <FiTrendingUp className="mr-1" />
@@ -33,14 +55,14 @@ const ProductDetailView = ({ product }) => {
                     })}
                 </div>
                 <div className='space-y-2'>
-                    <div className="bg-white p-3 rounded-md shadow-sm border">
+                    <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
                         <p className="font-semibold text-gray-700">Precio de Compra</p>
                         <div className="flex items-center text-sm text-gray-600">
                             <FiDollarSign className="mr-1" />
                             <span className="font-bold">${formatNumber(product.purchasePrice ?? 0)}</span>
                         </div>
                     </div>
-                    <div className="bg-white p-3 rounded-md shadow-sm border">
+                    <div className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
                         <p className="font-semibold text-gray-700">Stock Actual</p>
                         <div className={`flex items-center text-sm font-bold ${product.quantity <= product.lowStockThreshold && product.lowStockThreshold > 0 ? 'text-red-500' : 'text-gray-800'}`}>
                             <FiBox className="mr-1" />
@@ -58,77 +80,64 @@ const InventoryPage = () => {
     const [showForm, setShowForm] = useState(false);
     const [productToEdit, setProductToEdit] = useState(null);
     const [productToRestock, setProductToRestock] = useState(null);
-    const [openSections, setOpenSections] = useState({});
     const [selectedProductId, setSelectedProductId] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
+
+    // Estados para la búsqueda con Debounce
+    const [searchInput, setSearchInput] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+
     const [activeFilters, setActiveFilters] = useState({ brand: '', name: '', sortBy: '' });
     const [showScanner, setShowScanner] = useState(false);
+    const [showMobileFilters, setShowMobileFilters] = useState(false); // Estado para ocultar filtros en móvil
     const [currentPage, setCurrentPage] = useState(1);
+
+    // Estado para el modal de confirmación de borrado
+    const [deleteModalConfig, setDeleteModalConfig] = useState({ isOpen: false, productId: null });
 
     const { products, totalPages, loading, error, fetchProducts, deleteProduct } = useProductStore();
 
-    // Lista de productos completa para los filtros
     const [allProducts, setAllProducts] = useState([]);
 
+    // Cargar productos para filtros (Idealmente esto debería ser un endpoint ligero en el backend)
     useEffect(() => {
-        // Cargar todos los productos una vez para los filtros
         const fetchAll = async () => {
-            const response = await fetch('/api/products?limit=9999');
-            const json = await response.json();
-            setAllProducts(json.data);
+            try {
+                const response = await fetch('/api/products?limit=9999');
+                const json = await response.json();
+                setAllProducts(json.data || []);
+            } catch (err) {
+                console.error("Error cargando productos para filtros:", err);
+            }
         };
         fetchAll();
     }, []);
 
+    // Efecto de Debounce para la búsqueda (espera 300ms antes de buscar)
     useEffect(() => {
-        fetchProducts({ page: currentPage, ...activeFilters, searchTerm, limit: 10 });
-    }, [fetchProducts, currentPage, activeFilters, searchTerm]);
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchInput);
+            setCurrentPage(1);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchInput]);
+
+    // Fetch principal que usa debouncedSearch en lugar de buscar por cada tecla
+    useEffect(() => {
+        fetchProducts({ page: currentPage, ...activeFilters, searchTerm: debouncedSearch, limit: 10 });
+    }, [fetchProducts, currentPage, activeFilters, debouncedSearch]);
 
     const uniqueBrands = useMemo(() => [...new Set(allProducts.map(p => p.brand).filter(Boolean))].sort(), [allProducts]);
     const uniqueNames = useMemo(() => [...new Set(allProducts.map(p => p.name).filter(Boolean))].sort(), [allProducts]);
 
-
-    const groupedProducts = useMemo(() => {
-        const groups = {};
-        products.forEach(product => {
-            const brand = product.brand ? product.brand.trim() : 'Sin Marca';
-            const name = product.name;
-            if (!groups[brand]) groups[brand] = {};
-            if (!groups[brand][name]) groups[brand][name] = [];
-            groups[brand][name].push(product);
-        });
-        return groups;
-    }, [products]);
-
-    useEffect(() => {
-        if (searchTerm && products.length > 0) {
-            const newOpenSections = {};
-            Object.keys(groupedProducts).forEach(brand => {
-                newOpenSections[brand] = true;
-                Object.keys(groupedProducts[brand]).forEach(name => {
-                    newOpenSections[`${brand}-${name}`] = true;
-                });
-            });
-            setOpenSections(newOpenSections);
-        } else if (!searchTerm) {
-            setOpenSections({});
-        }
-    }, [products, searchTerm, groupedProducts]);
-
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
         setActiveFilters(prev => ({ ...prev, [name]: value }));
-        setCurrentPage(1); // Reset page on filter change
+        setCurrentPage(1);
     };
 
     const handleSearchChange = (e) => {
-        setSearchTerm(e.target.value);
-        setCurrentPage(1);
+        setSearchInput(e.target.value);
     }
-
-    const toggleSection = (key) => {
-        setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
-    };
 
     const handleSelectProduct = (productId) => {
         setSelectedProductId(prev => (prev === productId ? null : productId));
@@ -149,18 +158,24 @@ const InventoryPage = () => {
         setProductToEdit(null);
     }
 
-    const handleDelete = async (id) => {
-        if (window.confirm('¿Estás seguro de que quieres eliminar este producto?')) {
-            await deleteProduct(id);
-            if (selectedProductId === id) {
+    // Funciones del Modal de Confirmación
+    const confirmDelete = (id) => {
+        setDeleteModalConfig({ isOpen: true, productId: id });
+    };
+
+    const executeDelete = async () => {
+        if (deleteModalConfig.productId) {
+            await deleteProduct(deleteModalConfig.productId);
+            if (selectedProductId === deleteModalConfig.productId) {
                 setSelectedProductId(null);
             }
         }
+        setDeleteModalConfig({ isOpen: false, productId: null });
     };
 
     const onBarcodeDetected = (code) => {
         setShowScanner(false);
-        setSearchTerm(code);
+        setSearchInput(code);
     };
 
     return (
@@ -176,28 +191,45 @@ const InventoryPage = () => {
                 </button>
             </div>
 
-            <div className="flex border-b mb-6">
-                <button onClick={() => setActiveTab('inventory')} className={`py-2 px-4 ${activeTab === 'inventory' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Inventario</button>
-                <button onClick={() => setActiveTab('stockIncome')} className={`py-2 px-4 ${activeTab === 'stockIncome' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Ingresos Stock</button>
-                <button onClick={() => setActiveTab('priceIncreases')} className={`py-2 px-4 ${activeTab === 'priceIncreases' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Aumentos</button>
+            <div className="flex border-b mb-6 overflow-x-auto">
+                <button onClick={() => setActiveTab('inventory')} className={`py-2 px-4 whitespace-nowrap ${activeTab === 'inventory' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Inventario</button>
+                <button onClick={() => setActiveTab('stockIncome')} className={`py-2 px-4 whitespace-nowrap ${activeTab === 'stockIncome' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Ingresos Stock</button>
+                <button onClick={() => setActiveTab('priceIncreases')} className={`py-2 px-4 whitespace-nowrap ${activeTab === 'priceIncreases' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Aumentos</button>
             </div>
 
             {activeTab === 'inventory' && (
                 <>
+                    {/* Barra de Búsqueda y Filtros */}
                     <div className="mb-6 bg-white p-4 rounded-lg shadow-sm">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div className="md:col-span-4">
-                                <div className="relative">
-                                    <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                                    <input type="text" placeholder="Buscar por nombre, línea, aroma o código..." value={searchTerm} onChange={handleSearchChange} className="w-full pl-12 pr-12 py-3 border rounded-lg text-base focus:ring-blue-500 focus:border-blue-500" />
-                                    <button
-                                        onClick={() => setShowScanner(true)}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-600 p-1"
-                                    >
-                                        <FiCamera size={24} />
-                                    </button>
-                                </div>
+                        <div className="flex flex-col md:flex-row gap-4">
+                            <div className="relative flex-1">
+                                <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar por nombre, línea, aroma o código..."
+                                    value={searchInput}
+                                    onChange={handleSearchChange}
+                                    className="w-full pl-12 pr-12 py-3 border rounded-lg text-base focus:ring-blue-500 focus:border-blue-500"
+                                />
+                                <button
+                                    onClick={() => setShowScanner(true)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-600 p-1"
+                                >
+                                    <FiCamera size={24} />
+                                </button>
                             </div>
+
+                            {/* Botón para mostrar filtros en móvil */}
+                            <button
+                                onClick={() => setShowMobileFilters(!showMobileFilters)}
+                                className="md:hidden flex items-center justify-center gap-2 py-3 border rounded-lg text-gray-700 bg-gray-50"
+                            >
+                                <FiFilter /> {showMobileFilters ? 'Ocultar Filtros' : 'Mostrar Filtros'}
+                            </button>
+                        </div>
+
+                        {/* Panel de Filtros (Oculto en móvil a menos que se active) */}
+                        <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 ${showMobileFilters ? 'block' : 'hidden md:grid'}`}>
                             <select name="brand" value={activeFilters.brand} onChange={handleFilterChange} className="w-full p-3 border rounded-lg bg-white">
                                 <option value="">Todas las Marcas</option>
                                 {uniqueBrands.map(brand => <option key={brand} value={brand}>{brand}</option>)}
@@ -206,7 +238,7 @@ const InventoryPage = () => {
                                 <option value="">Todos los Tipos</option>
                                 {uniqueNames.map(name => <option key={name} value={name}>{name}</option>)}
                             </select>
-                            <select name="sortBy" value={activeFilters.sortBy} onChange={handleFilterChange} className="w-full p-3 border rounded-lg bg-white col-span-1 md:col-span-2">
+                            <select name="sortBy" value={activeFilters.sortBy} onChange={handleFilterChange} className="w-full p-3 border rounded-lg bg-white">
                                 <option value="">Ordenar por...</option>
                                 <option value="stock_asc">Stock (Menor a Mayor)</option>
                                 <option value="stock_desc">Stock (Mayor a Menor)</option>
@@ -220,79 +252,83 @@ const InventoryPage = () => {
                     {showForm && <ProductForm productToEdit={productToEdit} onClose={handleCloseForm} />}
                     {productToRestock && <RestockModal product={productToRestock} onClose={() => setProductToRestock(null)} />}
 
-                    {loading && <div className="text-center py-10">Cargando productos...</div>}
-                    {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg" role="alert"><p><strong className="font-bold">Error:</strong> {error}</p></div>}
+                    {/* Modal de Confirmación de Borrado */}
+                    <ConfirmModal
+                        isOpen={deleteModalConfig.isOpen}
+                        title="Eliminar Producto"
+                        message="¿Estás seguro de que quieres eliminar este producto? Esta acción no se puede deshacer."
+                        onConfirm={executeDelete}
+                        onCancel={() => setDeleteModalConfig({ isOpen: false, productId: null })}
+                    />
 
-                    {!loading && !error && (
-                        <div className="space-y-2">
-                            {Object.keys(groupedProducts).length > 0 ? (
-                                Object.keys(groupedProducts).sort().map(brand => (
-                                    <div key={brand} className="bg-white rounded-lg shadow-sm">
-                                        <button onClick={() => toggleSection(brand)} className="w-full flex justify-between items-center p-4 font-bold text-lg text-left">
-                                            <span>{brand}</span>
-                                            {openSections[brand] ? <FiChevronDown /> : <FiChevronRight />}
-                                        </button>
-                                        {openSections[brand] && (
-                                            <div className="px-4 pb-2">
-                                                {Object.keys(groupedProducts[brand]).sort().map(name => (
-                                                    <div key={name} className="border-t">
-                                                        <button onClick={() => toggleSection(`${brand}-${name}`)} className="w-full flex justify-between items-center py-3 px-2 font-semibold text-left">
-                                                            <span>{name}</span>
-                                                            {openSections[`${brand}-${name}`] ? <FiChevronDown /> : <FiChevronRight />}
-                                                        </button>
-                                                        {openSections[`${brand}-${name}`] && (
-                                                            <div className='pl-4 pb-2'>
-                                                                {groupedProducts[brand][name].map(product => {
-                                                                    const isLowStock = product.quantity <= product.lowStockThreshold && product.lowStockThreshold > 0;
-                                                                    return (
-                                                                        <div key={product.id}>
-                                                                            <div className={`flex items-center justify-between p-2 my-1 rounded-md cursor-pointer ${isLowStock ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-100'}`} onClick={() => handleSelectProduct(product.id)}>
-                                                                                <div className="flex-1 flex items-center">
-                                                                                    {isLowStock && <div className="w-2 h-2 bg-red-500 rounded-full mr-3 flex-shrink-0" title="Bajo stock"></div>}
-                                                                                    <div>
-                                                                                        <p className="font-medium text-gray-800">{product.subtype || 'Producto base'}</p>
-                                                                                        <p className="text-sm text-gray-500 flex items-center">
-                                                                                            <span>Stock: {product.quantity}</span>
-                                                                                            <span className="mx-2 text-gray-300">|</span>
-                                                                                            <span className="font-semibold text-gray-700">
-                                                                                                ${formatNumber(product.salePrices[0]?.price ?? 0)}
-                                                                                            </span>
-                                                                                        </p>
-                                                                                    </div>
-                                                                                </div>
-                                                                                <div className="flex items-center gap-1">
-                                                                                    <button onClick={(e) => { e.stopPropagation(); setProductToRestock(product); }} className="p-2 text-green-600 hover:bg-green-100 rounded-full" title="Restock Rápido"><FiPlus size={16} /></button>
-                                                                                    <button onClick={(e) => { e.stopPropagation(); handleEdit(product); }} className="p-2 text-yellow-600 hover:bg-yellow-100 rounded-full" title="Editar"><FiEdit size={16} /></button>
-                                                                                    <button onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }} className="p-2 text-red-600 hover:bg-red-100 rounded-full" title="Eliminar"><FiTrash2 size={16} /></button>
-                                                                                </div>
-                                                                            </div>
-                                                                            {selectedProductId === product.id && <ProductDetailView product={product} />}
-                                                                        </div>
-                                                                    )
-                                                                })}
-                                                            </div>
-                                                        )}
+                    {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4" role="alert"><p><strong className="font-bold">Error:</strong> {error}</p></div>}
+
+                    {/* Lista Plana de Productos (Mejor UX que el Acordeón) */}
+                    <div className="space-y-3">
+                        {loading ? (
+                            <InventorySkeleton />
+                        ) : products.length > 0 ? (
+                            products.map(product => {
+                                const isLowStock = product.quantity <= product.lowStockThreshold && product.lowStockThreshold > 0;
+                                const isExpanded = selectedProductId === product.id;
+
+                                return (
+                                    <div key={product.id} className={`bg-white rounded-lg shadow-sm border ${isLowStock ? 'border-red-300' : 'border-gray-200'} transition-all`}>
+                                        <div
+                                            className={`flex flex-col md:flex-row md:items-center justify-between p-4 cursor-pointer hover:bg-gray-50 ${isLowStock ? 'bg-red-50 hover:bg-red-100' : ''}`}
+                                            onClick={() => handleSelectProduct(product.id)}
+                                        >
+                                            <div className="flex-1 flex items-start md:items-center mb-3 md:mb-0">
+                                                {isLowStock && <div className="w-2 h-2 bg-red-500 rounded-full mr-3 mt-2 md:mt-0 flex-shrink-0" title="Bajo stock"></div>}
+                                                <div>
+                                                    <h3 className="font-bold text-gray-800 text-lg">
+                                                        {product.brand && <span className="text-gray-500 font-normal mr-2">{product.brand}</span>}
+                                                        {product.name}
+                                                    </h3>
+                                                    <p className="text-gray-600 font-medium">{product.subtype || 'Producto base'}</p>
+                                                    <div className="flex items-center text-sm text-gray-500 mt-1 gap-3">
+                                                        <span className={`px-2 py-0.5 rounded-full font-semibold ${isLowStock ? 'bg-red-200 text-red-800' : 'bg-gray-100 text-gray-700'}`}>
+                                                            Stock: {product.quantity}
+                                                        </span>
+                                                        <span className="font-bold text-blue-600">
+                                                            ${formatNumber(product.salePrices[0]?.price ?? 0)}
+                                                        </span>
                                                     </div>
-                                                ))}
+                                                </div>
                                             </div>
-                                        )}
+
+                                            {/* Acciones */}
+                                            <div className="flex items-center justify-end gap-2 border-t md:border-t-0 pt-3 md:pt-0 mt-2 md:mt-0">
+                                                <button onClick={(e) => { e.stopPropagation(); setProductToRestock(product); }} className="p-2 text-green-600 bg-green-50 hover:bg-green-100 rounded-md transition-colors" title="Restock Rápido"><FiPlus size={18} /></button>
+                                                <button onClick={(e) => { e.stopPropagation(); handleEdit(product); }} className="p-2 text-yellow-600 bg-yellow-50 hover:bg-yellow-100 rounded-md transition-colors" title="Editar"><FiEdit size={18} /></button>
+                                                <button onClick={(e) => { e.stopPropagation(); confirmDelete(product.id); }} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title="Eliminar"><FiTrash2 size={18} /></button>
+                                                <div className="text-gray-400 ml-2">
+                                                    {isExpanded ? <FiChevronUp size={24} /> : <FiChevronDown size={24} />}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Vista de Detalles Expandible */}
+                                        {isExpanded && <ProductDetailView product={product} />}
                                     </div>
-                                ))
-                            ) : (
-                                <div className="text-center p-10 text-gray-500 bg-white rounded-lg shadow-sm">
-                                    <FiSearch size={40} className="mx-auto mb-2" />
-                                    No se encontraron productos que coincidan con tu búsqueda.
-                                </div>
-                            )}
-                            {totalPages > 1 && (
-                                <div className="flex justify-center items-center gap-4 pt-4 mt-4 border-t">
-                                    <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50">Anterior</button>
-                                    <span>Página {currentPage} de {totalPages}</span>
-                                    <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-2 rounded-lg bg-gray-200 hover:bg-gray-300 disabled:opacity-50">Siguiente</button>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                                );
+                            })
+                        ) : (
+                            <div className="text-center p-12 text-gray-500 bg-white rounded-lg shadow-sm border border-gray-200">
+                                <FiSearch size={48} className="mx-auto mb-4 text-gray-300" />
+                                <p className="text-lg">No se encontraron productos que coincidan con tu búsqueda.</p>
+                            </div>
+                        )}
+
+                        {/* Paginación */}
+                        {!loading && totalPages > 1 && (
+                            <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200 mt-4">
+                                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">Anterior</button>
+                                <span className="font-semibold text-gray-600">Página {currentPage} de {totalPages}</span>
+                                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-4 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">Siguiente</button>
+                            </div>
+                        )}
+                    </div>
                 </>
             )}
 
