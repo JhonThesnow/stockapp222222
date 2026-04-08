@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ProductForm from '../components/ProductForm.jsx';
 import RestockModal from '../components/RestockModal.jsx';
-import ConfirmModal from '../components/ConfirmModal.jsx'; // Nuevo Modal
-import { FiPlusCircle, FiBox, FiEdit, FiTrash2, FiChevronDown, FiChevronUp, FiDollarSign, FiTrendingUp, FiSearch, FiPlus, FiCamera, FiFilter } from 'react-icons/fi';
+import ConfirmModal from '../components/ConfirmModal.jsx';
+import { FiPlusCircle, FiBox, FiEdit, FiTrash2, FiChevronDown, FiChevronUp, FiDollarSign, FiTrendingUp, FiSearch, FiPlus, FiCamera, FiFilter, FiLayers } from 'react-icons/fi';
 import useProductStore from '../store/useProductStore.js';
 import { formatNumber } from '../utils/formatting.js';
 import BarcodeScannerModal from '../components/BarcodeScannerModal.jsx';
 import StockIncome from '../components/StockIncome.jsx';
 import PriceIncreases from '../components/PriceIncreases.jsx';
 
-// --- Componente Skeleton Loader ---
 const InventorySkeleton = () => (
     <div className="space-y-3">
         {[1, 2, 3, 4, 5].map((i) => (
@@ -82,23 +81,25 @@ const InventoryPage = () => {
     const [productToRestock, setProductToRestock] = useState(null);
     const [selectedProductId, setSelectedProductId] = useState(null);
 
-    // Estados para la búsqueda con Debounce
     const [searchInput, setSearchInput] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
 
     const [activeFilters, setActiveFilters] = useState({ brand: '', name: '', sortBy: '' });
     const [showScanner, setShowScanner] = useState(false);
-    const [showMobileFilters, setShowMobileFilters] = useState(false); // Estado para ocultar filtros en móvil
+    const [showMobileFilters, setShowMobileFilters] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
 
-    // Estado para el modal de confirmación de borrado
+    const [groupBy, setGroupBy] = useState('none'); // 'none', 'brand', 'name', 'product'
+
+    // CORRECCIÓN: Ahora llevamos registro de los que están ABIERTOS (expanded), no de los cerrados.
+    const [expandedGroups, setExpandedGroups] = useState({});
+
     const [deleteModalConfig, setDeleteModalConfig] = useState({ isOpen: false, productId: null });
 
     const { products, totalPages, loading, error, fetchProducts, deleteProduct } = useProductStore();
-
     const [allProducts, setAllProducts] = useState([]);
 
-    // Cargar productos para filtros (Idealmente esto debería ser un endpoint ligero en el backend)
+    // Cargar todos los productos para los selectores de filtros
     useEffect(() => {
         const fetchAll = async () => {
             try {
@@ -112,7 +113,7 @@ const InventoryPage = () => {
         fetchAll();
     }, []);
 
-    // Efecto de Debounce para la búsqueda (espera 300ms antes de buscar)
+    // Efecto para la búsqueda
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearch(searchInput);
@@ -121,13 +122,44 @@ const InventoryPage = () => {
         return () => clearTimeout(timer);
     }, [searchInput]);
 
-    // Fetch principal que usa debouncedSearch en lugar de buscar por cada tecla
+    // Fetch de los productos principales
     useEffect(() => {
         fetchProducts({ page: currentPage, ...activeFilters, searchTerm: debouncedSearch, limit: 10 });
     }, [fetchProducts, currentPage, activeFilters, debouncedSearch]);
 
+    // CORRECCIÓN: Resetea todos los grupos a "Cerrados" cuando cambias de página o de tipo de agrupación
+    useEffect(() => {
+        setExpandedGroups({});
+    }, [currentPage, groupBy]);
+
     const uniqueBrands = useMemo(() => [...new Set(allProducts.map(p => p.brand).filter(Boolean))].sort(), [allProducts]);
     const uniqueNames = useMemo(() => [...new Set(allProducts.map(p => p.name).filter(Boolean))].sort(), [allProducts]);
+
+    const groupedProducts = useMemo(() => {
+        if (groupBy === 'none') return null;
+
+        return products.reduce((acc, product) => {
+            let rawValue = '';
+            if (groupBy === 'brand') {
+                rawValue = product.brand;
+            } else if (groupBy === 'name') {
+                rawValue = product.name;
+            } else if (groupBy === 'product') {
+                const brandPart = product.brand ? `${product.brand} - ` : '';
+                rawValue = `${brandPart}${product.name || 'Producto sin nombre'}`;
+            }
+
+            const normalizedKey = (rawValue && rawValue.trim() !== '')
+                ? rawValue.trim().toUpperCase()
+                : 'OTROS / SIN ESPECIFICAR';
+
+            if (!acc[normalizedKey]) {
+                acc[normalizedKey] = [];
+            }
+            acc[normalizedKey].push(product);
+            return acc;
+        }, {});
+    }, [products, groupBy]);
 
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
@@ -141,6 +173,11 @@ const InventoryPage = () => {
 
     const handleSelectProduct = (productId) => {
         setSelectedProductId(prev => (prev === productId ? null : productId));
+    };
+
+    // CORRECCIÓN: Alterna el estado de Abierto/Cerrado
+    const toggleGroup = (key) => {
+        setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
     const handleEdit = (product) => {
@@ -158,7 +195,6 @@ const InventoryPage = () => {
         setProductToEdit(null);
     }
 
-    // Funciones del Modal de Confirmación
     const confirmDelete = (id) => {
         setDeleteModalConfig({ isOpen: true, productId: id });
     };
@@ -176,6 +212,58 @@ const InventoryPage = () => {
     const onBarcodeDetected = (code) => {
         setShowScanner(false);
         setSearchInput(code);
+    };
+
+    const renderProductCard = (product, currentGroupBy) => {
+        const isLowStock = product.quantity <= product.lowStockThreshold && product.lowStockThreshold > 0;
+        const isExpanded = selectedProductId === product.id;
+        const isGroupedByProduct = currentGroupBy === 'product';
+
+        return (
+            <div key={product.id} className={`bg-white rounded-lg shadow-sm border ${isLowStock ? 'border-red-300' : 'border-gray-200'} transition-all`}>
+                <div
+                    className={`flex flex-col md:flex-row md:items-center justify-between p-4 cursor-pointer hover:bg-gray-50 ${isLowStock ? 'bg-red-50 hover:bg-red-100' : ''}`}
+                    onClick={() => handleSelectProduct(product.id)}
+                >
+                    <div className="flex-1 flex items-start md:items-center mb-3 md:mb-0">
+                        {isLowStock && <div className="w-2 h-2 bg-red-500 rounded-full mr-3 mt-2 md:mt-0 flex-shrink-0" title="Bajo stock"></div>}
+                        <div>
+                            <h3 className={`font-bold text-lg ${isGroupedByProduct ? 'text-blue-800' : 'text-gray-800'}`}>
+                                {isGroupedByProduct ? (
+                                    product.subtype || 'Variante Base / Sin aroma'
+                                ) : (
+                                    <>
+                                        {product.brand && currentGroupBy !== 'brand' && <span className="text-gray-500 font-normal mr-2">{product.brand}</span>}
+                                        {product.name}
+                                    </>
+                                )}
+                            </h3>
+                            {!isGroupedByProduct && <p className="text-gray-600 font-medium">{product.subtype || 'Producto base'}</p>}
+
+                            <div className="flex items-center text-sm text-gray-500 mt-1 gap-3">
+                                <span className={`px-2 py-0.5 rounded-full font-semibold ${isLowStock ? 'bg-red-200 text-red-800' : 'bg-gray-100 text-gray-700'}`}>
+                                    Stock: {product.quantity}
+                                </span>
+                                <span className="font-bold text-blue-600">
+                                    ${formatNumber(product.salePrices[0]?.price ?? 0)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 border-t md:border-t-0 pt-3 md:pt-0 mt-2 md:mt-0">
+                        <button onClick={(e) => { e.stopPropagation(); setProductToRestock(product); }} className="p-2 text-green-600 bg-green-50 hover:bg-green-100 rounded-md transition-colors" title="Restock Rápido"><FiPlus size={18} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleEdit(product); }} className="p-2 text-yellow-600 bg-yellow-50 hover:bg-yellow-100 rounded-md transition-colors" title="Editar"><FiEdit size={18} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); confirmDelete(product.id); }} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title="Eliminar"><FiTrash2 size={18} /></button>
+                        <div className="text-gray-400 ml-2">
+                            {isExpanded ? <FiChevronUp size={24} /> : <FiChevronDown size={24} />}
+                        </div>
+                    </div>
+                </div>
+
+                {isExpanded && <ProductDetailView product={product} />}
+            </div>
+        );
     };
 
     return (
@@ -199,8 +287,7 @@ const InventoryPage = () => {
 
             {activeTab === 'inventory' && (
                 <>
-                    {/* Barra de Búsqueda y Filtros */}
-                    <div className="mb-6 bg-white p-4 rounded-lg shadow-sm">
+                    <div className="mb-4 bg-white p-4 rounded-lg shadow-sm">
                         <div className="flex flex-col md:flex-row gap-4">
                             <div className="relative flex-1">
                                 <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -219,7 +306,6 @@ const InventoryPage = () => {
                                 </button>
                             </div>
 
-                            {/* Botón para mostrar filtros en móvil */}
                             <button
                                 onClick={() => setShowMobileFilters(!showMobileFilters)}
                                 className="md:hidden flex items-center justify-center gap-2 py-3 border rounded-lg text-gray-700 bg-gray-50"
@@ -228,7 +314,6 @@ const InventoryPage = () => {
                             </button>
                         </div>
 
-                        {/* Panel de Filtros (Oculto en móvil a menos que se active) */}
                         <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 ${showMobileFilters ? 'block' : 'hidden md:grid'}`}>
                             <select name="brand" value={activeFilters.brand} onChange={handleFilterChange} className="w-full p-3 border rounded-lg bg-white">
                                 <option value="">Todas las Marcas</option>
@@ -248,11 +333,21 @@ const InventoryPage = () => {
                         </div>
                     </div>
 
+                    <div className="flex items-center gap-3 mb-6 bg-white p-3.5 rounded-lg shadow-sm border border-gray-100 overflow-x-auto">
+                        <FiLayers className="text-gray-400 flex-shrink-0" size={20} />
+                        <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">Agrupar vista por:</span>
+                        <div className="flex gap-2">
+                            <button onClick={() => setGroupBy('none')} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${groupBy === 'none' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Lista Plana</button>
+                            <button onClick={() => setGroupBy('brand')} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${groupBy === 'brand' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Marca</button>
+                            <button onClick={() => setGroupBy('name')} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${groupBy === 'name' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Tipo</button>
+                            <button onClick={() => setGroupBy('product')} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${groupBy === 'product' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Aromas / Variantes</button>
+                        </div>
+                    </div>
+
                     {showScanner && <BarcodeScannerModal onDetected={onBarcodeDetected} onClose={() => setShowScanner(false)} />}
                     {showForm && <ProductForm productToEdit={productToEdit} onClose={handleCloseForm} />}
                     {productToRestock && <RestockModal product={productToRestock} onClose={() => setProductToRestock(null)} />}
 
-                    {/* Modal de Confirmación de Borrado */}
                     <ConfirmModal
                         isOpen={deleteModalConfig.isOpen}
                         title="Eliminar Producto"
@@ -263,56 +358,48 @@ const InventoryPage = () => {
 
                     {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4" role="alert"><p><strong className="font-bold">Error:</strong> {error}</p></div>}
 
-                    {/* Lista Plana de Productos (Mejor UX que el Acordeón) */}
-                    <div className="space-y-3">
+                    <div>
                         {loading ? (
                             <InventorySkeleton />
                         ) : products.length > 0 ? (
-                            products.map(product => {
-                                const isLowStock = product.quantity <= product.lowStockThreshold && product.lowStockThreshold > 0;
-                                const isExpanded = selectedProductId === product.id;
+                            groupBy === 'none' ? (
+                                <div className="space-y-3">
+                                    {products.map(product => renderProductCard(product, groupBy))}
+                                </div>
+                            ) : (
+                                Object.keys(groupedProducts).sort().map(groupKey => {
+                                    const groupItems = groupedProducts[groupKey];
+                                    // CORRECCIÓN: Revisamos si está en la lista de ABIERTOS
+                                    const isExpandedGroup = expandedGroups[groupKey];
 
-                                return (
-                                    <div key={product.id} className={`bg-white rounded-lg shadow-sm border ${isLowStock ? 'border-red-300' : 'border-gray-200'} transition-all`}>
-                                        <div
-                                            className={`flex flex-col md:flex-row md:items-center justify-between p-4 cursor-pointer hover:bg-gray-50 ${isLowStock ? 'bg-red-50 hover:bg-red-100' : ''}`}
-                                            onClick={() => handleSelectProduct(product.id)}
-                                        >
-                                            <div className="flex-1 flex items-start md:items-center mb-3 md:mb-0">
-                                                {isLowStock && <div className="w-2 h-2 bg-red-500 rounded-full mr-3 mt-2 md:mt-0 flex-shrink-0" title="Bajo stock"></div>}
-                                                <div>
-                                                    <h3 className="font-bold text-gray-800 text-lg">
-                                                        {product.brand && <span className="text-gray-500 font-normal mr-2">{product.brand}</span>}
-                                                        {product.name}
-                                                    </h3>
-                                                    <p className="text-gray-600 font-medium">{product.subtype || 'Producto base'}</p>
-                                                    <div className="flex items-center text-sm text-gray-500 mt-1 gap-3">
-                                                        <span className={`px-2 py-0.5 rounded-full font-semibold ${isLowStock ? 'bg-red-200 text-red-800' : 'bg-gray-100 text-gray-700'}`}>
-                                                            Stock: {product.quantity}
-                                                        </span>
-                                                        <span className="font-bold text-blue-600">
-                                                            ${formatNumber(product.salePrices[0]?.price ?? 0)}
-                                                        </span>
-                                                    </div>
+                                    return (
+                                        <div key={groupKey} className="mb-6 animate-fade-in">
+                                            <div
+                                                className="flex items-center justify-between bg-slate-100 border border-slate-200 px-4 py-3 rounded-lg cursor-pointer hover:bg-slate-200 transition-colors shadow-sm mb-3"
+                                                onClick={() => toggleGroup(groupKey)}
+                                            >
+                                                <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                                                    {groupBy === 'brand' ? 'Marca:' : groupBy === 'name' ? 'Tipo:' : 'Producto:'} {groupKey}
+                                                    <span className="text-xs font-bold text-blue-800 bg-blue-100 px-2.5 py-1 rounded-full ml-3">
+                                                        {groupItems.length} {groupBy === 'product' ? (groupItems.length === 1 ? 'aroma' : 'aromas') : (groupItems.length === 1 ? 'ítem' : 'ítems')}
+                                                    </span>
+                                                </h2>
+                                                <div className="text-slate-500">
+                                                    {/* CORRECCIÓN: Lógica invertida para mostrar la flechita correcta */}
+                                                    {isExpandedGroup ? <FiChevronUp size={24} /> : <FiChevronDown size={24} />}
                                                 </div>
                                             </div>
 
-                                            {/* Acciones */}
-                                            <div className="flex items-center justify-end gap-2 border-t md:border-t-0 pt-3 md:pt-0 mt-2 md:mt-0">
-                                                <button onClick={(e) => { e.stopPropagation(); setProductToRestock(product); }} className="p-2 text-green-600 bg-green-50 hover:bg-green-100 rounded-md transition-colors" title="Restock Rápido"><FiPlus size={18} /></button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleEdit(product); }} className="p-2 text-yellow-600 bg-yellow-50 hover:bg-yellow-100 rounded-md transition-colors" title="Editar"><FiEdit size={18} /></button>
-                                                <button onClick={(e) => { e.stopPropagation(); confirmDelete(product.id); }} className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors" title="Eliminar"><FiTrash2 size={18} /></button>
-                                                <div className="text-gray-400 ml-2">
-                                                    {isExpanded ? <FiChevronUp size={24} /> : <FiChevronDown size={24} />}
+                                            {/* CORRECCIÓN: Renderiza solo si está expandido */}
+                                            {isExpandedGroup && (
+                                                <div className="space-y-3 pl-2 md:pl-4 border-l-4 border-slate-200 ml-2">
+                                                    {groupItems.map(product => renderProductCard(product, groupBy))}
                                                 </div>
-                                            </div>
+                                            )}
                                         </div>
-
-                                        {/* Vista de Detalles Expandible */}
-                                        {isExpanded && <ProductDetailView product={product} />}
-                                    </div>
-                                );
-                            })
+                                    );
+                                })
+                            )
                         ) : (
                             <div className="text-center p-12 text-gray-500 bg-white rounded-lg shadow-sm border border-gray-200">
                                 <FiSearch size={48} className="mx-auto mb-4 text-gray-300" />
@@ -320,9 +407,8 @@ const InventoryPage = () => {
                             </div>
                         )}
 
-                        {/* Paginación */}
                         {!loading && totalPages > 1 && (
-                            <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200 mt-4">
+                            <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200 mt-6">
                                 <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">Anterior</button>
                                 <span className="font-semibold text-gray-600">Página {currentPage} de {totalPages}</span>
                                 <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-4 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">Siguiente</button>
