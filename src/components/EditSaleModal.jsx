@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useSalesStore from '../store/useSalesStore';
 import { FiX, FiSave, FiDollarSign } from 'react-icons/fi';
-import { formatNumber } from '../utils/formatting';
+
 
 const EditSaleModal = ({ sale, onClose }) => {
     const { updateCompletedSale, paymentMethods, fetchPaymentMethods, loading, error } = useSalesStore();
