@@ -3,7 +3,7 @@ import Select from 'react-select';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { format, startOfMonth, endOfMonth, endOfDay } from 'date-fns';
+import { format, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import useSalesReportsStore from '../store/useSalesReportsStore';
 import useProductStore from '../store/useProductStore';
