@@ -7,6 +7,7 @@ const API_URL = '/api';
 
 const useSalesStore = create((set, get) => ({
     // --- STATE ---
+    currentShift: null,
     cart: [],
     pendingSales: [],
     completedSales: [],
@@ -16,6 +17,47 @@ const useSalesStore = create((set, get) => ({
     currentPaymentMethod: null,
     loading: false,
     error: null,
+
+    // --- SHIFT ACTIONS ---
+    fetchCurrentShift: async () => {
+        try {
+            const res = await fetch(`${API_URL}/shifts/current`);
+            const json = await res.json();
+            if (res.ok) {
+                set({ currentShift: json.data });
+            } else {
+                console.error("Error fetching shift:", json.error);
+            }
+        } catch (error) {
+            console.error("Error fetching shift:", error);
+        }
+    },
+    startShift: async () => {
+        try {
+            const res = await fetch(`${API_URL}/shifts/start`, { method: 'POST' });
+            const json = await res.json();
+            if (res.ok) {
+                set({ currentShift: json.data });
+                return { success: true };
+            }
+            return { success: false, error: json.error };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    },
+    endShift: async (shiftId) => {
+        try {
+            const res = await fetch(`${API_URL}/shifts/${shiftId}/end`, { method: 'POST' });
+            if (res.ok) {
+                set({ currentShift: null });
+                return { success: true };
+            }
+            const json = await res.json();
+            return { success: false, error: json.error };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    },
 
     // --- CART ACTIONS ---
     addItemToCart: (product) => {

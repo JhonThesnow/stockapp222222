@@ -13,7 +13,7 @@ import { startOfMonth, endOfMonth, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const VentasPage = () => {
-    const [activeTab, setActiveTab] = useState('a-cobrar');
+    const [activeTab, setActiveTab] = useState('historial');
     const [saleToComplete, setSaleToComplete] = useState(null);
     const [saleToApplyTax, setSaleToApplyTax] = useState(null);
     const [saleToEdit, setSaleToEdit] = useState(null);
@@ -24,7 +24,12 @@ const VentasPage = () => {
     const {
         pendingSales, completedSales, fetchAllSales, loading, deletePendingSale,
         deleteCompletedSale, monthlySummary, fetchSummary, addExpense, deleteExpense,
+        currentShift, fetchCurrentShift
     } = useSalesStore();
+
+    useEffect(() => {
+        fetchCurrentShift();
+    }, [fetchCurrentShift]);
 
     const { accounts, categories, fetchAccounts, fetchCategories } = useAccountStore();
 
@@ -134,8 +139,13 @@ const VentasPage = () => {
         );
     };
     // Group sales by month for the history tab
+    const pastSales = useMemo(() => {
+        if (!currentShift) return completedSales;
+        return completedSales.filter(sale => sale.shiftId !== currentShift.id);
+    }, [completedSales, currentShift]);
+
     const salesByMonth = useMemo(() => {
-        return completedSales.reduce((acc, sale) => {
+        return pastSales.reduce((acc, sale) => {
             const month = format(new Date(sale.date), 'yyyy-MM');
             if (!acc[month]) {
                 acc[month] = [];
@@ -143,7 +153,7 @@ const VentasPage = () => {
             acc[month].push(sale);
             return acc;
         }, {});
-    }, [completedSales]);
+    }, [pastSales]);
 
     const availableMonths = Object.keys(salesByMonth).sort().reverse();
 
@@ -162,45 +172,11 @@ const VentasPage = () => {
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Gestión de Ventas</h1>
 
             <div className="flex border-b mb-6">
-                <button onClick={() => setActiveTab('a-cobrar')} className={`py-2 px-4 ${activeTab === 'a-cobrar' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Ventas a Cobrar</button>
-                <button onClick={() => setActiveTab('info')} className={`py-2 px-4 ${activeTab === 'info' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Información</button>
                 <button onClick={() => setActiveTab('historial')} className={`py-2 px-4 ${activeTab === 'historial' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Historial</button>
+                <button onClick={() => setActiveTab('info')} className={`py-2 px-4 ${activeTab === 'info' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Información</button>
             </div>
 
             <div>
-                {activeTab === 'a-cobrar' && (
-                    <div className="bg-white rounded-lg shadow overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="p-4 font-semibold text-gray-600">Fecha</th>
-                                    <th className="p-4 font-semibold text-gray-600">Ítems</th>
-                                    <th className="p-4 font-semibold text-gray-600">Total</th>
-                                    <th className="p-4 font-semibold text-gray-600 text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading && !pendingSales.length ? (
-                                    <tr><td colSpan="4" className="text-center p-10">Cargando...</td></tr>
-                                ) : pendingSales.length > 0 ? (
-                                    pendingSales.map(sale => (
-                                        <tr key={sale.id} className="border-b hover:bg-gray-50">
-                                            <td className="p-4 whitespace-nowrap">{formatDate(sale.date)}</td>
-                                            <td className="p-4">{renderSaleItems(sale.items)}</td>
-                                            <td className="p-4 font-bold text-blue-600">${formatNumber(sale.totalAmount)}</td>
-                                            <td className="p-4 text-center flex justify-center items-center gap-2">
-                                                <button onClick={() => setSaleToComplete(sale)} className="bg-green-500 text-white py-1 px-3 rounded hover:bg-green-600">Configurar Cobro</button>
-                                                <button onClick={() => deletePendingSale(sale.id)} className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100"><FiTrash /></button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr><td colSpan="4" className="text-center p-10 text-gray-500">No hay ventas pendientes de cobro.</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
                 {activeTab === 'info' && (
                     <div>
                         <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-col md:flex-row gap-4 items-center">
