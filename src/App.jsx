@@ -6,7 +6,8 @@ import SalesPage from './pages/SalesPage';
 import VentasPage from './pages/VentasPage';
 import SalesReportsPage from './pages/SalesReportsPage';
 import AccountPage from './pages/AccountPage';
-import { FiBox, FiTag, FiBarChart2, FiShoppingCart, FiMenu, FiUser, FiHome } from 'react-icons/fi';
+import OrdersPage from './pages/OrdersPage';
+import { FiBox, FiTag, FiBarChart2, FiShoppingCart, FiMenu, FiUser, FiHome, FiClipboard } from 'react-icons/fi';
 
 const Navigation = ({ onLinkClick }) => {
   const activeLinkStyle = {
@@ -33,6 +34,12 @@ const Navigation = ({ onLinkClick }) => {
           <NavLink to="/inventario" style={({ isActive }) => isActive ? activeLinkStyle : undefined} onClick={onLinkClick} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors">
             <FiBox />
             <span>Inventario</span>
+          </NavLink>
+        </li>
+        <li>
+          <NavLink to="/pedidos" style={({ isActive }) => isActive ? activeLinkStyle : undefined} onClick={onLinkClick} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors">
+            <FiClipboard />
+            <span>Pedidos</span>
           </NavLink>
         </li>
         <li>
@@ -81,6 +88,7 @@ const AppLayout = () => {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/cuenta" element={<AccountPage />} />
             <Route path="/inventario" element={<InventoryPage />} />
+            <Route path="/pedidos" element={<OrdersPage />} />
             <Route path="/sales" element={<SalesPage />} />
             <Route path="/ventas" element={<VentasPage />} />
             <Route path="/reports" element={<SalesReportsPage />} />

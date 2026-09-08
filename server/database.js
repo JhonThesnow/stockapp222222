@@ -87,6 +87,11 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                 date TEXT NOT NULL, details TEXT NOT NULL, products TEXT NOT NULL
             )`);
 
+            db.run(`CREATE TABLE IF NOT EXISTS purchase_orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'in_progress', groups TEXT NOT NULL, notes TEXT
+            )`);
+
             // --- SEEDING DE DATOS INICIALES ESENCIALES ---
             const seedEssentialData = () => {
                 db.get("SELECT COUNT(*) as count FROM accounts", (err, row) => {
