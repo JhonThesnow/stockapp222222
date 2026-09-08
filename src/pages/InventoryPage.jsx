@@ -124,13 +124,23 @@ const InventoryPage = () => {
 
     // Fetch de los productos principales
     useEffect(() => {
-        fetchProducts({ page: currentPage, ...activeFilters, searchTerm: debouncedSearch, limit: 10 });
-    }, [fetchProducts, currentPage, activeFilters, debouncedSearch]);
+        if (groupBy === 'none') {
+            fetchProducts({ page: currentPage, ...activeFilters, searchTerm: debouncedSearch, limit: 10 });
+        } else {
+            // Cuando estamos agrupados, ignoramos currentPage para no volver a hacer peticiones
+            fetchProducts({ page: 1, ...activeFilters, searchTerm: debouncedSearch, limit: 9999 });
+        }
+    }, [fetchProducts, groupBy === 'none' ? currentPage : 1, activeFilters, debouncedSearch, groupBy]);
 
     // CORRECCIÓN: Resetea todos los grupos a "Cerrados" cuando cambias de página o de tipo de agrupación
     useEffect(() => {
         setExpandedGroups({});
     }, [currentPage, groupBy]);
+
+    // Resetea a la primera página si cambiamos de agrupación, sin disparar doble fetch
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [groupBy]);
 
     const uniqueBrands = useMemo(() => [...new Set(allProducts.map(p => p.brand).filter(Boolean))].sort(), [allProducts]);
     const uniqueNames = useMemo(() => [...new Set(allProducts.map(p => p.name).filter(Boolean))].sort(), [allProducts]);
@@ -160,6 +170,16 @@ const InventoryPage = () => {
             return acc;
         }, {});
     }, [products, groupBy]);
+
+    const paginatedGroupedProducts = useMemo(() => {
+        if (!groupedProducts) return { keys: [], totalPages: 1 };
+        const sortedKeys = Object.keys(groupedProducts).sort();
+        const limit = 10;
+        const totalGroupPages = Math.ceil(sortedKeys.length / limit) || 1;
+        const startIndex = (currentPage - 1) * limit;
+        const keysForPage = sortedKeys.slice(startIndex, startIndex + limit);
+        return { keys: keysForPage, totalPages: totalGroupPages };
+    }, [groupedProducts, currentPage]);
 
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
@@ -367,7 +387,7 @@ const InventoryPage = () => {
                                     {products.map(product => renderProductCard(product, groupBy))}
                                 </div>
                             ) : (
-                                Object.keys(groupedProducts).sort().map(groupKey => {
+                                paginatedGroupedProducts.keys.map(groupKey => {
                                     const groupItems = groupedProducts[groupKey];
                                     // CORRECCIÓN: Revisamos si está en la lista de ABIERTOS
                                     const isExpandedGroup = expandedGroups[groupKey];
@@ -407,11 +427,11 @@ const InventoryPage = () => {
                             </div>
                         )}
 
-                        {!loading && totalPages > 1 && (
+                        {!loading && (groupBy === 'none' ? totalPages > 1 : paginatedGroupedProducts.totalPages > 1) && (
                             <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200 mt-6">
                                 <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">Anterior</button>
-                                <span className="font-semibold text-gray-600">Página {currentPage} de {totalPages}</span>
-                                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-4 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">Siguiente</button>
+                                <span className="font-semibold text-gray-600">Página {currentPage} de {groupBy === 'none' ? totalPages : paginatedGroupedProducts.totalPages}</span>
+                                <button onClick={() => setCurrentPage(p => Math.min(groupBy === 'none' ? totalPages : paginatedGroupedProducts.totalPages, p + 1))} disabled={currentPage === (groupBy === 'none' ? totalPages : paginatedGroupedProducts.totalPages)} className="px-4 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors">Siguiente</button>
                             </div>
                         )}
                     </div>
