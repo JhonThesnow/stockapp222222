@@ -263,23 +263,47 @@ const ProductForm = ({ productToEdit, onClose }) => {
     if (step === 1) {
         return (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-                <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold">Seleccionar Plantilla</h2>
-                        <button onClick={onClose} className="text-gray-500 hover:text-gray-800"><FiX size={24} /></button>
+                <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl">
+                    <div className="flex justify-between items-center mb-2">
+                        <h2 className="text-2xl font-bold text-gray-800">Seleccionar Estructura del Producto</h2>
+                        <button onClick={onClose} className="text-gray-500 hover:text-gray-800 bg-gray-100 p-2 rounded-full transition-colors"><FiX size={20} /></button>
                     </div>
-                    <div className="grid grid-cols-1 gap-4">
-                        <button onClick={() => handleTemplateSelect('sahumerios')} className="text-left p-4 border rounded-lg hover:bg-gray-50">
-                            <h3 className="font-bold">Marca {'>'} Tipo {'>'} Línea {'>'} Variación</h3>
-                            <p className="text-sm text-gray-600">Ej: Aromanza {'>'} Sahumerios {'>'} Tibetanos {'>'} Palo Santo, Ruda...</p>
+                    <p className="text-gray-600 mb-6">Elige la estructura que mejor se adapte al producto o línea de productos que deseas agregar.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <button onClick={() => handleTemplateSelect('sahumerios')} className="text-left p-5 border-2 border-transparent bg-blue-50 rounded-xl hover:border-blue-400 hover:bg-blue-100 transition-all flex flex-col justify-between h-full group">
+                            <div>
+                                <h3 className="font-bold text-blue-900 mb-2 group-hover:text-blue-700">Con Línea</h3>
+                                <div className="text-sm text-blue-800 mb-3 space-y-1">
+                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Marca</span>
+                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Tipo</span>
+                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs border-l-2 border-blue-400 font-semibold">Línea</span>
+                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Variación (Aroma/Color)</span>
+                                </div>
+                            </div>
+                            <p className="text-xs text-blue-700 mt-2 italic">Ej: Aromanza {'>'} Sahumerios {'>'} Tibetanos {'>'} Palo Santo</p>
                         </button>
-                        <button onClick={() => handleTemplateSelect('velas')} className="text-left p-4 border rounded-lg hover:bg-gray-50">
-                            <h3 className="font-bold">Marca {'>'} Tipo {'>'} Variación</h3>
-                            <p className="text-sm text-gray-600">Ej: Iluminarte {'>'} Velas de Noche {'>'} Rojas, Verdes...</p>
+
+                        <button onClick={() => handleTemplateSelect('velas')} className="text-left p-5 border-2 border-transparent bg-emerald-50 rounded-xl hover:border-emerald-400 hover:bg-emerald-100 transition-all flex flex-col justify-between h-full group">
+                            <div>
+                                <h3 className="font-bold text-emerald-900 mb-2 group-hover:text-emerald-700">Sin Línea (Con Marca)</h3>
+                                <div className="text-sm text-emerald-800 mb-3 space-y-1">
+                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Marca</span>
+                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Tipo</span>
+                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Variación (Aroma/Color)</span>
+                                </div>
+                            </div>
+                            <p className="text-xs text-emerald-700 mt-2 italic">Ej: Iluminarte {'>'} Velas de Noche {'>'} Rojas</p>
                         </button>
-                        <button onClick={() => handleTemplateSelect('unbranded')} className="text-left p-4 border rounded-lg hover:bg-gray-50">
-                            <h3 className="font-bold">Tipo {'>'} Variación</h3>
-                            <p className="text-sm text-gray-600">Ej: Budas de Yeso {'>'} Buda Ojo Dorado, Buda Ojo Plateado...</p>
+
+                        <button onClick={() => handleTemplateSelect('unbranded')} className="text-left p-5 border-2 border-transparent bg-purple-50 rounded-xl hover:border-purple-400 hover:bg-purple-100 transition-all flex flex-col justify-between h-full group">
+                            <div>
+                                <h3 className="font-bold text-purple-900 mb-2 group-hover:text-purple-700">Sin Marca</h3>
+                                <div className="text-sm text-purple-800 mb-3 space-y-1">
+                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Tipo</span>
+                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Variación (Modelo/Color)</span>
+                                </div>
+                            </div>
+                            <p className="text-xs text-purple-700 mt-2 italic">Ej: Budas de Yeso {'>'} Buda Ojo Dorado</p>
                         </button>
                     </div>
                 </div>
@@ -292,83 +316,147 @@ const ProductForm = ({ productToEdit, onClose }) => {
             <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
                 {showScanner && <BarcodeScannerModal onDetected={handleBarcodeDetected} onClose={() => setShowScanner(false)} />}
                 <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
-                    <div className="flex justify-between items-center mb-4 border-b pb-3">
+                    <div className="flex justify-between items-center mb-6 border-b pb-4">
                         <div className="flex items-center gap-4">
-                            <button onClick={goBackToTemplates} className="text-gray-600 hover:text-gray-900"><FiArrowLeft size={20} /></button>
-                            <h2 className="text-xl sm:text-2xl font-bold">Cargar Producto</h2>
-                        </div>
-                        <button onClick={onClose} className="text-gray-600 hover:text-gray-900"><FiX size={24} /></button>
-                    </div>
-                    <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto pr-2 sm:pr-4">
-                        <div className="flex flex-col md:grid md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg mb-4">
-                            {template !== 'unbranded' && <input name="brand" placeholder="Nombre de la Marca" onChange={handleCommonChange} className="p-2 border rounded w-full" required />}
-                            <input name="productType" placeholder="Tipo de Producto (Ej: Sahumerios)" onChange={handleCommonChange} className="p-2 border rounded w-full" required />
-                            {template === 'sahumerios' && <input name="productLine" placeholder="Línea de Producto (Ej: Tibetanos)" onChange={handleCommonChange} className="p-2 border rounded w-full" />}
-                        </div>
-
-                        {variations.map((v, vIndex) => (
-                            <div key={vIndex} className="flex flex-col gap-4 mb-4 p-3 border rounded-lg">
-                                <div className="flex flex-col md:flex-row md:items-end gap-2">
-                                    <div className="flex-grow">
-                                        <label className="text-xs font-bold text-gray-600">Variación</label>
-                                        <input name="variationName" placeholder="Ej: Palo Santo" value={v.variationName} onChange={e => handleVariationChange(vIndex, e)} className="p-2 border rounded w-full" required />
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <div className="flex-1">
-                                            <label className="text-xs font-bold text-gray-600">P. Compra</label>
-                                            <input name="purchasePrice" type="number" step="0.01" placeholder="$" value={v.purchasePrice} onChange={e => handleVariationChange(vIndex, e)} className="p-2 border rounded w-full" required />
-                                        </div>
-                                        <div className="flex-1">
-                                            <label className="text-xs font-bold text-gray-600">Stock</label>
-                                            <input name="quantity" type="number" placeholder="Cant." value={v.quantity} onChange={e => handleVariationChange(vIndex, e)} className="p-2 border rounded w-full" required />
-                                        </div>
-                                    </div>
-                                    <div className="flex-shrink-0">
-                                        <label className="text-xs font-bold text-gray-600">Código</label>
-                                        <div className="relative flex items-center">
-                                            <input name="code" placeholder="Opcional" value={v.code || ''} onChange={e => handleVariationChange(vIndex, e)} className="p-2 border rounded w-full pr-10" />
-                                            <button
-                                                type="button"
-                                                onClick={() => { setScanningVariationIndex(vIndex); setShowScanner(true); }}
-                                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-blue-600"
-                                                aria-label="Escanear código de barras"
-                                            >
-                                                <FiCamera size={20} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <button type="button" onClick={() => removeVariationRow(vIndex)} className="text-red-500 hover:bg-red-100 p-2 rounded-full self-center md:self-end"><FiTrash /></button>
-                                </div>
-
-                                <div className="mt-2 p-3 border rounded-lg bg-gray-50">
-                                    <div className="flex items-center">
-                                        <input id={`notify-${vIndex}`} type="checkbox" name="notifyLowStock" checked={v.notifyLowStock} onChange={(e) => handleVariationChange(vIndex, e)} className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
-                                        <label htmlFor={`notify-${vIndex}`} className="ml-2 block text-sm font-medium text-gray-700">Notificar bajo stock</label>
-                                    </div>
-                                    {v.notifyLowStock && (
-                                        <div className="mt-2">
-                                            <label htmlFor={`threshold-${vIndex}`} className="text-xs text-gray-600">Umbral de stock bajo</label>
-                                            <input id={`threshold-${vIndex}`} type="number" name="lowStockThreshold" value={v.lowStockThreshold} onChange={(e) => handleVariationChange(vIndex, e)} className="p-2 border rounded w-full mt-1" placeholder="Ej: 10" />
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="pl-2 border-l-2 border-gray-200 mt-2">
-                                    {v.salePrices.map((p, pIndex) => (
-                                        <div key={pIndex} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-2">
-                                            <input name="name" value={p.name} onChange={e => handlePriceChange(vIndex, pIndex, e)} placeholder="Nombre de Precio" className="p-2 border rounded flex-1" />
-                                            <input name="price" type="number" step="0.01" value={p.price} onChange={e => handlePriceChange(vIndex, pIndex, e)} placeholder="Monto" className="p-2 border rounded flex-1" />
-                                            {v.salePrices.length > 1 && <button type="button" onClick={() => removePriceFromVariation(vIndex, pIndex)} className="text-red-500 hover:bg-red-100 p-2 rounded-full self-start sm:self-center"><FiTrash size={14} /></button>}
-                                        </div>
-                                    ))}
-                                    <button type="button" onClick={() => addPriceToVariation(vIndex)} className="flex items-center gap-1 text-xs text-blue-600 hover:underline"><FiPlus /> Agregar Precio</button>
-                                </div>
+                            <button onClick={goBackToTemplates} className="text-gray-500 hover:text-gray-800 bg-gray-100 p-2 rounded-full transition-colors"><FiArrowLeft size={20} /></button>
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-800">Cargar Producto</h2>
+                                <p className="text-sm text-gray-500">Completa la información general y agrega las variaciones correspondientes.</p>
                             </div>
-                        ))}
-                        <button type="button" onClick={addVariationRow} className="mt-4 flex items-center gap-2 text-sm text-blue-600 hover:underline"><FiPlus /> Agregar otra variación</button>
-                        <div className="flex justify-end gap-4 mt-6 border-t pt-4">
-                            <button type="button" onClick={onClose} className="py-2 px-4 bg-gray-200 rounded hover:bg-gray-300">Cancelar</button>
-                            <button type="submit" className="py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700">Guardar Productos</button>
+                        </div>
+                        <button onClick={onClose} className="text-gray-500 hover:text-gray-800 bg-gray-100 p-2 rounded-full transition-colors"><FiX size={20} /></button>
+                    </div>
+                    <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto pr-2 sm:pr-4 space-y-6">
+
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">Información General</h3>
+                            <div className="flex flex-col md:grid md:grid-cols-3 gap-4 p-4 bg-gray-50 border border-gray-100 rounded-xl">
+                                {template !== 'unbranded' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
+                                        <input name="brand" placeholder="Ej: Aromanza" onChange={handleCommonChange} className="p-2.5 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" required />
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Producto</label>
+                                    <input name="productType" placeholder="Ej: Sahumerios" onChange={handleCommonChange} className="p-2.5 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" required />
+                                </div>
+                                {template === 'sahumerios' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Línea (Opcional)</label>
+                                        <input name="productLine" placeholder="Ej: Tibetanos" onChange={handleCommonChange} className="p-2.5 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="flex justify-between items-center mb-3 border-b pb-2">
+                                <h3 className="text-lg font-semibold text-gray-700">Variaciones</h3>
+                            </div>
+
+                            <div className="space-y-4">
+                                {variations.map((v, vIndex) => (
+                                    <div key={vIndex} className="flex flex-col gap-4 p-5 border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow relative">
+                                        <div className="absolute top-4 right-4">
+                                            {variations.length > 1 && (
+                                                <button type="button" onClick={() => removeVariationRow(vIndex)} className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-full transition-colors" title="Eliminar Variación">
+                                                    <FiTrash size={18} />
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col md:flex-row gap-4 mt-2">
+                                            <div className="flex-grow">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de Variación</label>
+                                                <input name="variationName" placeholder="Ej: Palo Santo o Rojo" value={v.variationName} onChange={e => handleVariationChange(vIndex, e)} className="p-2.5 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required />
+                                            </div>
+                                            <div className="flex gap-4">
+                                                <div className="w-32">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">P. Compra</label>
+                                                    <div className="relative">
+                                                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                                                        <input name="purchasePrice" type="number" step="0.01" placeholder="0.00" value={v.purchasePrice} onChange={e => handleVariationChange(vIndex, e)} className="p-2.5 pl-8 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required />
+                                                    </div>
+                                                </div>
+                                                <div className="w-24">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+                                                    <input name="quantity" type="number" placeholder="0" value={v.quantity} onChange={e => handleVariationChange(vIndex, e)} className="p-2.5 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required />
+                                                </div>
+                                            </div>
+                                            <div className="w-full md:w-48">
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Código de Barras</label>
+                                                <div className="relative">
+                                                    <input name="code" placeholder="Opcional" value={v.code || ''} onChange={e => handleVariationChange(vIndex, e)} className="p-2.5 border border-gray-300 rounded-lg w-full pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setScanningVariationIndex(vIndex); setShowScanner(true); }}
+                                                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-blue-600 transition-colors"
+                                                        title="Escanear código"
+                                                    >
+                                                        <FiCamera size={18} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col md:flex-row gap-6 mt-2 pt-4 border-t border-gray-100">
+                                            {/* Precios de Venta Section */}
+                                            <div className="flex-grow">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h4 className="text-sm font-semibold text-gray-700">Precios de Venta</h4>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {v.salePrices.map((p, pIndex) => (
+                                                        <div key={pIndex} className="flex items-center gap-2">
+                                                            <input name="name" value={p.name} onChange={e => handlePriceChange(vIndex, pIndex, e)} placeholder="Ej: Minorista" className="p-2 border border-gray-300 rounded-lg flex-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                                            <div className="relative flex-1">
+                                                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 text-sm">$</span>
+                                                                <input name="price" type="number" step="0.01" value={p.price} onChange={e => handlePriceChange(vIndex, pIndex, e)} placeholder="0.00" className="p-2 pl-7 border border-gray-300 rounded-lg w-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                                            </div>
+                                                            {v.salePrices.length > 1 && (
+                                                                <button type="button" onClick={() => removePriceFromVariation(vIndex, pIndex)} className="text-red-400 hover:text-red-600 p-2" title="Eliminar Precio">
+                                                                    <FiTrash size={16} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                    <button type="button" onClick={() => addPriceToVariation(vIndex)} className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors mt-1">
+                                                        <FiPlus size={16} /> Agregar otro precio
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Alerta Stock Section */}
+                                            <div className="md:w-1/3 bg-orange-50 p-3 rounded-lg border border-orange-100 h-fit">
+                                                <div className="flex items-center mb-2">
+                                                    <input id={`notify-${vIndex}`} type="checkbox" name="notifyLowStock" checked={v.notifyLowStock} onChange={(e) => handleVariationChange(vIndex, e)} className="h-4 w-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500" />
+                                                    <label htmlFor={`notify-${vIndex}`} className="ml-2 block text-sm font-medium text-orange-800">Alerta de bajo stock</label>
+                                                </div>
+                                                {v.notifyLowStock && (
+                                                    <div className="pl-6">
+                                                        <label htmlFor={`threshold-${vIndex}`} className="text-xs text-orange-700 block mb-1">Avisar cuando queden:</label>
+                                                        <div className="flex items-center gap-2">
+                                                            <input id={`threshold-${vIndex}`} type="number" name="lowStockThreshold" value={v.lowStockThreshold} onChange={(e) => handleVariationChange(vIndex, e)} className="p-1.5 border border-orange-200 rounded w-20 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white" min="0" />
+                                                            <span className="text-xs text-orange-700">unidades</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button type="button" onClick={addVariationRow} className="mt-4 flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-all font-medium">
+                                <FiPlus size={18} /> Agregar otra variación
+                            </button>
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-8 border-t pt-5 sticky bottom-0 bg-white pb-2">
+                            <button type="button" onClick={onClose} className="py-2.5 px-5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors shadow-sm">Cancelar</button>
+                            <button type="submit" className="py-2.5 px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-sm flex items-center gap-2">
+                                Guardar Productos
+                            </button>
                         </div>
                     </form>
                 </div>
