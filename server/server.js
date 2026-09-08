@@ -983,6 +983,56 @@ app.get('/api/account/movements', (req, res) => {
     });
 });
 
+
+// Endpoints de Órdenes de Compra (Purchase Orders)
+app.get('/api/purchase_orders', (req, res) => {
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const offset = (page - 1) * limit;
+
+    db.get('SELECT COUNT(*) as count FROM purchase_orders', [], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const totalPages = Math.ceil(row.count / limit);
+
+        db.all('SELECT * FROM purchase_orders ORDER BY date DESC LIMIT ? OFFSET ?', [limit, offset], (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            const orders = rows.map(r => ({...r, groups: JSON.parse(r.groups || '[]')}));
+            res.json({ data: orders, totalPages, currentPage: page });
+        });
+    });
+});
+
+app.post('/api/purchase_orders', (req, res) => {
+    const { date, status, groups, notes } = req.body;
+    db.run(
+        'INSERT INTO purchase_orders (date, status, groups, notes) VALUES (?, ?, ?, ?)',
+        [date, status || 'in_progress', JSON.stringify(groups || []), notes || ''],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ id: this.lastID, date, status, groups, notes });
+        }
+    );
+});
+
+app.put('/api/purchase_orders/:id', (req, res) => {
+    const { date, status, groups, notes } = req.body;
+    db.run(
+        'UPDATE purchase_orders SET date = ?, status = ?, groups = ?, notes = ? WHERE id = ?',
+        [date, status, JSON.stringify(groups || []), notes || '', req.params.id],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ updated: this.changes });
+        }
+    );
+});
+
+app.delete('/api/purchase_orders/:id', (req, res) => {
+    db.run('DELETE FROM purchase_orders WHERE id = ?', [req.params.id], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ deleted: this.changes });
+    });
+});
+
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
