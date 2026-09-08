@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import useProductStore from '../store/useProductStore';
 import useSalesStore from '../store/useSalesStore';
-import { FiSearch, FiPlus, FiMinus, FiXCircle, FiShoppingCart, FiChevronLeft, FiChevronRight, FiCamera, FiPlusCircle, FiDollarSign } from 'react-icons/fi';
+import { FiSearch, FiPlus, FiMinus, FiXCircle, FiShoppingCart, FiChevronLeft, FiChevronRight, FiCamera, FiPlusCircle, FiDollarSign, FiAlertTriangle } from 'react-icons/fi';
 import CheckoutModal from '../components/CheckoutModal';
 import BarcodeScannerModal from '../components/BarcodeScannerModal';
 import QuickSaleModal from '../components/QuickSaleModal';
@@ -33,6 +33,8 @@ const SalesPage = () => {
         createPendingSale
     } = useSalesStore();
 
+    const { currentShift, fetchCurrentShift } = useSalesStore();
+
     const [allProducts, setAllProducts] = useState([]);
 
     useEffect(() => {
@@ -43,7 +45,8 @@ const SalesPage = () => {
         };
         fetchAll();
         fetchPaymentMethods();
-    }, [fetchPaymentMethods]);
+        fetchCurrentShift();
+    }, [fetchPaymentMethods, fetchCurrentShift]);
 
     useEffect(() => {
         fetchProducts({
@@ -141,6 +144,18 @@ const SalesPage = () => {
             alert("Hubo un error al registrar la venta: " + res.error);
         }
     };
+
+    if (!currentShift) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full p-6 bg-gray-50">
+                <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center">
+                    <FiAlertTriangle className="w-16 h-16 mx-auto text-yellow-500 mb-4" />
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Turno Cerrado</h2>
+                    <p className="text-gray-600 mb-6">No podés procesar ventas sin iniciar un turno. Ve a la página de Caja para comenzar.</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col md:grid md:grid-cols-3 md:gap-6 h-full p-2 md:p-6 bg-gray-50">

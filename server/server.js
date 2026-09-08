@@ -9,6 +9,40 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
+// --- Endpoint para Shifts ---
+app.get('/api/shifts/current', (req, res) => {
+    db.get("SELECT * FROM shifts WHERE status = 'active' ORDER BY startTime DESC LIMIT 1", [], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ data: row || null });
+    });
+});
+
+app.post('/api/shifts/start', (req, res) => {
+    db.get("SELECT id FROM shifts WHERE status = 'active' LIMIT 1", [], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (row) return res.status(400).json({ error: 'Ya hay un turno activo.' });
+
+        const startTime = new Date().toISOString();
+        db.run("INSERT INTO shifts (startTime, status) VALUES (?, 'active')", [startTime], function(err) {
+            if (err) return res.status(500).json({ error: err.message });
+            db.get("SELECT * FROM shifts WHERE id = ?", [this.lastID], (err, newShift) => {
+                if (err) return res.status(500).json({ error: err.message });
+                res.status(201).json({ data: newShift });
+            });
+        });
+    });
+});
+
+app.post('/api/shifts/:id/end', (req, res) => {
+    const { id } = req.params;
+    const endTime = new Date().toISOString();
+    db.run("UPDATE shifts SET status = 'closed', endTime = ? WHERE id = ?", [endTime, id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: 'Turno no encontrado.' });
+        res.json({ message: 'Turno cerrado exitosamente.' });
+    });
+});
+
 // --- Endpoint para el Dashboard ---
 app.get('/api/dashboard-summary', (req, res) => {
     const todayStart = new Date();
@@ -404,11 +438,18 @@ app.post('/api/sales', (req, res) => {
     if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'La venta debe contener al menos un producto.' });
     }
-    const sql = `INSERT INTO sales (date, items, subtotal, discount, totalAmount, status, paymentMethod) VALUES (?, ?, ?, ?, ?, 'pending', ?)`;
-    const params = [new Date().toISOString(), JSON.stringify(items), subtotal, discount, totalAmount, paymentMethod || null];
-    db.run(sql, params, function (err) {
-        if (err) return res.status(500).json({ error: 'Error al crear la venta pendiente', details: err.message });
-        res.status(201).json({ message: 'Venta pendiente creada exitosamente', saleId: this.lastID });
+
+    db.get("SELECT id FROM shifts WHERE status = 'active' ORDER BY startTime DESC LIMIT 1", [], (err, shift) => {
+        if (err) return res.status(500).json({ error: 'Error al verificar turno', details: err.message });
+        if (!shift) return res.status(400).json({ error: 'No se puede crear una venta sin un turno activo.' });
+
+        const shiftId = shift.id;
+        const sql = `INSERT INTO sales (date, items, subtotal, discount, totalAmount, status, paymentMethod, shiftId) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`;
+        const params = [new Date().toISOString(), JSON.stringify(items), subtotal, discount, totalAmount, paymentMethod || null, shiftId];
+        db.run(sql, params, function (err) {
+            if (err) return res.status(500).json({ error: 'Error al crear la venta pendiente', details: err.message });
+            res.status(201).json({ message: 'Venta pendiente creada exitosamente', saleId: this.lastID });
+        });
     });
 });
 

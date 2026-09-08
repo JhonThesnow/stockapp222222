@@ -87,80 +87,6 @@ const ModifyFundsModal = ({ onClose, accounts, selectedAccountId }) => {
     );
 };
 
-const CashClosingModal = ({ onClose }) => {
-    const { cashClosingData, fetchCashClosingData, saveCashClosing, selectedAccountId, loading } = useAccountStore();
-    const [counted, setCounted] = useState('');
-    const [notes, setNotes] = useState('');
-
-    useEffect(() => {
-        fetchCashClosingData();
-    }, [fetchCashClosingData]);
-
-    const difference = useMemo(() => {
-        const countedAmount = parseFloat(counted);
-        if (isNaN(countedAmount) || !cashClosingData) return 0;
-        return countedAmount - cashClosingData.expected;
-    }, [counted, cashClosingData]);
-
-    const handleSubmit = async () => {
-        if (counted === '') {
-            alert('Por favor, ingresa el monto contado.');
-            return;
-        }
-        const result = await saveCashClosing({
-            accountId: selectedAccountId,
-            expected: cashClosingData.expected,
-            counted: parseFloat(counted),
-            difference,
-            notes,
-        });
-        if (result.success) {
-            alert('¡Cierre de caja guardado con éxito!');
-            onClose();
-        }
-    };
-
-    if (!cashClosingData) return <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50"><div className="bg-white p-6 rounded-lg text-lg font-semibold">Calculando saldos...</div></div>;
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-2xl font-bold">Realizar Cierre de Caja</h2>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full"><FiX size={24} /></button>
-                </div>
-                <div className="space-y-4">
-                    <p className="text-sm text-gray-500">Último cierre: {new Date(cashClosingData.lastClosingDate).toLocaleString('es-AR')}</p>
-                    <div className="p-4 bg-gray-50 rounded-lg space-y-3 text-lg">
-                        <div className="flex justify-between"><span>Ventas en Efectivo:</span> <span className="font-semibold text-green-600">+ ${formatNumber(cashClosingData.salesTotal)}</span></div>
-                        <div className="flex justify-between"><span>Ingresos Manuales:</span> <span className="font-semibold text-green-600">+ ${formatNumber(cashClosingData.deposits)}</span></div>
-                        <div className="flex justify-between"><span>Retiros Manuales:</span> <span className="font-semibold text-red-600">- ${formatNumber(cashClosingData.withdrawals)}</span></div>
-                        <div className="flex justify-between font-bold text-xl border-t-2 pt-3 mt-3"><span>Saldo Esperado:</span> <span>${formatNumber(cashClosingData.expected)}</span></div>
-                    </div>
-                    <div>
-                        <label htmlFor="counted" className="block text-sm font-medium text-gray-700 mb-1">Monto Real en Caja</label>
-                        <input type="number" id="counted" value={counted} onChange={(e) => setCounted(e.target.value)} className="mt-1 p-3 border-2 border-blue-400 rounded-lg w-full font-bold text-2xl text-center" placeholder="0" required autoFocus />
-                    </div>
-                    <div className="flex justify-between font-bold text-lg p-4 rounded-lg" style={{ backgroundColor: difference === 0 ? '#f0fdf4' : (difference > 0 ? '#eff6ff' : '#fef2f2'), color: difference === 0 ? '#166534' : (difference > 0 ? '#1e40af' : '#991b1b') }}>
-                        <span>Diferencia:</span>
-                        <span>{difference >= 0 ? '$' : '-$'}{formatNumber(Math.abs(difference))}</span>
-                    </div>
-                    <div>
-                        <label htmlFor="notes" className="block text-sm font-medium text-gray-700">Notas (Opcional)</label>
-                        <textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1 p-3 border rounded-lg w-full text-lg" placeholder="Ej: Faltó dinero por un error en el vuelto."></textarea>
-                    </div>
-                </div>
-                <div className="flex justify-end gap-4 pt-4 mt-4 border-t">
-                    <button type="button" onClick={onClose} className="py-3 px-6 bg-gray-200 font-semibold rounded-lg hover:bg-gray-300">Cancelar</button>
-                    <button onClick={handleSubmit} disabled={loading} className="py-3 px-6 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-blue-300">
-                        {loading ? 'Guardando...' : 'Confirmar Cierre'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
 const AccountPage = () => {
     const {
         accounts, selectedAccountId, setSelectedAccountId,
@@ -170,7 +96,6 @@ const AccountPage = () => {
     } = useAccountStore();
 
     const [showModifyFundsModal, setShowModifyFundsModal] = useState(false);
-    const [showCashClosingModal, setShowCashClosingModal] = useState(false);
     const [movementToEdit, setMovementToEdit] = useState(null);
     const [activeTab, setActiveTab] = useState('movements');
 
@@ -209,18 +134,9 @@ const AccountPage = () => {
     const selectedAccount = accounts.find(a => a.id === selectedAccountId);
     const isCashAccountSelected = selectedAccount?.type === 'Efectivo';
 
-    const handleCashClosingClick = () => {
-        if (!isCashAccountSelected) {
-            alert("⚠️ Atención: Para realizar un Cierre de Caja, primero debes seleccionar una cuenta de tipo 'Efectivo' en el selector superior.");
-            return;
-        }
-        setShowCashClosingModal(true);
-    };
-
     return (
         <div className="p-4 md:p-6 bg-gray-50 min-h-full">
             {showModifyFundsModal && <ModifyFundsModal onClose={() => setShowModifyFundsModal(false)} accounts={accounts} selectedAccountId={selectedAccountId} />}
-            {showCashClosingModal && <CashClosingModal onClose={() => setShowCashClosingModal(false)} />}
             {movementToEdit && <EditMovementModal movement={movementToEdit} onClose={() => setMovementToEdit(null)} />}
 
             {/* Cabecera Principal y Selección de Cuenta */}
@@ -237,13 +153,6 @@ const AccountPage = () => {
                     </select>
                 </div>
                 <div className="flex gap-4">
-                    <button
-                        onClick={handleCashClosingClick}
-                        className="flex items-center justify-center gap-2 bg-yellow-500 text-white py-3 px-6 rounded-lg shadow-md hover:bg-yellow-600 transition-colors font-bold text-lg"
-                    >
-                        <FiDollarSign size={24} />
-                        <span>Cierre de Caja</span>
-                    </button>
                     <button onClick={() => setShowModifyFundsModal(true)} className="flex items-center justify-center gap-2 bg-green-600 text-white py-3 px-6 rounded-lg shadow-md hover:bg-green-700 transition-colors font-bold text-lg">
                         <FiPlus size={24} />
                         <span>Registrar Movimiento</span>
