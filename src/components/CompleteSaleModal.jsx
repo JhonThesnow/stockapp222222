@@ -92,7 +92,9 @@ const CompleteSaleModal = ({ sale, onClose }) => {
                                 <p className="font-bold text-gray-800 mb-1">Productos:</p>
                                 <ul className="list-disc pl-5">
                                     {sale.items.map((item, idx) => (
-                                        <li key={idx}>{item.quantity}x {item.fullName}</li>
+                                        <li key={idx}>
+                                            {item.quantity}x {item.fullName} {item.brand && <span className="text-gray-500 font-normal">[{item.brand}]</span>}
+                                        </li>
                                     ))}
                                 </ul>
                             </div>
