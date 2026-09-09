@@ -126,6 +126,7 @@ const useSalesStore = create((set, get) => ({
             items: cart.map(item => ({
                 productId: item.id.toString().startsWith('qs-') ? null : item.id,
                 fullName: `${item.name}${item.subtype ? ` - ${item.subtype}` : ''}`,
+                brand: item.brand || null,
                 quantity: item.quantity,
                 unitPrice: item.salePrices[0]?.price || 0,
                 purchasePrice: item.purchasePrice,

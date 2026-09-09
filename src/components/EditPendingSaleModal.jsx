@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import useSalesStore from '../store/useSalesStore';
-import { FiX, FiSave, FiPlus, FiMinus, FiXCircle } from 'react-icons/fi';
+import { FiX, FiSave, FiPlus, FiMinus, FiXCircle, FiShoppingCart } from 'react-icons/fi';
 import { formatNumber } from '../utils/formatting';
 
 const EditPendingSaleModal = ({ sale, onClose }) => {
@@ -16,9 +16,42 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
     });
 
     const [discountPercentage, setDiscountPercentage] = useState(sale.discount || 0);
+    const [showQuickSaleForm, setShowQuickSaleForm] = useState(false);
+    const [qsDescription, setQsDescription] = useState('Artículo Vario');
+    const [qsPrice, setQsPrice] = useState('');
+    const [qsQuantity, setQsQuantity] = useState(1);
+
+    const handleAddQuickSale = (e) => {
+        e.preventDefault();
+        const finalPrice = parseFloat(qsPrice);
+        if (isNaN(finalPrice) || finalPrice <= 0) {
+            alert('Por favor, ingresa un precio válido.');
+            return;
+        }
+
+        const quickSaleItem = {
+            id: `qs-${Date.now()}`,
+            name: qsDescription.trim() || 'Artículo Vario',
+            fullName: qsDescription.trim() || 'Artículo Vario',
+            subtype: '',
+            quantity: parseInt(qsQuantity, 10),
+            purchasePrice: 0,
+            unitPrice: finalPrice,
+            salePrices: [{ name: 'Minorista', price: finalPrice }],
+        };
+
+        setItems([...items, quickSaleItem]);
+        setShowQuickSaleForm(false);
+        setQsDescription('Artículo Vario');
+        setQsPrice('');
+        setQsQuantity(1);
+    };
 
     const updateItemQuantity = (productId, newQuantity) => {
-        if (newQuantity < 1) newQuantity = 1;
+        if (newQuantity < 1) {
+            removeItem(productId);
+            return;
+        }
         setItems(items.map(item => item.id === productId ? { ...item, quantity: newQuantity } : item));
     };
 
@@ -28,7 +61,7 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
 
     const subtotal = useMemo(() => {
         return items.reduce((total, item) => {
-            const price = item.salePrices?.[0]?.price || item.price || 0;
+            const price = item.unitPrice || item.salePrices?.[0]?.price || item.price || 0;
             return total + (price * item.quantity);
         }, 0);
     }, [items]);
@@ -69,7 +102,7 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
                         <div key={`${item.id}-${index}`} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
                             <div className="flex-grow min-w-0">
                                 <p className="font-bold text-gray-800 leading-tight truncate">{item.name || item.fullName} {item.subtype}</p>
-                                <p className="text-sm text-blue-700 font-semibold mt-1">${formatNumber(item.salePrices?.[0]?.price || item.price || 0)}</p>
+                                <p className="text-sm text-blue-700 font-semibold mt-1">${formatNumber(item.unitPrice || item.salePrices?.[0]?.price || item.price || 0)}</p>
                             </div>
                             <div className="flex items-center gap-3 bg-white border-2 rounded-lg p-1 shadow-sm flex-shrink-0">
                                 <button onClick={() => updateItemQuantity(item.id, item.quantity - 1)} className="p-1 text-red-600 hover:bg-red-50 rounded-md">
@@ -88,6 +121,38 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
                         <div className="text-center p-8 text-gray-500">
                             <p>No hay ítems en la venta.</p>
                         </div>
+                    )}
+                </div>
+
+                <div className="mt-4">
+                    {!showQuickSaleForm ? (
+                        <button onClick={() => setShowQuickSaleForm(true)} className="w-full py-3 bg-purple-100 text-purple-700 font-bold rounded-xl hover:bg-purple-200 flex items-center justify-center gap-2 transition-colors">
+                            <FiPlus size={20} /> Agregar Artículo Vario
+                        </button>
+                    ) : (
+                        <form onSubmit={handleAddQuickSale} className="bg-purple-50 p-4 rounded-xl border border-purple-200 space-y-3">
+                            <div className="flex justify-between items-center mb-2">
+                                <h3 className="font-bold text-purple-800 flex items-center gap-2"><FiShoppingCart /> Nuevo Artículo</h3>
+                                <button type="button" onClick={() => setShowQuickSaleForm(false)} className="text-purple-600 hover:text-purple-800"><FiX size={20} /></button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-purple-700 mb-1">Descripción</label>
+                                    <input type="text" value={qsDescription} onChange={e => setQsDescription(e.target.value)} className="w-full p-2 border rounded-lg" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-purple-700 mb-1">Precio</label>
+                                    <input type="number" value={qsPrice} onChange={e => setQsPrice(e.target.value)} className="w-full p-2 border rounded-lg" required min="1" step="any" placeholder="0" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-purple-700 mb-1">Cantidad</label>
+                                    <input type="number" value={qsQuantity} onChange={e => setQsQuantity(e.target.value)} className="w-full p-2 border rounded-lg" required min="1" />
+                                </div>
+                            </div>
+                            <button type="submit" className="w-full py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition-colors">
+                                Agregar a la Venta
+                            </button>
+                        </form>
                     )}
                 </div>
 
