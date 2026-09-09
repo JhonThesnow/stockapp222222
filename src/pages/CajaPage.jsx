@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import useSalesStore from '../store/useSalesStore';
 import { formatNumber } from '../utils/formatting';
-import { FiPlay, FiSquare, FiTrash, FiAlertTriangle, FiDollarSign } from 'react-icons/fi';
+import { FiPlay, FiSquare, FiTrash, FiEdit, FiAlertTriangle, FiDollarSign } from 'react-icons/fi';
 import CompleteSaleModal from '../components/CompleteSaleModal';
+import EditPendingSaleModal from '../components/EditPendingSaleModal';
 
 const CajaPage = () => {
     const {
@@ -11,6 +12,7 @@ const CajaPage = () => {
     } = useSalesStore();
 
     const [saleToComplete, setSaleToComplete] = useState(null);
+    const [saleToEdit, setSaleToEdit] = useState(null);
 
     useEffect(() => {
         fetchCurrentShift();
@@ -41,8 +43,17 @@ const CajaPage = () => {
     };
 
     const renderSaleItems = (items) => {
-        if (!items) return 'Sin ítems';
-        return items.map(item => `${item.quantity}x ${item.fullName}`).join(', ');
+        if (!items || items.length === 0) return <span className="text-gray-400 italic">Sin ítems</span>;
+        return (
+            <ul className="list-none space-y-1">
+                {items.map((item, idx) => (
+                    <li key={idx} className="text-sm">
+                        <span className="font-semibold">{item.quantity}x</span> {item.fullName || item.name}
+                        {item.brand && <span className="text-gray-500 ml-1">[{item.brand}]</span>}
+                    </li>
+                ))}
+            </ul>
+        );
     };
 
     // Calculate shift dashboard data
@@ -69,7 +80,9 @@ const CajaPage = () => {
                     items.forEach(item => {
                         totalCost += (item.purchasePrice || 0) * item.quantity;
                     });
-                } catch (e) {}
+                } catch (e) {
+                    console.error("Error parsing sale items:", e);
+                }
                 profit += (sale.finalAmount || sale.totalAmount) - totalCost;
             }
         });
@@ -103,6 +116,7 @@ const CajaPage = () => {
     return (
         <div className="p-6 bg-gray-50 h-full overflow-y-auto flex flex-col">
             {saleToComplete && <CompleteSaleModal sale={saleToComplete} onClose={() => { setSaleToComplete(null); fetchAllSales(); }} />}
+            {saleToEdit && <EditPendingSaleModal sale={saleToEdit} onClose={() => { setSaleToEdit(null); fetchAllSales(); }} />}
 
             <div className="flex justify-between items-center mb-6">
                 <div>
@@ -136,12 +150,13 @@ const CajaPage = () => {
                                 {pendingSales.length > 0 ? (
                                     pendingSales.map(sale => (
                                         <tr key={sale.id} className="border-b hover:bg-gray-50">
-                                            <td className="p-3 whitespace-nowrap text-sm">{new Date(sale.date).toLocaleString('es-AR')}</td>
-                                            <td className="p-3 text-sm">{renderSaleItems(sale.items)}</td>
-                                            <td className="p-3 font-bold text-blue-600 text-sm">${formatNumber(sale.totalAmount)}</td>
+                                            <td className="p-3 whitespace-nowrap text-sm">{new Date(sale.date).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                                            <td className="p-3 align-top">{renderSaleItems(sale.items)}</td>
+                                            <td className="p-3 font-bold text-blue-600 text-sm align-top">${formatNumber(sale.totalAmount)}</td>
                                             <td className="p-3 text-center flex justify-center items-center gap-2">
-                                                <button onClick={() => setSaleToComplete(sale)} className="bg-green-500 text-white py-1.5 px-3 text-sm rounded hover:bg-green-600">Cobrar</button>
-                                                <button onClick={() => deletePendingSale(sale.id)} className="text-red-500 hover:text-red-700 p-1.5 rounded-full hover:bg-red-100"><FiTrash /></button>
+                                                <button onClick={() => setSaleToComplete(sale)} className="bg-green-500 text-white py-1.5 px-3 text-sm rounded hover:bg-green-600 font-bold">Cobrar</button>
+                                                <button onClick={() => setSaleToEdit(sale)} className="text-blue-500 hover:text-blue-700 p-1.5 rounded-full hover:bg-blue-100 transition-colors" title="Editar"><FiEdit size={18} /></button>
+                                                <button onClick={() => deletePendingSale(sale.id)} className="text-red-500 hover:text-red-700 p-1.5 rounded-full hover:bg-red-100 transition-colors" title="Eliminar"><FiTrash size={18} /></button>
                                             </td>
                                         </tr>
                                     ))
@@ -171,9 +186,9 @@ const CajaPage = () => {
                                     shiftSales.map(sale => (
                                         <tr key={sale.id} className="border-b hover:bg-gray-50">
                                             <td className="p-3 whitespace-nowrap text-sm">{new Date(sale.date).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</td>
-                                            <td className="p-3 text-sm">{renderSaleItems(sale.items)}</td>
-                                            <td className="p-3 text-sm">{sale.paymentMethod || 'N/A'}</td>
-                                            <td className="p-3 font-bold text-gray-800 text-sm">${formatNumber(sale.finalAmount || sale.totalAmount)}</td>
+                                            <td className="p-3 align-top">{renderSaleItems(sale.items)}</td>
+                                            <td className="p-3 text-sm align-top">{sale.paymentMethod || 'N/A'}</td>
+                                            <td className="p-3 font-bold text-gray-800 text-sm align-top">${formatNumber(sale.finalAmount || sale.totalAmount)}</td>
                                         </tr>
                                     ))
                                 ) : (

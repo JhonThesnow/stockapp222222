@@ -257,6 +257,26 @@ const useSalesStore = create((set, get) => ({
         }
     },
 
+    updatePendingSale: async (saleId, updatedData) => {
+        set({ loading: true, error: null });
+        try {
+            const response = await fetch(`${API_URL}/sales/pending/${saleId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedData),
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Falló al actualizar la venta pendiente.');
+            }
+            get().fetchAllSales();
+            return { success: true };
+        } catch (e) {
+            set({ loading: false, error: e.message });
+            return { success: false, error: e.message };
+        }
+    },
+
     deletePendingSale: async (saleId) => {
         if (!window.confirm('¿Estás seguro de que quieres eliminar esta venta pendiente?')) return;
         try {

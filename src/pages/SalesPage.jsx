@@ -188,7 +188,12 @@ const SalesPage = () => {
                             type="text"
                             placeholder="Buscar producto o escanear..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => {
+                                setSearchTerm(e.target.value);
+                                if (e.target.value) {
+                                    setSelectedBrand('Todas');
+                                }
+                            }}
                             className="w-full pl-10 md:pl-12 pr-12 md:pr-14 py-3 md:py-4 border-2 rounded-xl text-base md:text-xl focus:ring-blue-500 focus:border-blue-500 transition-all"
                         />
                         <button onClick={() => setShowScanner(true)} className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 text-white bg-blue-600 hover:bg-blue-700 p-2 rounded-lg">
@@ -269,7 +274,9 @@ const SalesPage = () => {
                     {cart.length > 0 ? cart.map(item => (
                         <div key={item.id} className="flex items-center gap-2 md:gap-3 mb-3 md:mb-5 p-2 md:p-3 bg-gray-50 rounded-lg border">
                             <div className="flex-grow min-w-0">
-                                <p className="font-bold text-sm md:text-lg text-gray-800 leading-tight truncate">{item.name} {item.subtype}</p>
+                                <p className="font-bold text-sm md:text-lg text-gray-800 leading-tight truncate">
+                                    {item.name} {item.subtype} {item.brand && <span className="text-gray-500 font-normal">[{item.brand}]</span>}
+                                </p>
                                 <p className="text-sm md:text-base text-blue-700 font-semibold mt-1">${formatNumber(item.salePrices[0]?.price || 0)}</p>
                             </div>
                             <div className="flex items-center gap-1 md:gap-3 bg-white border-2 rounded-xl p-1 shadow-sm flex-shrink-0">
