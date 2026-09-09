@@ -65,8 +65,8 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
                 </div>
 
                 <div className="flex-grow overflow-y-auto pr-2 space-y-4">
-                    {items.length > 0 ? items.map(item => (
-                        <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                    {items.length > 0 ? items.map((item, index) => (
+                        <div key={`${item.id}-${index}`} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
                             <div className="flex-grow min-w-0">
                                 <p className="font-bold text-gray-800 leading-tight truncate">{item.name || item.fullName} {item.subtype}</p>
                                 <p className="text-sm text-blue-700 font-semibold mt-1">${formatNumber(item.salePrices?.[0]?.price || item.price || 0)}</p>
