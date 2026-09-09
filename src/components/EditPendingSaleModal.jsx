@@ -1,10 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import useSalesStore from '../store/useSalesStore';
+import useProductStore from '../store/useProductStore';
+import Select from 'react-select';
 import { FiX, FiSave, FiPlus, FiMinus, FiXCircle, FiShoppingCart } from 'react-icons/fi';
 import { formatNumber } from '../utils/formatting';
 
 const EditPendingSaleModal = ({ sale, onClose }) => {
     const { updatePendingSale, loading, error } = useSalesStore();
+    const { products, fetchProducts } = useProductStore();
+
+    useEffect(() => {
+        fetchProducts({ limit: 9999 });
+    }, [fetchProducts]);
 
     // Clone items into local state to allow editing before saving
     const [items, setItems] = useState(() => {
@@ -17,9 +24,38 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
 
     const [discountPercentage, setDiscountPercentage] = useState(sale.discount || 0);
     const [showQuickSaleForm, setShowQuickSaleForm] = useState(false);
+    const [showAddProduct, setShowAddProduct] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState(null);
     const [qsDescription, setQsDescription] = useState('Artículo Vario');
     const [qsPrice, setQsPrice] = useState('');
     const [qsQuantity, setQsQuantity] = useState(1);
+
+
+    const productOptions = useMemo(() => {
+        return products.map(p => ({
+            value: p,
+            label: `${p.brand ? '[' + p.brand + '] ' : ''}${p.name} ${p.subtype}`
+        }));
+    }, [products]);
+
+    const handleAddProductFromStock = () => {
+        if (!selectedProduct) return;
+        const product = selectedProduct.value;
+        const newItem = {
+            ...product,
+            quantity: 1,
+            unitPrice: product.salePrices?.[0]?.price || product.price || 0,
+        };
+        // Check if item is already in list
+        const existingItemIndex = items.findIndex(item => item.id === product.id);
+        if (existingItemIndex !== -1) {
+            updateItemQuantity(product.id, items[existingItemIndex].quantity + 1);
+        } else {
+            setItems([...items, newItem]);
+        }
+        setShowAddProduct(false);
+        setSelectedProduct(null);
+    };
 
     const handleAddQuickSale = (e) => {
         e.preventDefault();
@@ -101,7 +137,7 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
                     {items.length > 0 ? items.map((item, index) => (
                         <div key={`${item.id}-${index}`} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200">
                             <div className="flex-grow min-w-0">
-                                <p className="font-bold text-gray-800 leading-tight truncate">{item.name || item.fullName} {item.subtype}</p>
+                                <p className="font-bold text-gray-800 leading-tight truncate">{item.brand ? `[${item.brand}] ` : ''}{item.name || item.fullName} {item.subtype}</p>
                                 <p className="text-sm text-blue-700 font-semibold mt-1">${formatNumber(item.unitPrice || item.salePrices?.[0]?.price || item.price || 0)}</p>
                             </div>
                             <div className="flex items-center gap-3 bg-white border-2 rounded-lg p-1 shadow-sm flex-shrink-0">
@@ -124,12 +160,40 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
                     )}
                 </div>
 
+
+                <div className="mt-4 flex gap-4">
+                    <button onClick={() => { setShowQuickSaleForm(false); setShowAddProduct(true); }} className="w-1/2 py-3 bg-blue-100 text-blue-700 font-bold rounded-xl hover:bg-blue-200 flex items-center justify-center gap-2 transition-colors">
+                        <FiPlus size={20} /> Agregar Producto
+                    </button>
+                    <button onClick={() => { setShowAddProduct(false); setShowQuickSaleForm(true); }} className="w-1/2 py-3 bg-purple-100 text-purple-700 font-bold rounded-xl hover:bg-purple-200 flex items-center justify-center gap-2 transition-colors">
+                        <FiPlus size={20} /> Agregar Artículo Vario
+                    </button>
+                </div>
+
                 <div className="mt-4">
-                    {!showQuickSaleForm ? (
-                        <button onClick={() => setShowQuickSaleForm(true)} className="w-full py-3 bg-purple-100 text-purple-700 font-bold rounded-xl hover:bg-purple-200 flex items-center justify-center gap-2 transition-colors">
-                            <FiPlus size={20} /> Agregar Artículo Vario
-                        </button>
-                    ) : (
+                    {showAddProduct && (
+                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 space-y-3">
+                            <div className="flex justify-between items-center mb-2">
+                                <h3 className="font-bold text-blue-800 flex items-center gap-2"><FiShoppingCart /> Seleccionar Producto</h3>
+                                <button type="button" onClick={() => setShowAddProduct(false)} className="text-blue-600 hover:text-blue-800"><FiX size={20} /></button>
+                            </div>
+                            <div className="flex gap-2 items-center">
+                                <div className="flex-grow">
+                                    <Select
+                                        options={productOptions}
+                                        value={selectedProduct}
+                                        onChange={setSelectedProduct}
+                                        placeholder="Buscar producto..."
+                                        isSearchable
+                                    />
+                                </div>
+                                <button onClick={handleAddProductFromStock} className="py-2 px-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors">
+                                    Agregar
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    {showQuickSaleForm && (
                         <form onSubmit={handleAddQuickSale} className="bg-purple-50 p-4 rounded-xl border border-purple-200 space-y-3">
                             <div className="flex justify-between items-center mb-2">
                                 <h3 className="font-bold text-purple-800 flex items-center gap-2"><FiShoppingCart /> Nuevo Artículo</h3>
