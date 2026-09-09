@@ -13,6 +13,19 @@ app.use(express.json());
 app.get('/api/shifts/current', (req, res) => {
     db.get("SELECT * FROM shifts WHERE status = 'active' ORDER BY startTime DESC LIMIT 1", [], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
+        if (row) {
+            const shiftDate = new Date(row.startTime).toDateString();
+            const currentDate = new Date().toDateString();
+            if (shiftDate !== currentDate) {
+                // Auto-close if the shift is from a previous day
+                const endTime = new Date().toISOString();
+                db.run("UPDATE shifts SET status = 'closed', endTime = ? WHERE id = ?", [endTime, row.id], (updateErr) => {
+                    if (updateErr) return res.status(500).json({ error: updateErr.message });
+                    return res.json({ data: null });
+                });
+                return;
+            }
+        }
         res.json({ data: row || null });
     });
 });
@@ -563,6 +576,21 @@ app.put('/api/sales/history/:id', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ error: 'Venta completada no encontrada o sin cambios.' });
         res.json({ message: 'Venta actualizada exitosamente' });
+    });
+});
+
+app.put('/api/sales/pending/:id', (req, res) => {
+    const { id } = req.params;
+    const { items, subtotal, discount, totalAmount } = req.body;
+    if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'La venta debe contener al menos un producto.' });
+    }
+
+    const sql = `UPDATE sales SET items = ?, subtotal = ?, discount = ?, totalAmount = ? WHERE id = ? AND status = 'pending'`;
+    db.run(sql, [JSON.stringify(items), subtotal, discount, totalAmount, id], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: 'Venta pendiente no encontrada o sin cambios.' });
+        res.json({ message: 'Venta pendiente actualizada exitosamente' });
     });
 });
 
