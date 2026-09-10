@@ -16,7 +16,12 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
     // Clone items into local state to allow editing before saving
     const [items, setItems] = useState(() => {
         try {
-            return typeof sale.items === 'string' ? JSON.parse(sale.items) : [...sale.items];
+            const initialItems = typeof sale.items === 'string' ? JSON.parse(sale.items) : [...sale.items];
+            return initialItems.map((item, index) => ({
+                ...item,
+                id: item.id || item.productId || `qs-existing-${index}-${Date.now()}`,
+                productId: item.productId || item.id || null
+            }));
         } catch (e) {
             return [];
         }
@@ -43,11 +48,13 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
         const product = selectedProduct.value;
         const newItem = {
             ...product,
+            id: product.id,
+            productId: product.id,
             quantity: 1,
             unitPrice: product.salePrices?.[0]?.price || product.price || 0,
         };
         // Check if item is already in list
-        const existingItemIndex = items.findIndex(item => item.id === product.id);
+        const existingItemIndex = items.findIndex(item => item.id === product.id || item.productId === product.id);
         if (existingItemIndex !== -1) {
             updateItemQuantity(product.id, items[existingItemIndex].quantity + 1);
         } else {
@@ -67,6 +74,7 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
 
         const quickSaleItem = {
             id: `qs-${Date.now()}`,
+            productId: null,
             name: qsDescription.trim() || 'Artículo Vario',
             fullName: qsDescription.trim() || 'Artículo Vario',
             subtype: '',
@@ -111,8 +119,17 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
             return;
         }
 
+        const formattedItems = items.map(item => ({
+            productId: item.id.toString().startsWith('qs-') ? null : item.productId || item.id,
+            fullName: item.fullName || `${item.name || ''} ${item.subtype || ''}`.trim(),
+            brand: item.brand || null,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice || item.salePrices?.[0]?.price || item.price || 0,
+            purchasePrice: item.purchasePrice || 0,
+        }));
+
         const result = await updatePendingSale(sale.id, {
-            items,
+            items: formattedItems,
             subtotal,
             discount: discountPercentage,
             totalAmount
