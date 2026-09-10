@@ -43,15 +43,30 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                 lowStockThreshold INTEGER DEFAULT 10
             )`);
 
+            db.run(`CREATE TABLE IF NOT EXISTS shifts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                startTime TEXT NOT NULL,
+                endTime TEXT,
+                status TEXT NOT NULL DEFAULT 'active'
+            )`);
+
             db.run(`CREATE TABLE IF NOT EXISTS sales (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 accountId INTEGER,
+                shiftId INTEGER,
                 date TEXT NOT NULL, items TEXT NOT NULL, subtotal REAL NOT NULL, discount REAL,
                 totalAmount REAL NOT NULL, status TEXT NOT NULL DEFAULT 'pending', paymentMethod TEXT,
                 finalDiscount REAL DEFAULT 0, finalAmount REAL, appliedTax REAL DEFAULT 0,
                 cancellationReason TEXT,
-                FOREIGN KEY (accountId) REFERENCES accounts (id) ON DELETE SET NULL
+                FOREIGN KEY (accountId) REFERENCES accounts (id) ON DELETE SET NULL,
+                FOREIGN KEY (shiftId) REFERENCES shifts (id) ON DELETE SET NULL
             )`);
+
+            db.run(`ALTER TABLE sales ADD COLUMN shiftId INTEGER`, (err) => {
+                if (err && !err.message.includes("duplicate column")) {
+                    console.log("Error adding shiftId to sales:", err.message);
+                }
+            });
 
             db.run(`CREATE TABLE IF NOT EXISTS expenses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
