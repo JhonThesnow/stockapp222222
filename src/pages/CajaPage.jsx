@@ -13,6 +13,16 @@ const CajaPage = () => {
 
     const [saleToComplete, setSaleToComplete] = useState(null);
     const [saleToEdit, setSaleToEdit] = useState(null);
+    const [expandedSales, setExpandedSales] = useState({});
+    const [showProfitMethod, setShowProfitMethod] = useState({});
+
+    const toggleSaleExpansion = (saleId) => {
+        setExpandedSales(prev => ({ ...prev, [saleId]: !prev[saleId] }));
+    };
+
+    const toggleProfitMethod = (method) => {
+        setShowProfitMethod(prev => ({ ...prev, [method]: !prev[method] }));
+    };
 
     useEffect(() => {
         fetchCurrentShift();
@@ -43,10 +53,19 @@ const CajaPage = () => {
     };
 
     const renderSaleItems = (items) => {
-        if (!items || items.length === 0) return <span className="text-gray-400 italic">Sin ítems</span>;
+        let parsedItems = items;
+        if (typeof items === 'string') {
+            try {
+                parsedItems = JSON.parse(items);
+            } catch (e) {
+                console.error("Error parsing sale items:", e);
+                parsedItems = [];
+            }
+        }
+        if (!parsedItems || parsedItems.length === 0) return <span className="text-gray-400 italic">Sin ítems</span>;
         return (
             <ul className="list-none space-y-1">
-                {items.map((item, idx) => (
+                {parsedItems.map((item, idx) => (
                     <li key={idx} className="text-sm">
                         <span className="font-semibold">{item.quantity}x</span> {item.fullName || item.name}
                         {item.brand && <span className="text-gray-500 ml-1">[{item.brand}]</span>}
@@ -54,6 +73,19 @@ const CajaPage = () => {
                 ))}
             </ul>
         );
+    };
+
+    const getItemsCount = (items) => {
+        let parsedItems = items;
+        if (typeof items === 'string') {
+            try {
+                parsedItems = JSON.parse(items);
+            } catch (e) {
+                parsedItems = [];
+            }
+        }
+        if (!parsedItems || !Array.isArray(parsedItems)) return 0;
+        return parsedItems.reduce((acc, item) => acc + (item.quantity || 1), 0);
     };
 
     // Calculate shift dashboard data
@@ -69,9 +101,14 @@ const CajaPage = () => {
 
         shiftSales.forEach(sale => {
             if (sale.status === 'completed') {
-                total += sale.finalAmount || sale.totalAmount;
+                const saleTotal = sale.finalAmount || sale.totalAmount;
+                total += saleTotal;
                 const method = sale.paymentMethod || 'Otro';
-                byMethod[method] = (byMethod[method] || 0) + (sale.finalAmount || sale.totalAmount);
+
+                if (!byMethod[method]) {
+                    byMethod[method] = { amount: 0, profit: 0 };
+                }
+                byMethod[method].amount += saleTotal;
 
                 // Approximate profit: finalAmount - total purchase price
                 let totalCost = 0;
@@ -83,7 +120,9 @@ const CajaPage = () => {
                 } catch (e) {
                     console.error("Error parsing sale items:", e);
                 }
-                profit += (sale.finalAmount || sale.totalAmount) - totalCost;
+                const saleProfit = saleTotal - totalCost;
+                profit += saleProfit;
+                byMethod[method].profit += saleProfit;
             }
         });
 
@@ -183,14 +222,36 @@ const CajaPage = () => {
                             </thead>
                             <tbody>
                                 {shiftSales.length > 0 ? (
-                                    shiftSales.map(sale => (
-                                        <tr key={sale.id} className="border-b hover:bg-gray-50">
-                                            <td className="p-3 whitespace-nowrap text-sm">{new Date(sale.date).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</td>
-                                            <td className="p-3 align-top">{renderSaleItems(sale.items)}</td>
-                                            <td className="p-3 text-sm align-top">{sale.paymentMethod || 'N/A'}</td>
-                                            <td className="p-3 font-bold text-gray-800 text-sm align-top">${formatNumber(sale.finalAmount || sale.totalAmount)}</td>
-                                        </tr>
-                                    ))
+                                    shiftSales.map(sale => {
+                                        const isExpanded = expandedSales[sale.id];
+                                        return (
+                                            <React.Fragment key={sale.id}>
+                                                <tr
+                                                    className="border-b hover:bg-gray-50 cursor-pointer"
+                                                    onClick={() => toggleSaleExpansion(sale.id)}
+                                                >
+                                                    <td className="p-3 whitespace-nowrap text-sm">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-gray-400 text-xs">
+                                                                {isExpanded ? '▼' : '▶'}
+                                                            </span>
+                                                            {new Date(sale.date).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-3 text-sm">{getItemsCount(sale.items)} ítems</td>
+                                                    <td className="p-3 text-sm">{sale.paymentMethod || 'N/A'}</td>
+                                                    <td className="p-3 font-bold text-gray-800 text-sm">${formatNumber(sale.finalAmount || sale.totalAmount)}</td>
+                                                </tr>
+                                                {isExpanded && (
+                                                    <tr className="bg-gray-50 border-b">
+                                                        <td colSpan="4" className="p-3 pl-8">
+                                                            {renderSaleItems(sale.items)}
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        );
+                                    })
                                 ) : (
                                     <tr><td colSpan="4" className="text-center p-8 text-gray-500">Aún no hay ventas en este turno.</td></tr>
                                 )}
@@ -216,9 +277,21 @@ const CajaPage = () => {
                         <p className="text-sm text-gray-600 font-semibold mb-2">Desglose por Pago</p>
                         <div className="flex flex-wrap gap-3">
                             {Object.entries(dashboardData.byMethod).length > 0 ? (
-                                Object.entries(dashboardData.byMethod).map(([method, amount]) => (
-                                    <div key={method} className="bg-white px-3 py-1.5 rounded shadow-sm border border-gray-200 text-sm">
-                                        <span className="font-medium text-gray-700">{method}:</span> <span className="font-bold">${formatNumber(amount)}</span>
+                                Object.entries(dashboardData.byMethod).map(([method, data]) => (
+                                    <div
+                                        key={method}
+                                        className="bg-white px-3 py-1.5 rounded shadow-sm border border-gray-200 text-sm cursor-pointer hover:bg-gray-50 transition-colors"
+                                        onClick={() => toggleProfitMethod(method)}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium text-gray-700">{method}:</span>
+                                            <span className="font-bold">${formatNumber(data.amount)}</span>
+                                        </div>
+                                        {showProfitMethod[method] && (
+                                            <div className="text-xs text-green-600 font-semibold mt-1">
+                                                Ganancia: ${formatNumber(data.profit)}
+                                            </div>
+                                        )}
                                     </div>
                                 ))
                             ) : (
