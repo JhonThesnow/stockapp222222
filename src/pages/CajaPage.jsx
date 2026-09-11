@@ -59,7 +59,7 @@ const CajaPage = () => {
     // Calculate shift dashboard data
     const shiftSales = useMemo(() => {
         if (!currentShift) return [];
-        return completedSales.filter(sale => sale.shiftId === currentShift.id);
+        return completedSales.filter(sale => String(sale.shiftId) === String(currentShift.id));
     }, [currentShift, completedSales]);
 
     const dashboardData = useMemo(() => {

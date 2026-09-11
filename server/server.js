@@ -484,16 +484,23 @@ app.put('/api/sales/:id/complete', (req, res) => {
 
     db.serialize(() => {
         db.run('BEGIN TRANSACTION');
-        db.get('SELECT * FROM sales WHERE id = ? AND status = "pending"', [id], (err, sale) => {
-            if (err || !sale) {
+        db.get("SELECT id FROM shifts WHERE status = 'active' ORDER BY startTime DESC LIMIT 1", [], (err, shift) => {
+            if (err || !shift) {
                 db.run('ROLLBACK');
-                return res.status(404).json({ error: 'Venta pendiente no encontrada' });
+                return res.status(400).json({ error: 'No hay un turno activo. No se puede completar la venta.' });
             }
-            const finalAmount = sale.totalAmount - (sale.totalAmount * ((finalDiscountPercentage || 0) / 100));
-            const items = JSON.parse(sale.items);
+            const activeShiftId = shift.id;
 
-            const updateSaleSql = `UPDATE sales SET status = 'completed', paymentMethod = ?, finalDiscount = ?, finalAmount = ?, date = ?, accountId = ? WHERE id = ?`;
-            db.run(updateSaleSql, [paymentMethod, (finalDiscountPercentage || 0), finalAmount, new Date().toISOString(), accountId, id], function (err) {
+            db.get('SELECT * FROM sales WHERE id = ? AND status = "pending"', [id], (err, sale) => {
+                if (err || !sale) {
+                    db.run('ROLLBACK');
+                    return res.status(404).json({ error: 'Venta pendiente no encontrada' });
+                }
+                const finalAmount = sale.totalAmount - (sale.totalAmount * ((finalDiscountPercentage || 0) / 100));
+                const items = JSON.parse(sale.items);
+
+                const updateSaleSql = `UPDATE sales SET status = 'completed', paymentMethod = ?, finalDiscount = ?, finalAmount = ?, date = ?, accountId = ?, shiftId = ? WHERE id = ?`;
+                db.run(updateSaleSql, [paymentMethod, (finalDiscountPercentage || 0), finalAmount, new Date().toISOString(), accountId, activeShiftId, id], function (err) {
                 if (err) { db.run('ROLLBACK'); return res.status(500).json({ error: 'Error al actualizar la venta', details: err.message }); }
 
                 const updatePromises = items.map(item => new Promise((resolve, reject) => {
@@ -512,6 +519,7 @@ app.put('/api/sales/:id/complete', (req, res) => {
                     db.run('ROLLBACK');
                     res.status(400).json({ error: 'Error al actualizar el stock', details: error.message });
                 });
+            });
             });
         });
     });
