@@ -157,8 +157,8 @@ const SalesReportsPage = () => {
                     <div>
                         <label className="text-sm font-medium">Rango de Fechas</label>
                         <div className="flex items-center">
-                            <DatePicker selected={filters.startDate} onChange={(date) => setFilters({ startDate: date })} selectsStart startDate={filters.startDate} endDate={filters.endDate} className="w-full p-2 border rounded-l-md" dateFormat="dd/MM/yyyy" />
-                            <DatePicker selected={filters.endDate} onChange={(date) => setFilters({ endDate: endOfDay(date) })} selectsEnd startDate={filters.startDate} endDate={filters.endDate} minDate={filters.startDate} className="w-full p-2 border rounded-r-md" dateFormat="dd/MM/yyyy" />
+                            <DatePicker selected={filters.startDate} onChange={(date) => setFilters({ startDate: date })} selectsStart startDate={filters.startDate} endDate={filters.endDate} popperPlacement="bottom-end" className="w-full p-2 border rounded-l-md" dateFormat="dd/MM/yyyy" />
+                            <DatePicker selected={filters.endDate} onChange={(date) => setFilters({ endDate: endOfDay(date) })} selectsEnd startDate={filters.startDate} endDate={filters.endDate} minDate={filters.startDate} popperPlacement="bottom-end" className="w-full p-2 border rounded-r-md" dateFormat="dd/MM/yyyy" />
                         </div>
                     </div>
                     <div>

@@ -180,11 +180,11 @@ const AccountPage = () => {
                 <div className="flex gap-4 w-full lg:w-auto flex-grow justify-start lg:justify-end">
                     <div className="flex-1 lg:flex-none">
                         <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 block">Desde</label>
-                        <DatePicker selected={startDate} onChange={date => handleDateChange(date, endDate)} dateFormat="dd/MM/yyyy" className="p-2 border border-gray-300 rounded-md w-full sm:w-36 text-sm cursor-pointer shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                        <DatePicker selected={startDate} onChange={date => handleDateChange(date, endDate)} dateFormat="dd/MM/yyyy" popperPlacement="bottom-end" className="p-2 border border-gray-300 rounded-md w-full sm:w-36 text-sm cursor-pointer shadow-sm focus:ring-blue-500 focus:border-blue-500" />
                     </div>
                     <div className="flex-1 lg:flex-none">
                         <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 block">Hasta</label>
-                        <DatePicker selected={endDate} onChange={date => handleDateChange(startDate, date)} dateFormat="dd/MM/yyyy" className="p-2 border border-gray-300 rounded-md w-full sm:w-36 text-sm cursor-pointer shadow-sm focus:ring-blue-500 focus:border-blue-500" />
+                        <DatePicker selected={endDate} onChange={date => handleDateChange(startDate, date)} dateFormat="dd/MM/yyyy" popperPlacement="bottom-end" className="p-2 border border-gray-300 rounded-md w-full sm:w-36 text-sm cursor-pointer shadow-sm focus:ring-blue-500 focus:border-blue-500" />
                     </div>
                 </div>
             </div>
