@@ -181,9 +181,9 @@ const VentasPage = () => {
                     <div>
                         <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-col md:flex-row gap-4 items-center">
                             <div className="flex gap-4 items-center">
-                                <DatePicker selected={startDate} onChange={date => setStartDate(date)} dateFormat="dd/MM/yyyy" className="p-2 border rounded w-full md:w-auto" />
+                                <DatePicker selected={startDate} onChange={date => setStartDate(date)} dateFormat="dd/MM/yyyy" popperPlacement="bottom-end" className="p-2 border rounded w-full md:w-auto" />
                                 <span>-</span>
-                                <DatePicker selected={endDate} onChange={date => setEndDate(date)} dateFormat="dd/MM/yyyy" className="p-2 border rounded w-full md:w-auto" />
+                                <DatePicker selected={endDate} onChange={date => setEndDate(date)} dateFormat="dd/MM/yyyy" popperPlacement="bottom-end" className="p-2 border rounded w-full md:w-auto" />
                             </div>
                             <button onClick={() => setShowExpenseForm(!showExpenseForm)} className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 w-full md:w-auto mt-2 md:mt-0">
                                 {showExpenseForm ? 'Cancelar' : 'Agregar Gasto'}
