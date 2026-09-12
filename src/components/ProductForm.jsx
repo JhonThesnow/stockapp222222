@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import useProductStore from '../store/useProductStore.js';
-import { FiX, FiPlus, FiTrash, FiArrowLeft, FiCamera } from 'react-icons/fi';
+import { FiX, FiPlus, FiTrash, FiCamera, FiCopy } from 'react-icons/fi';
 import BarcodeScannerModal from './BarcodeScannerModal.jsx';
 
 const newVariation = {
@@ -17,10 +17,8 @@ const ProductForm = ({ productToEdit, onClose }) => {
     const { addBatchProducts, updateProduct } = useProductStore();
 
     const isEditMode = Boolean(productToEdit);
-    const [step, setStep] = useState(1);
-    const [template, setTemplate] = useState(null);
 
-    const [commonData, setCommonData] = useState({});
+    const [commonData, setCommonData] = useState({ brand: '', productType: '', productLine: '' });
     const [variations, setVariations] = useState([JSON.parse(JSON.stringify(newVariation))]);
 
     const [editData, setEditData] = useState(null);
@@ -52,16 +50,6 @@ const ProductForm = ({ productToEdit, onClose }) => {
         }
     };
 
-
-    const handleTemplateSelect = (selectedTemplate) => {
-        setTemplate(selectedTemplate);
-        if (selectedTemplate === 'unbranded') {
-            setCommonData({ type: 'sin-marca', productType: '' });
-        } else {
-            setCommonData({ type: 'con-marca', brand: '', productType: '', productLine: '' });
-        }
-        setStep(2);
-    };
 
     const handleCommonChange = (e) => {
         setCommonData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -108,15 +96,20 @@ const ProductForm = ({ productToEdit, onClose }) => {
         setVariations([...variations, JSON.parse(JSON.stringify(newVariation))]);
     };
 
+    const duplicateFirstVariationRow = () => {
+        if (variations.length === 0) return;
+        const firstVar = variations[0];
+        const duplicatedVar = {
+            ...JSON.parse(JSON.stringify(firstVar)),
+            variationName: '',
+            code: ''
+        };
+        setVariations([...variations, duplicatedVar]);
+    };
+
     const removeVariationRow = (index) => {
         setVariations(variations.filter((_, i) => i !== index));
     };
-
-    const goBackToTemplates = () => {
-        setStep(1);
-        setTemplate(null);
-        setVariations([JSON.parse(JSON.stringify(newVariation))]);
-    }
 
     const handleEditChange = (e) => {
         setEditData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -160,16 +153,14 @@ const ProductForm = ({ productToEdit, onClose }) => {
             await updateProduct(finalEditData.id, finalEditData);
         } else {
             const productsToCreate = variations.map(v => {
-                let name, subtype;
-                if (template === 'sahumerios') {
-                    name = commonData.productType;
-                    subtype = `${commonData.productLine} - ${v.variationName}`;
-                } else if (template === 'velas' || template === 'unbranded') {
-                    name = commonData.productType;
-                    subtype = v.variationName;
-                }
+                const name = commonData.productType;
+                const subtype = commonData.productLine && commonData.productLine.trim() !== ''
+                    ? `${commonData.productLine} - ${v.variationName}`
+                    : v.variationName;
+                const type = commonData.brand && commonData.brand.trim() !== '' ? 'con-marca' : 'sin-marca';
+
                 return {
-                    brand: commonData.brand || null, name, subtype, type: commonData.type,
+                    brand: commonData.brand || null, name, subtype, type,
                     purchasePrice: parseFloat(v.purchasePrice),
                     quantity: parseInt(v.quantity, 10),
                     code: v.code,
@@ -260,100 +251,43 @@ const ProductForm = ({ productToEdit, onClose }) => {
         );
     }
 
-    if (step === 1) {
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-                <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl">
-                    <div className="flex justify-between items-center mb-2">
-                        <h2 className="text-2xl font-bold text-gray-800">Seleccionar Estructura del Producto</h2>
-                        <button onClick={onClose} className="text-gray-500 hover:text-gray-800 bg-gray-100 p-2 rounded-full transition-colors"><FiX size={20} /></button>
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
+            {showScanner && <BarcodeScannerModal onDetected={handleBarcodeDetected} onClose={() => setShowScanner(false)} />}
+            <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
+                <div className="flex justify-between items-center mb-6 border-b pb-4">
+                    <div className="flex items-center gap-4">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">Cargar Producto</h2>
+                            <p className="text-sm text-gray-500">Completa la información general y agrega las variaciones correspondientes.</p>
+                        </div>
                     </div>
-                    <p className="text-gray-600 mb-6">Elige la estructura que mejor se adapte al producto o línea de productos que deseas agregar.</p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <button onClick={() => handleTemplateSelect('sahumerios')} className="text-left p-5 border-2 border-transparent bg-blue-50 rounded-xl hover:border-blue-400 hover:bg-blue-100 transition-all flex flex-col justify-between h-full group">
-                            <div>
-                                <h3 className="font-bold text-blue-900 mb-2 group-hover:text-blue-700">Con Línea</h3>
-                                <div className="text-sm text-blue-800 mb-3 space-y-1">
-                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Marca</span>
-                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Tipo</span>
-                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs border-l-2 border-blue-400 font-semibold">Línea</span>
-                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Variación (Aroma/Color)</span>
-                                </div>
-                            </div>
-                            <p className="text-xs text-blue-700 mt-2 italic">Ej: Aromanza {'>'} Sahumerios {'>'} Tibetanos {'>'} Palo Santo</p>
-                        </button>
-
-                        <button onClick={() => handleTemplateSelect('velas')} className="text-left p-5 border-2 border-transparent bg-emerald-50 rounded-xl hover:border-emerald-400 hover:bg-emerald-100 transition-all flex flex-col justify-between h-full group">
-                            <div>
-                                <h3 className="font-bold text-emerald-900 mb-2 group-hover:text-emerald-700">Sin Línea (Con Marca)</h3>
-                                <div className="text-sm text-emerald-800 mb-3 space-y-1">
-                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Marca</span>
-                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Tipo</span>
-                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Variación (Aroma/Color)</span>
-                                </div>
-                            </div>
-                            <p className="text-xs text-emerald-700 mt-2 italic">Ej: Iluminarte {'>'} Velas de Noche {'>'} Rojas</p>
-                        </button>
-
-                        <button onClick={() => handleTemplateSelect('unbranded')} className="text-left p-5 border-2 border-transparent bg-purple-50 rounded-xl hover:border-purple-400 hover:bg-purple-100 transition-all flex flex-col justify-between h-full group">
-                            <div>
-                                <h3 className="font-bold text-purple-900 mb-2 group-hover:text-purple-700">Sin Marca</h3>
-                                <div className="text-sm text-purple-800 mb-3 space-y-1">
-                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Tipo</span>
-                                    <span className="block bg-white bg-opacity-60 px-2 py-1 rounded text-xs">Variación (Modelo/Color)</span>
-                                </div>
-                            </div>
-                            <p className="text-xs text-purple-700 mt-2 italic">Ej: Budas de Yeso {'>'} Buda Ojo Dorado</p>
-                        </button>
-                    </div>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 bg-gray-100 p-2 rounded-full transition-colors"><FiX size={20} /></button>
                 </div>
-            </div>
-        );
-    }
+                <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto pr-2 sm:pr-4 space-y-6">
 
-    if (step === 2) {
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-                {showScanner && <BarcodeScannerModal onDetected={handleBarcodeDetected} onClose={() => setShowScanner(false)} />}
-                <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
-                    <div className="flex justify-between items-center mb-6 border-b pb-4">
-                        <div className="flex items-center gap-4">
-                            <button onClick={goBackToTemplates} className="text-gray-500 hover:text-gray-800 bg-gray-100 p-2 rounded-full transition-colors"><FiArrowLeft size={20} /></button>
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">Información General</h3>
+                        <div className="flex flex-col md:grid md:grid-cols-3 gap-4 p-4 bg-gray-50 border border-gray-100 rounded-xl">
                             <div>
-                                <h2 className="text-2xl font-bold text-gray-800">Cargar Producto</h2>
-                                <p className="text-sm text-gray-500">Completa la información general y agrega las variaciones correspondientes.</p>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Marca (Opcional)</label>
+                                <input name="brand" placeholder="Ej: Aromanza" onChange={handleCommonChange} className="p-2.5 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Producto</label>
+                                <input name="productType" placeholder="Ej: Sahumerios" onChange={handleCommonChange} className="p-2.5 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" required />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Línea (Opcional)</label>
+                                <input name="productLine" placeholder="Ej: Tibetanos" onChange={handleCommonChange} className="p-2.5 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
                             </div>
                         </div>
-                        <button onClick={onClose} className="text-gray-500 hover:text-gray-800 bg-gray-100 p-2 rounded-full transition-colors"><FiX size={20} /></button>
                     </div>
-                    <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto pr-2 sm:pr-4 space-y-6">
 
-                        <div>
-                            <h3 className="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">Información General</h3>
-                            <div className="flex flex-col md:grid md:grid-cols-3 gap-4 p-4 bg-gray-50 border border-gray-100 rounded-xl">
-                                {template !== 'unbranded' && (
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
-                                        <input name="brand" placeholder="Ej: Aromanza" onChange={handleCommonChange} className="p-2.5 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" required />
-                                    </div>
-                                )}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Producto</label>
-                                    <input name="productType" placeholder="Ej: Sahumerios" onChange={handleCommonChange} className="p-2.5 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" required />
-                                </div>
-                                {template === 'sahumerios' && (
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Línea (Opcional)</label>
-                                        <input name="productLine" placeholder="Ej: Tibetanos" onChange={handleCommonChange} className="p-2.5 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" />
-                                    </div>
-                                )}
-                            </div>
+                    <div>
+                        <div className="flex justify-between items-center mb-3 border-b pb-2">
+                            <h3 className="text-lg font-semibold text-gray-700">Variaciones</h3>
                         </div>
-
-                        <div>
-                            <div className="flex justify-between items-center mb-3 border-b pb-2">
-                                <h3 className="text-lg font-semibold text-gray-700">Variaciones</h3>
-                            </div>
 
                             <div className="space-y-4">
                                 {variations.map((v, vIndex) => (
@@ -447,9 +381,14 @@ const ProductForm = ({ productToEdit, onClose }) => {
                                 ))}
                             </div>
 
-                            <button type="button" onClick={addVariationRow} className="mt-4 flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-all font-medium">
-                                <FiPlus size={18} /> Agregar otra variación
-                            </button>
+                            <div className="mt-4 flex flex-col md:flex-row gap-3">
+                                <button type="button" onClick={addVariationRow} className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-all font-medium">
+                                    <FiPlus size={18} /> Agregar variación vacía
+                                </button>
+                                <button type="button" onClick={duplicateFirstVariationRow} className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-dashed border-blue-200 bg-blue-50 rounded-xl text-blue-700 hover:text-blue-800 hover:border-blue-400 hover:bg-blue-100 transition-all font-medium">
+                                    <FiCopy size={18} /> Duplicar datos de la primera
+                                </button>
+                            </div>
                         </div>
 
                         <div className="flex justify-end gap-3 mt-8 border-t pt-5 sticky bottom-0 bg-white pb-2">
@@ -458,13 +397,10 @@ const ProductForm = ({ productToEdit, onClose }) => {
                                 Guardar Productos
                             </button>
                         </div>
-                    </form>
-                </div>
+                </form>
             </div>
-        );
-    }
-
-    return null;
+        </div>
+    );
 };
 
 export default ProductForm;
