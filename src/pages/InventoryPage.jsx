@@ -290,13 +290,15 @@ const InventoryPage = () => {
         <div className="p-4 md:p-6 bg-gray-50 min-h-full">
             <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Inventario</h1>
-                <button
-                    onClick={handleAddNew}
-                    className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-lg shadow hover:bg-blue-700 transition-colors"
-                >
-                    <FiPlusCircle />
-                    <span>Agregar Producto</span>
-                </button>
+                {activeTab === 'inventory' && (
+                    <button
+                        onClick={handleAddNew}
+                        className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-lg shadow hover:bg-blue-700 transition-colors"
+                    >
+                        <FiPlusCircle />
+                        <span>Agregar Producto</span>
+                    </button>
+                )}
             </div>
 
             <div className="flex border-b mb-6 overflow-x-auto">
