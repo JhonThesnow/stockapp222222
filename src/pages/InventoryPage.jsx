@@ -130,7 +130,7 @@ const InventoryPage = () => {
             // Cuando estamos agrupados, ignoramos currentPage para no volver a hacer peticiones
             fetchProducts({ page: 1, ...activeFilters, searchTerm: debouncedSearch, limit: 9999 });
         }
-    }, [fetchProducts, groupBy === 'none' ? currentPage : 1, activeFilters, debouncedSearch, groupBy]);
+    }, [fetchProducts, groupBy === 'none' ? currentPage : 1, activeFilters, debouncedSearch, groupBy !== 'none']);
 
     // CORRECCIÓN: Resetea todos los grupos a "Cerrados" cuando cambias de página o de tipo de agrupación
     useEffect(() => {
@@ -382,8 +382,8 @@ const InventoryPage = () => {
 
                     {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4" role="alert"><p><strong className="font-bold">Error:</strong> {error}</p></div>}
 
-                    <div>
-                        {loading ? (
+                    <div className={`transition-opacity duration-200 ${loading && products.length > 0 ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                        {loading && products.length === 0 ? (
                             <InventorySkeleton />
                         ) : products.length > 0 ? (
                             groupBy === 'none' ? (
