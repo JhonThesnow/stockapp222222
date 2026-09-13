@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import useProductStore from '../store/useProductStore';
-import { FiSearch, FiChevronDown, FiChevronUp, FiEdit, FiTrash } from 'react-icons/fi';
+import { FiSearch, FiChevronDown, FiChevronUp, FiEdit, FiTrash, FiCamera } from 'react-icons/fi';
 import { formatDateOnly } from '../utils/formatting';
+import BarcodeScannerModal from './BarcodeScannerModal.jsx';
 
 const StockIncome = () => {
     const { products, batchRestock, fetchStockEntriesHistory, stockEntriesHistory, deleteStockEntry, updateStockEntry, fetchProducts } = useProductStore();
@@ -18,6 +19,8 @@ const StockIncome = () => {
     const [selectionPage, setSelectionPage] = useState(1);
     const SELECTION_ITEMS_PER_PAGE = 5;
 
+    const [showScanner, setShowScanner] = useState(false);
+
     // Cargar todos los productos para la búsqueda y edición
     useEffect(() => {
         fetchProducts({ limit: 9999 });
@@ -33,6 +36,27 @@ const StockIncome = () => {
     useEffect(() => {
         setSelectionPage(1);
     }, [Object.keys(selectedProducts).length]);
+
+    const handleBarcodeDetected = (code) => {
+        const productFound = products.find(p => p.code && p.code.toLowerCase() === code.toLowerCase());
+
+        if (productFound) {
+            setSelectedProducts(prev => {
+                const currentQty = prev[productFound.id] || 0;
+                return { ...prev, [productFound.id]: currentQty + 1 };
+            });
+            const continueScanning = window.confirm(`Producto ${productFound.name} agregado. ¿Quieres seguir escaneando?`);
+            if (!continueScanning) {
+                setShowScanner(false);
+            }
+        } else {
+            alert('Producto no encontrado');
+            const continueScanning = window.confirm('¿Quieres seguir escaneando?');
+            if (!continueScanning) {
+                setShowScanner(false);
+            }
+        }
+    };
 
     const handleQuantityChange = (productId, newQuantity) => {
         if (newQuantity <= 0 || isNaN(newQuantity)) {
@@ -135,19 +159,30 @@ const StockIncome = () => {
 
     return (
         <div>
+            {showScanner && <BarcodeScannerModal onDetected={handleBarcodeDetected} onClose={() => setShowScanner(false)} />}
             <div className="bg-white p-4 rounded-lg shadow mb-6">
                 <h2 className="text-xl font-bold mb-4">
                     {editingEntry ? `Editando Ingreso del ${formatDateOnly(editingEntry.date)}` : 'Ingresar Stock'}
                 </h2>
-                <div className="relative mb-4">
-                    <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Buscar producto para agregar..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border rounded-lg"
-                    />
+                <div className="flex gap-2 mb-4">
+                    <div className="relative flex-1">
+                        <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Buscar producto para agregar..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border rounded-lg"
+                        />
+                    </div>
+                    <button
+                        onClick={() => setShowScanner(true)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
+                        title="Escanear código de barras"
+                    >
+                        <FiCamera size={20} />
+                        <span className="hidden sm:inline">Escanear</span>
+                    </button>
                 </div>
                 {searchTerm && (
                     <div className="max-h-64 overflow-y-auto border rounded-lg p-2 space-y-2 mb-4">
@@ -189,9 +224,37 @@ const StockIncome = () => {
                         <h3 className="font-bold mb-2">Productos en este ingreso:</h3>
                         <div className="space-y-2">
                             {paginatedProductsInSelection.map(product => (
-                                <div key={product.id} className="flex justify-between items-center p-2">
-                                    <span>{product.brand ? `${product.brand} - ` : ''}{product.name} - {product.subtype}</span>
-                                    <span>Cantidad: {selectedProducts[product.id]}</span>
+                                <div key={product.id} className="flex justify-between items-center p-2 bg-white border rounded">
+                                    <span className="flex-1">{product.brand ? `${product.brand} - ` : ''}{product.name} - {product.subtype}</span>
+                                    <div className="flex items-center gap-1 sm:gap-2">
+                                        <button
+                                            className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300 font-bold"
+                                            onClick={() => handleQuantityChange(product.id, (selectedProducts[product.id] || 0) - 1)}
+                                        >
+                                            -
+                                        </button>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            className="w-12 sm:w-16 p-1 border rounded text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            value={selectedProducts[product.id] || ''}
+                                            onChange={(e) => handleQuantityChange(product.id, parseInt(e.target.value, 10))}
+                                            placeholder="0"
+                                        />
+                                        <button
+                                            className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300 font-bold"
+                                            onClick={() => handleQuantityChange(product.id, (selectedProducts[product.id] || 0) + 1)}
+                                        >
+                                            +
+                                        </button>
+                                        <button
+                                            className="w-8 h-8 flex items-center justify-center bg-red-100 text-red-600 rounded hover:bg-red-200 ml-1"
+                                            onClick={() => handleQuantityChange(product.id, 0)}
+                                            title="Eliminar producto"
+                                        >
+                                            <FiTrash />
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
