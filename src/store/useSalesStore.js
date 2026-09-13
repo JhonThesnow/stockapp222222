@@ -305,27 +305,6 @@ const useSalesStore = create((set, get) => ({
         }
     },
 
-    applyTax: async (saleId, taxPercentage) => {
-        set({ loading: true, error: null });
-        try {
-            const response = await fetch(`${API_URL}/sales/history/${saleId}/tax`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ taxPercentage }),
-            });
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Falló al aplicar el impuesto.');
-            }
-            get().fetchAllSales();
-            useAccountStore.getState().fetchDataForCurrentState();
-            return { success: true };
-        } catch (e) {
-            set({ loading: false, error: e.message });
-            return { success: false, error: e.message };
-        }
-    },
-
     fetchSummary: async (startDate, endDate) => {
         set({ loading: true, error: null });
         try {
