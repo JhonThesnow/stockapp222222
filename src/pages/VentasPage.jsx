@@ -130,7 +130,7 @@ const VentasPage = () => {
             <ul className="list-disc pl-5">
                 {items.map((item, index) => (
                     <li key={index} className="text-sm">
-                        {item.quantity}x {item.fullName} {item.brand && <span className="text-gray-500 font-normal">[{item.brand}]</span>}
+                        {item.quantity}x {item.brand && <span className="text-gray-600 font-medium">[{item.brand}]</span>} {item.fullName}
                     </li>
                 ))}
             </ul>
@@ -208,10 +208,30 @@ const VentasPage = () => {
                         {loading ? <p>Cargando resumen...</p> : monthlySummary && (
                             <div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                                    <div className="bg-white p-6 rounded-lg shadow"><p className="text-gray-500">Ingresos Totales</p><p className="text-3xl font-bold">${formatNumber(monthlySummary.totalRevenue)}</p></div>
-                                    <div className="bg-white p-6 rounded-lg shadow"><p className="text-gray-500">Ganancia Bruta</p><p className="text-3xl font-bold text-green-600">${formatNumber(monthlySummary.totalProfit)}</p></div>
-                                    <div className="bg-white p-6 rounded-lg shadow"><p className="text-gray-500">Gastos Totales</p><p className="text-3xl font-bold text-red-500">-${formatNumber(monthlySummary.totalExpenses)}</p></div>
-                                    <div className="bg-white p-6 rounded-lg shadow"><p className="text-gray-500">Ganancia Neta</p><p className="text-3xl font-bold text-blue-600">${formatNumber(monthlySummary.netProfit)}</p></div>
+                                    <div className="bg-white p-6 rounded-lg shadow">
+                                        <p className="text-gray-500 font-semibold flex items-center justify-between">Ingresos Totales</p>
+                                        <p className="text-3xl font-bold">${formatNumber(monthlySummary.totalRevenue)}</p>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-lg shadow relative group">
+                                        <p className="text-gray-500 font-semibold flex items-center justify-between">
+                                            Ganancia Bruta
+                                            <span className="cursor-help text-gray-400 hover:text-gray-600" title="Ingresos Totales - Costo de los productos vendidos">ℹ️</span>
+                                        </p>
+                                        <p className="text-3xl font-bold text-green-600">${formatNumber(monthlySummary.totalProfit)}</p>
+                                        <p className="text-xs text-gray-400 mt-2">(Ingresos - Costos)</p>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-lg shadow">
+                                        <p className="text-gray-500 font-semibold flex items-center justify-between">Gastos Totales</p>
+                                        <p className="text-3xl font-bold text-red-500">-${formatNumber(monthlySummary.totalExpenses)}</p>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-lg shadow relative group">
+                                        <p className="text-gray-500 font-semibold flex items-center justify-between">
+                                            Ganancia Neta
+                                            <span className="cursor-help text-gray-400 hover:text-gray-600" title="Ganancia Bruta - Gastos Totales - Impuestos">ℹ️</span>
+                                        </p>
+                                        <p className="text-3xl font-bold text-blue-600">${formatNumber(monthlySummary.netProfit)}</p>
+                                        <p className="text-xs text-gray-400 mt-2">(Ganancia Bruta - Gastos)</p>
+                                    </div>
                                 </div>
                                 <h3 className="text-xl font-bold mb-4">Desglose Diario</h3>
                                 <div className="space-y-2">
