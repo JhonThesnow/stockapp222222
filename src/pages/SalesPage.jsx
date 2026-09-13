@@ -204,16 +204,14 @@ const SalesPage = () => {
                         <select
                             value={selectedBrand}
                             onChange={(e) => { setSelectedBrand(e.target.value); setSelectedType('Todos'); }}
-                            className="p-2 md:p-3 border rounded-xl bg-white w-full sm:flex-1 text-base md:text-lg disabled:bg-gray-100"
-                            disabled={productsLoading}
+                            className="p-2 md:p-3 border rounded-xl bg-white w-full sm:flex-1 text-base md:text-lg"
                         >
                             {(brands || []).map(brand => <option key={brand} value={brand}>{brand}</option>)}
                         </select>
                         <select
                             value={selectedType}
                             onChange={(e) => setSelectedType(e.target.value)}
-                            disabled={productsLoading}
-                            className="p-2 md:p-3 border rounded-xl bg-white w-full sm:flex-1 text-base md:text-lg disabled:bg-gray-100"
+                            className="p-2 md:p-3 border rounded-xl bg-white w-full sm:flex-1 text-base md:text-lg"
                         >
                             {(productTypes || []).map(type => <option key={type} value={type}>{type}</option>)}
                         </select>
