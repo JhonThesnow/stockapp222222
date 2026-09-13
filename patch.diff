@@ -1,0 +1,25 @@
+<<<<<<< SEARCH
+    const renderSaleItems = (items) => {
+        return (
+            <ul className="list-disc pl-5">
+                {items.map((item, index) => (
+                    <li key={index} className="text-sm">
+                        {item.quantity}x {item.fullName}
+                    </li>
+                ))}
+            </ul>
+        );
+    };
+=======
+    const renderSaleItems = (items) => {
+        return (
+            <ul className="list-disc pl-5">
+                {items.map((item, index) => (
+                    <li key={index} className="text-sm">
+                        {item.quantity}x {item.fullName} {item.brand && <span className="text-gray-500 font-normal">[{item.brand}]</span>}
+                    </li>
+                ))}
+            </ul>
+        );
+    };
+>>>>>>> REPLACE

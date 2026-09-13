@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import useSalesStore from '../store/useSalesStore';
 import useAccountStore from '../store/useAccountStore';
-import { FiX, FiTrash, FiEdit, FiRotateCcw, FiAlertTriangle, FiTag } from 'react-icons/fi';
+import { FiX, FiTrash, FiEdit, FiRotateCcw, FiAlertTriangle } from 'react-icons/fi';
 import CompleteSaleModal from '../components/CompleteSaleModal';
-import ApplyTaxModal from '../components/ApplyTaxModal';
 import EditSaleModal from '../components/EditSaleModal';
 import CancelSaleModal from '../components/CancelSaleModal';
 import { formatNumber } from '../utils/formatting';
@@ -15,7 +14,6 @@ import { es } from 'date-fns/locale';
 const VentasPage = () => {
     const [activeTab, setActiveTab] = useState('historial');
     const [saleToComplete, setSaleToComplete] = useState(null);
-    const [saleToApplyTax, setSaleToApplyTax] = useState(null);
     const [saleToEdit, setSaleToEdit] = useState(null);
     const [saleToCancel, setSaleToCancel] = useState(null);
     const [openDays, setOpenDays] = useState({});
@@ -132,7 +130,7 @@ const VentasPage = () => {
             <ul className="list-disc pl-5">
                 {items.map((item, index) => (
                     <li key={index} className="text-sm">
-                        {item.quantity}x {item.fullName}
+                        {item.quantity}x {item.fullName} {item.brand && <span className="text-gray-500 font-normal">[{item.brand}]</span>}
                     </li>
                 ))}
             </ul>
@@ -165,7 +163,6 @@ const VentasPage = () => {
     return (
         <div className="p-4 md:p-6 bg-gray-50 min-h-full">
             {saleToComplete && <CompleteSaleModal sale={saleToComplete} onClose={() => setSaleToComplete(null)} />}
-            {saleToApplyTax && <ApplyTaxModal sale={saleToApplyTax} onClose={() => setSaleToApplyTax(null)} />}
             {saleToEdit && <EditSaleModal sale={saleToEdit} onClose={() => setSaleToEdit(null)} />}
             {saleToCancel && <CancelSaleModal sale={saleToCancel} onClose={() => setSaleToCancel(null)} />}
 
@@ -292,7 +289,6 @@ const VentasPage = () => {
                                                 {sale.status === 'completed' && (
                                                     <>
                                                         <button onClick={() => setSaleToEdit(sale)} title="Editar Venta" className="text-yellow-600 p-2 rounded-full hover:bg-yellow-100"><FiEdit /></button>
-                                                        <button onClick={() => setSaleToApplyTax(sale)} title="Aplicar Impuesto" className="text-blue-600 p-2 rounded-full hover:bg-blue-100"><FiTag /></button>
                                                         <button onClick={() => setSaleToCancel(sale)} title="Cancelar y Devolver Stock" className="text-orange-600 p-2 rounded-full hover:bg-orange-100"><FiRotateCcw /></button>
                                                     </>
                                                 )}

@@ -1,0 +1,20 @@
+<<<<<<< SEARCH
+app.put('/api/sales/history/:id/tax', (req, res) => {
+    const { id } = req.params;
+    const { taxPercentage } = req.body;
+    if (typeof taxPercentage !== 'number' || taxPercentage < 0 || taxPercentage > 100) return res.status(400).json({ error: "Porcentaje de impuesto inválido." });
+    db.get('SELECT finalAmount FROM sales WHERE id = ?', [id], (err, sale) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!sale) return res.status(404).json({ error: 'Venta no encontrada.' });
+        const taxAmount = (sale.finalAmount * taxPercentage) / 100;
+        db.run(`UPDATE sales SET appliedTax = ? WHERE id = ?`, [taxAmount, id], function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: 'Impuesto aplicado' });
+        });
+    });
+});
+
+// --- Endpoints de REPORTES ---
+=======
+// --- Endpoints de REPORTES ---
+>>>>>>> REPLACE
