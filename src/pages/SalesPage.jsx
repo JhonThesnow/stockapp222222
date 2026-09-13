@@ -220,28 +220,34 @@ const SalesPage = () => {
                     </div>
                 </div>
 
-                <div className="flex-grow overflow-y-auto space-y-2 md:space-y-3 pr-1 md:pr-2">
-                    {productsLoading ? <p className="text-center text-base md:text-lg text-gray-500 mt-10">Cargando productos...</p> : products.map(product => {
-                        const itemInCart = cart.find(item => item.id === product.id);
-                        return (
-                            <div key={product.id} className="border rounded-xl p-2 md:p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 md:gap-0 hover:shadow-sm transition-shadow">
-                                <div className="w-full sm:w-auto">
-                                    <p className="font-bold text-base md:text-lg text-gray-800 leading-tight">{product.name} {product.subtype ? `- ${product.subtype}` : ''}</p>
-                                    <p className="text-sm md:text-base text-gray-600 mt-1">
-                                        Stock: <span className={product.quantity > 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>{product.quantity}</span> | Precio: <span className="font-bold text-blue-700">${formatNumber(product.salePrices[0]?.price || 0)}</span>
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => handleAddItem(product)}
-                                    disabled={product.quantity === 0}
-                                    className={`w-full sm:w-auto flex justify-center items-center gap-2 py-2 md:py-3 px-4 md:px-6 rounded-xl font-bold transition-colors text-base md:text-lg ${itemInCart ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-blue-600 text-white hover:bg-blue-700'} disabled:bg-gray-200 disabled:text-gray-400 disabled:border-transparent`}
-                                >
-                                    <FiPlus className="w-4 h-4 md:w-5 md:h-5" />
-                                    <span>{itemInCart ? `(${itemInCart.quantity}) Agregado` : 'Agregar'}</span>
-                                </button>
-                            </div>
-                        );
-                    })}
+                <div className="flex-grow overflow-y-auto space-y-2 md:space-y-3 pr-1 md:pr-2 relative">
+                    {productsLoading && products.length === 0 ? (
+                        <p className="text-center text-base md:text-lg text-gray-500 mt-10">Cargando productos...</p>
+                    ) : (
+                        <div className={`space-y-2 md:space-y-3 transition-opacity ${productsLoading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                            {products.map(product => {
+                                const itemInCart = cart.find(item => item.id === product.id);
+                                return (
+                                    <div key={product.id} className="border rounded-xl p-2 md:p-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 md:gap-0 hover:shadow-sm transition-shadow">
+                                        <div className="w-full sm:w-auto">
+                                            <p className="font-bold text-base md:text-lg text-gray-800 leading-tight">{product.name} {product.subtype ? `- ${product.subtype}` : ''}</p>
+                                            <p className="text-sm md:text-base text-gray-600 mt-1">
+                                                Stock: <span className={product.quantity > 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>{product.quantity}</span> | Precio: <span className="font-bold text-blue-700">${formatNumber(product.salePrices[0]?.price || 0)}</span>
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleAddItem(product)}
+                                            disabled={product.quantity === 0}
+                                            className={`w-full sm:w-auto flex justify-center items-center gap-2 py-2 md:py-3 px-4 md:px-6 rounded-xl font-bold transition-colors text-base md:text-lg ${itemInCart ? 'bg-green-100 text-green-800 border border-green-300' : 'bg-blue-600 text-white hover:bg-blue-700'} disabled:bg-gray-200 disabled:text-gray-400 disabled:border-transparent`}
+                                        >
+                                            <FiPlus className="w-4 h-4 md:w-5 md:h-5" />
+                                            <span>{itemInCart ? `(${itemInCart.quantity}) Agregado` : 'Agregar'}</span>
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex justify-between items-center pt-3 md:pt-5 mt-3 md:mt-4 border-t-2">
