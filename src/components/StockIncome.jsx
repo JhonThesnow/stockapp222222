@@ -34,6 +34,17 @@ const StockIncome = () => {
         setSelectionPage(1);
     }, [Object.keys(selectedProducts).length]);
 
+    const handleQuantityChange = (productId, newQuantity) => {
+        if (newQuantity <= 0 || isNaN(newQuantity)) {
+            setSelectedProducts(prev => {
+                const updated = { ...prev };
+                delete updated[productId];
+                return updated;
+            });
+        } else {
+            setSelectedProducts(prev => ({ ...prev, [productId]: newQuantity }));
+        }
+    };
 
     const handleConfirm = async () => {
         const productsToProcess = Object.entries(selectedProducts)
@@ -42,6 +53,7 @@ const StockIncome = () => {
                 const product = products.find(p => p.id === parseInt(productId, 10));
                 return {
                     id: product.id,
+                    brand: product.brand,
                     name: product.name,
                     subtype: product.subtype,
                     quantity: quantity
@@ -142,18 +154,30 @@ const StockIncome = () => {
                         {filteredProducts.map(product => (
                             <div key={product.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
                                 <div>
-                                    <p className="font-semibold">{product.name} - {product.subtype}</p>
+                                    <p className="font-semibold">{product.brand ? `${product.brand} - ` : ''}{product.name} - {product.subtype}</p>
                                     <p className="text-sm text-gray-500">Actual: {product.quantity}</p>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300 font-bold"
+                                        onClick={() => handleQuantityChange(product.id, (selectedProducts[product.id] || 0) - 1)}
+                                    >
+                                        -
+                                    </button>
                                     <input
                                         type="number"
-                                        min="1"
-                                        className="w-20 p-1 border rounded text-center"
+                                        min="0"
+                                        className="w-16 p-1 border rounded text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         value={selectedProducts[product.id] || ''}
-                                        onChange={(e) => setSelectedProducts(prev => ({ ...prev, [product.id]: parseInt(e.target.value, 10) || 0 }))}
-                                        placeholder="Cant."
+                                        onChange={(e) => handleQuantityChange(product.id, parseInt(e.target.value, 10))}
+                                        placeholder="0"
                                     />
+                                    <button
+                                        className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded hover:bg-gray-300 font-bold"
+                                        onClick={() => handleQuantityChange(product.id, (selectedProducts[product.id] || 0) + 1)}
+                                    >
+                                        +
+                                    </button>
                                 </div>
                             </div>
                         ))}
@@ -166,7 +190,7 @@ const StockIncome = () => {
                         <div className="space-y-2">
                             {paginatedProductsInSelection.map(product => (
                                 <div key={product.id} className="flex justify-between items-center p-2">
-                                    <span>{product.name} - {product.subtype}</span>
+                                    <span>{product.brand ? `${product.brand} - ` : ''}{product.name} - {product.subtype}</span>
                                     <span>Cantidad: {selectedProducts[product.id]}</span>
                                 </div>
                             ))}
@@ -215,7 +239,7 @@ const StockIncome = () => {
                                 {openEntries[entry.id] && (
                                     <ul className="list-disc pl-5 text-sm mt-2">
                                         {JSON.parse(entry.products).map(p => (
-                                            <li key={p.id}>{p.name} - {p.subtype}: {p.quantity} unidades</li>
+                                            <li key={p.id}>{p.brand ? `${p.brand} - ` : ''}{p.name} - {p.subtype}: {p.quantity} unidades</li>
                                         ))}
                                     </ul>
                                 )}
