@@ -6,25 +6,68 @@ const BarcodeScannerModal = ({ onDetected, onClose }) => {
     const codeReaderRef = useRef(null);
 
     useEffect(() => {
-        // Asegurarse de que la librería está cargada
-        if (typeof window.ZXing === 'undefined') {
-            console.error("ZXing library not found!");
-            alert("La librería de escaneo no se pudo cargar. Refresca la página.");
-            onClose();
-            return;
-        }
+        let stream = null;
+        let animationFrameId = null;
 
-        codeReaderRef.current = new window.ZXing.BrowserMultiFormatReader();
+        const startNativeScanner = async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
 
-        const startScanner = async () => {
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                    await videoRef.current.play();
+                }
+
+                const barcodeDetector = new window.BarcodeDetector({
+                    formats: ['ean_13', 'ean_8', 'code_128', 'qr_code', 'upc_a', 'upc_e']
+                });
+
+                const detect = async () => {
+                    if (!videoRef.current || videoRef.current.readyState !== videoRef.current.HAVE_ENOUGH_DATA) {
+                        animationFrameId = requestAnimationFrame(detect);
+                        return;
+                    }
+
+                    try {
+                        const barcodes = await barcodeDetector.detect(videoRef.current);
+                        if (barcodes.length > 0) {
+                            navigator.vibrate?.(100);
+                            onDetected(barcodes[0].rawValue);
+                            return; // Stop detection loop once found
+                        }
+                    } catch (e) {
+                        console.error('Barcode detection failed:', e);
+                    }
+                    animationFrameId = requestAnimationFrame(detect);
+                };
+
+                detect();
+            } catch (error) {
+                console.error('Error starting native scanner:', error);
+                startZXingScanner(); // Fallback
+            }
+        };
+
+        const startZXingScanner = async () => {
+            if (typeof window.ZXing === 'undefined') {
+                console.error("ZXing library not found!");
+                alert("La librería de escaneo no se pudo cargar. Refresca la página.");
+                onClose();
+                return;
+            }
+
+            codeReaderRef.current = new window.ZXing.BrowserMultiFormatReader();
+
             try {
                 const videoInputDevices = await codeReaderRef.current.listVideoInputDevices();
                 if (videoInputDevices.length > 0) {
-                    // Intenta usar la cámara trasera si está disponible
                     const rearCamera = videoInputDevices.find(device => device.label.toLowerCase().includes('back')) || videoInputDevices[0];
 
                     codeReaderRef.current.decodeFromVideoDevice(rearCamera.deviceId, videoRef.current, (result, err) => {
                         if (result) {
+                            navigator.vibrate?.(100);
                             onDetected(result.getText());
                         }
                         if (err && !(err instanceof window.ZXing.NotFoundException)) {
@@ -42,11 +85,24 @@ const BarcodeScannerModal = ({ onDetected, onClose }) => {
             }
         };
 
-        startScanner();
+        if ('BarcodeDetector' in window) {
+            startNativeScanner();
+        } else {
+            startZXingScanner();
+        }
 
         return () => {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
             if (codeReaderRef.current) {
                 codeReaderRef.current.reset();
+            }
+            if (videoRef.current && videoRef.current.srcObject) {
+                videoRef.current.srcObject = null;
             }
         };
     }, [onDetected, onClose]);
