@@ -143,9 +143,10 @@ const useSalesStore = create((set, get) => ({
                 const errorData = await response.json();
                 throw new Error(errorData.error || 'Falló al crear la venta pendiente');
             }
+            const responseData = await response.json();
             set({ loading: false, cart: [], currentPaymentMethod: null });
             get().fetchAllSales();
-            return { success: true };
+            return { success: true, saleId: responseData.saleId };
         } catch (e) {
             set({ loading: false, error: e.message });
             return { success: false, error: e.message };

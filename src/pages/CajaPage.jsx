@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import useSalesStore from '../store/useSalesStore';
 import { formatNumber } from '../utils/formatting';
 import { FiPlay, FiSquare, FiTrash, FiEdit, FiAlertTriangle, FiDollarSign } from 'react-icons/fi';
@@ -15,6 +16,7 @@ const CajaPage = () => {
     const [saleToEdit, setSaleToEdit] = useState(null);
     const [expandedSales, setExpandedSales] = useState({});
     const [showProfitMethod, setShowProfitMethod] = useState({});
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const toggleSaleExpansion = (saleId) => {
         setExpandedSales(prev => ({ ...prev, [saleId]: !prev[saleId] }));
@@ -28,6 +30,19 @@ const CajaPage = () => {
         fetchCurrentShift();
         fetchAllSales();
     }, [fetchCurrentShift, fetchAllSales]);
+
+    // Check URL parameters for direct sale completion
+    useEffect(() => {
+        const saleIdFromUrl = searchParams.get('saleId');
+        if (saleIdFromUrl && pendingSales.length > 0) {
+            const sale = pendingSales.find(s => s.id.toString() === saleIdFromUrl);
+            if (sale) {
+                setSaleToComplete(sale);
+                // Remove the parameter from the URL so it doesn't open again on refresh
+                setSearchParams({});
+            }
+        }
+    }, [searchParams, pendingSales, setSearchParams]);
 
     const handleStartShift = async () => {
         const res = await startShift();
