@@ -334,10 +334,12 @@ const SalesPage = () => {
             </div>
 
             {/* BOTÓN FLOTANTE MOBILE */}
-            <button onClick={() => setShowCartOnMobile(true)} className="md:hidden fixed bottom-6 right-6 bg-green-600 text-white rounded-full p-4 shadow-2xl flex items-center gap-2 hover:bg-green-700">
-                <FiShoppingCart className="w-7 h-7" />
-                <span className="font-bold text-xl">{cart.length}</span>
-            </button>
+            {!showCartOnMobile && (
+                <button onClick={() => setShowCartOnMobile(true)} className="md:hidden fixed bottom-6 right-6 bg-green-600 text-white rounded-full p-4 shadow-2xl flex items-center gap-2 hover:bg-green-700">
+                    <FiShoppingCart className="w-7 h-7" />
+                    <span className="font-bold text-xl">{cart.length}</span>
+                </button>
+            )}
         </div>
     );
 };
