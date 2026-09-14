@@ -278,10 +278,10 @@ const SalesPage = () => {
                     {cart.length > 0 ? cart.map(item => (
                         <div key={item.id} className="flex items-center gap-2 md:gap-3 mb-3 md:mb-5 p-2 md:p-3 bg-gray-50 rounded-lg border">
                             <div className="flex-grow min-w-0">
-                                <p className="font-bold text-xs md:text-sm text-gray-800 leading-tight truncate">
+                                <p className="font-bold text-sm md:text-base text-gray-800 leading-tight">
                                     {item.name} {item.subtype} {item.brand && <span className="text-gray-500 font-normal">[{item.brand}]</span>}
                                 </p>
-                                <p className="text-sm md:text-base text-blue-700 font-semibold mt-1">${formatNumber(item.salePrices[0]?.price || 0)}</p>
+                                <p className="text-base md:text-lg text-blue-700 font-semibold mt-1">${formatNumber(item.salePrices[0]?.price || 0)}</p>
                             </div>
                             <div className="flex items-center gap-1 md:gap-3 bg-white border rounded-xl p-1 shadow-sm flex-shrink-0">
                                 <button onClick={() => updateItemQuantity(item.id, item.quantity - 1)} className="p-1 md:p-2 text-red-600 hover:bg-red-50 rounded-lg"><FiMinus className="w-4 h-4 md:w-5 md:h-5" /></button>
