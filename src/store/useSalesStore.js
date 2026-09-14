@@ -173,7 +173,11 @@ const useSalesStore = create((set, get) => ({
     completeSale: async (saleId, saleData) => {
         set({ loading: true, error: null });
         try {
-            const { accounts } = useAccountStore.getState();
+            let { accounts } = useAccountStore.getState();
+            if (!accounts || accounts.length === 0) {
+                await useAccountStore.getState().fetchAccounts();
+                accounts = useAccountStore.getState().accounts;
+            }
             let accountId = null;
 
             // Búsqueda más robusta eliminando espacios extra y forzando minúsculas
