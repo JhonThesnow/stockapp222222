@@ -14,6 +14,7 @@ const CompleteSaleModal = ({ sale, onClose }) => {
     const [discountPercentage, setDiscountPercentage] = useState(
         sale.finalDiscount > 0 ? sale.finalDiscount : (initialMethod === 'Efectivo' ? 10 : 0)
     );
+    const [paidAmount, setPaidAmount] = useState('');
 
     useEffect(() => {
         if (paymentMethods.length === 0) {
@@ -45,6 +46,37 @@ const CompleteSaleModal = ({ sale, onClose }) => {
     }, [baseTotal, paymentMethod]);
 
     const roundingDiff = finalTotal - baseTotal;
+
+    const change = useMemo(() => {
+        const paid = parseFloat(paidAmount);
+        if (isNaN(paid) || paid < finalTotal) return 0;
+        return paid - finalTotal;
+    }, [paidAmount, finalTotal]);
+
+    const quickAmounts = useMemo(() => {
+        if (finalTotal <= 0) return [];
+        let amounts = new Set([finalTotal]);
+
+        const next500 = Math.ceil(finalTotal / 500) * 500;
+        const next1000 = Math.ceil(finalTotal / 1000) * 1000;
+
+        if (next500 > finalTotal) amounts.add(next500);
+        if (next1000 > next500) amounts.add(next1000);
+
+        const billetes = [2000, 5000, 10000, 20000];
+        billetes.forEach(b => {
+            if (b > finalTotal) amounts.add(b);
+        });
+
+        return Array.from(amounts).sort((a, b) => a - b).slice(0, 4);
+    }, [finalTotal]);
+
+    const handlePaidAmountChange = (e) => {
+        const value = e.target.value;
+        if (value === '' || !isNaN(value)) {
+            setPaidAmount(value);
+        }
+    };
 
 
     const handleConfirm = async () => {
@@ -162,6 +194,48 @@ const CompleteSaleModal = ({ sale, onClose }) => {
                             </div>
                         </div>
                     </div>
+
+                    {/* SECCIÓN EFECTIVO Y VUELTO (Solo si es efectivo) */}
+                    {paymentMethod === 'Efectivo' && (
+                        <div className="bg-gray-50 p-2 md:p-4 rounded-2xl border border-gray-200 mt-4 md:mt-6">
+                            <label className="block text-sm md:text-lg font-bold text-gray-800 mb-2 md:mb-3">¿Con cuánto paga el cliente?</label>
+
+                            {/* Botones rápidos de billetes */}
+                            <div className="flex flex-wrap gap-2 md:gap-3 mb-3 md:mb-4">
+                                {quickAmounts.map((amt, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => setPaidAmount(amt)}
+                                        className={`py-1.5 px-3 md:py-2 md:px-4 rounded-xl font-bold text-sm md:text-base border shadow-sm transition-all active:scale-95 flex-grow sm:flex-grow-0
+                                            ${paidAmount == amt ? 'bg-blue-600 text-white border-blue-700' : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50'}
+                                        `}
+                                    >
+                                        {amt === finalTotal ? 'Exacto' : `$${formatNumber(amt)}`}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="relative mb-4 md:mb-6">
+                                <FiDollarSign className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4 md:w-5 md:h-5" />
+                                <input
+                                    type="number"
+                                    value={paidAmount}
+                                    onChange={handlePaidAmountChange}
+                                    placeholder="Otro monto..."
+                                    className="w-full p-2 md:p-4 pl-8 md:pl-12 border border-gray-300 rounded-xl text-lg md:text-xl font-bold focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                                    min="0"
+                                />
+                            </div>
+
+                            {/* VUELTO GIGANTE */}
+                            <div className={`p-2 md:p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-center sm:items-end border text-center sm:text-left ${change > 0 ? 'bg-green-100 border-green-400' : 'bg-gray-200 border-gray-300'}`}>
+                                <span className="text-lg md:text-xl font-bold text-gray-700 mb-1 sm:mb-0">SU VUELTO:</span>
+                                <span className={`text-3xl md:text-4xl font-bold ${change > 0 ? 'text-green-700' : 'text-gray-500'}`}>
+                                    ${formatNumber(change)}
+                                </span>
+                            </div>
+                        </div>
+                    )}
 
                     {error && (
                         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded mt-4">

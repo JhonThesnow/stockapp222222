@@ -2,15 +2,15 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import useProductStore from '../store/useProductStore';
 import useSalesStore from '../store/useSalesStore';
 import { FiSearch, FiPlus, FiMinus, FiXCircle, FiShoppingCart, FiChevronLeft, FiChevronRight, FiCamera, FiPlusCircle, FiDollarSign, FiAlertTriangle } from 'react-icons/fi';
-import CheckoutModal from '../components/CheckoutModal';
+import GoToCajaModal from '../components/GoToCajaModal';
 import BarcodeScannerModal from '../components/BarcodeScannerModal';
 import QuickSaleModal from '../components/QuickSaleModal';
 import { formatNumber, roundCash } from '../utils/formatting';
 
 const SalesPage = () => {
     const [showCartOnMobile, setShowCartOnMobile] = useState(false);
-    const [showCheckout, setShowCheckout] = useState(false);
     const [showScanner, setShowScanner] = useState(false);
+    const [createdSaleId, setCreatedSaleId] = useState(null);
     const [showQuickSale, setShowQuickSale] = useState(false);
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -120,26 +120,18 @@ const SalesPage = () => {
         }
     };
 
-    const handleConfirmSale = async ({ paymentMethod, discountPercentage }) => {
-        let finalTotal = cartSubtotal - (cartSubtotal * ((discountPercentage || 0) / 100));
-
-        if (paymentMethod === 'Efectivo') {
-            finalTotal = roundCash(finalTotal);
-        }
-
+    const handleDirectCobrar = async () => {
         const saleDetails = {
             subtotal: cartSubtotal,
-            discount: discountPercentage,
-            totalAmount: finalTotal,
-            paymentMethod: paymentMethod
+            discount: 0,
+            totalAmount: cartSubtotal,
+            paymentMethod: currentPaymentMethod || null
         };
 
         const res = await createPendingSale(saleDetails);
         if (res.success) {
-            setShowCheckout(false);
-            // ¡MAGIA UX! Cerramos el carrito móvil para que vuelva a la lista de productos
             setShowCartOnMobile(false);
-            alert(`¡Listo! Venta registrada correctamente por $${formatNumber(finalTotal)}`);
+            setCreatedSaleId(res.saleId);
         } else {
             alert("Hubo un error al registrar la venta: " + res.error);
         }
@@ -159,12 +151,10 @@ const SalesPage = () => {
 
     return (
         <div className="flex flex-col md:grid md:grid-cols-3 md:gap-6 h-full p-2 md:p-4 bg-gray-50">
-            {showCheckout && (
-                <CheckoutModal
-                    subtotal={cartSubtotal}
-                    preselectedPaymentMethod={currentPaymentMethod}
-                    onClose={() => setShowCheckout(false)}
-                    onSave={handleConfirmSale}
+            {createdSaleId && (
+                <GoToCajaModal
+                    saleId={createdSaleId}
+                    onClose={() => setCreatedSaleId(null)}
                 />
             )}
 
@@ -327,7 +317,7 @@ const SalesPage = () => {
                         </div>
                     </div>
 
-                    <button onClick={() => setShowCheckout(true)} disabled={cart.length === 0} className="w-full bg-green-600 text-white py-2.5 md:py-3 rounded-xl text-lg md:text-xl font-bold hover:bg-green-700 shadow-lg disabled:bg-gray-400 disabled:shadow-none flex justify-center items-center gap-2 md:gap-3 transition-transform active:scale-95">
+                    <button onClick={handleDirectCobrar} disabled={cart.length === 0} className="w-full bg-green-600 text-white py-2.5 md:py-3 rounded-xl text-lg md:text-xl font-bold hover:bg-green-700 shadow-lg disabled:bg-gray-400 disabled:shadow-none flex justify-center items-center gap-2 md:gap-3 transition-transform active:scale-95">
                         <FiDollarSign className="w-5 h-5 md:w-6 md:h-6" /> COBRAR
                     </button>
                 </div>
