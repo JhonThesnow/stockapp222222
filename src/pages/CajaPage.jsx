@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import useSalesStore from '../store/useSalesStore';
 import { formatNumber } from '../utils/formatting';
-import { FiPlay, FiSquare, FiTrash, FiEdit, FiAlertTriangle, FiDollarSign } from 'react-icons/fi';
+import { FiPlay, FiPower, FiTrash, FiEdit, FiAlertTriangle, FiDollarSign } from 'react-icons/fi';
 import CompleteSaleModal from '../components/CompleteSaleModal';
 import EditPendingSaleModal from '../components/EditPendingSaleModal';
 
@@ -181,7 +181,7 @@ const CajaPage = () => {
                     onClick={handleEndShift}
                     className="py-2 px-6 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg flex items-center gap-2 transition-colors shadow"
                 >
-                    <FiSquare size={20} />
+                    <FiPower size={20} />
                     <span>Terminar Turno</span>
                 </button>
             </div>
@@ -191,34 +191,60 @@ const CajaPage = () => {
                 <div className="bg-white rounded-xl shadow p-4 flex flex-col h-[50vh] min-h-[400px]">
                     <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Ventas a Cobrar (Pendientes)</h2>
                     <div className="overflow-y-auto flex-grow">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-100 sticky top-0">
-                                <tr>
-                                    <th className="p-3 font-semibold text-gray-600">Fecha</th>
-                                    <th className="p-3 font-semibold text-gray-600">Ítems</th>
-                                    <th className="p-3 font-semibold text-gray-600">Total</th>
-                                    <th className="p-3 font-semibold text-gray-600 text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {pendingSales.length > 0 ? (
-                                    pendingSales.map(sale => (
-                                        <tr key={sale.id} className="border-b hover:bg-gray-50">
-                                            <td className="p-3 whitespace-nowrap text-sm">{new Date(sale.date).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}</td>
-                                            <td className="p-3 align-top">{renderSaleItems(sale.items)}</td>
-                                            <td className="p-3 font-bold text-blue-600 text-sm align-top">${formatNumber(sale.totalAmount)}</td>
-                                            <td className="p-3 text-center flex justify-center items-center gap-2">
-                                                <button onClick={() => setSaleToComplete(sale)} className="bg-green-500 text-white py-1.5 px-3 text-sm rounded hover:bg-green-600 font-bold">Cobrar</button>
-                                                <button onClick={() => setSaleToEdit(sale)} className="text-blue-500 hover:text-blue-700 p-1.5 rounded-full hover:bg-blue-100 transition-colors" title="Editar"><FiEdit size={18} /></button>
-                                                <button onClick={() => deletePendingSale(sale.id)} className="text-red-500 hover:text-red-700 p-1.5 rounded-full hover:bg-red-100 transition-colors" title="Eliminar"><FiTrash size={18} /></button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr><td colSpan="4" className="text-center p-8 text-gray-500">No hay ventas pendientes.</td></tr>
-                                )}
-                            </tbody>
-                        </table>
+                        {/* Desktop Table */}
+                        <div className="hidden md:block">
+                            <table className="w-full text-left">
+                                <thead className="bg-gray-100 sticky top-0">
+                                    <tr>
+                                        <th className="p-3 font-semibold text-gray-600">Fecha</th>
+                                        <th className="p-3 font-semibold text-gray-600">Ítems</th>
+                                        <th className="p-3 font-semibold text-gray-600">Total</th>
+                                        <th className="p-3 font-semibold text-gray-600 text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {pendingSales.length > 0 ? (
+                                        pendingSales.map(sale => (
+                                            <tr key={sale.id} className="border-b hover:bg-gray-50">
+                                                <td className="p-3 whitespace-nowrap text-sm">{new Date(sale.date).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                                                <td className="p-3 align-top">{renderSaleItems(sale.items)}</td>
+                                                <td className="p-3 font-bold text-blue-600 text-sm align-top">${formatNumber(sale.totalAmount)}</td>
+                                                <td className="p-3 text-center flex justify-center items-center gap-2">
+                                                    <button onClick={() => setSaleToComplete(sale)} className="bg-green-500 text-white py-1.5 px-3 text-sm rounded hover:bg-green-600 font-bold">Cobrar</button>
+                                                    <button onClick={() => setSaleToEdit(sale)} className="text-blue-500 hover:text-blue-700 p-1.5 rounded-full hover:bg-blue-100 transition-colors" title="Editar"><FiEdit size={18} /></button>
+                                                    <button onClick={() => deletePendingSale(sale.id)} className="text-red-500 hover:text-red-700 p-1.5 rounded-full hover:bg-red-100 transition-colors" title="Eliminar"><FiTrash size={18} /></button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr><td colSpan="4" className="text-center p-8 text-gray-500">No hay ventas pendientes.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        {/* Mobile Cards */}
+                        <div className="md:hidden flex flex-col gap-3">
+                            {pendingSales.length > 0 ? (
+                                pendingSales.map(sale => (
+                                    <div key={sale.id} className="bg-gray-50 border rounded-lg p-3 shadow-sm">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <span className="text-sm text-gray-600 font-semibold">{new Date(sale.date).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                            <span className="font-bold text-blue-600 text-sm">${formatNumber(sale.totalAmount)}</span>
+                                        </div>
+                                        <div className="mb-3 text-sm">
+                                            {renderSaleItems(sale.items)}
+                                        </div>
+                                        <div className="flex gap-2 justify-end">
+                                            <button onClick={() => setSaleToComplete(sale)} className="bg-green-500 text-white py-1.5 px-3 text-sm rounded hover:bg-green-600 font-bold flex-1">Cobrar</button>
+                                            <button onClick={() => setSaleToEdit(sale)} className="text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-100 transition-colors bg-white border" title="Editar"><FiEdit size={18} /></button>
+                                            <button onClick={() => deletePendingSale(sale.id)} className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100 transition-colors bg-white border" title="Eliminar"><FiTrash size={18} /></button>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center p-8 text-gray-500">No hay ventas pendientes.</div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -226,52 +252,88 @@ const CajaPage = () => {
                 <div className="bg-white rounded-xl shadow p-4 flex flex-col h-[50vh] min-h-[400px]">
                     <h2 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Ventas del Turno</h2>
                     <div className="overflow-y-auto flex-grow">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-100 sticky top-0">
-                                <tr>
-                                    <th className="p-3 font-semibold text-gray-600">Hora</th>
-                                    <th className="p-3 font-semibold text-gray-600">Ítems</th>
-                                    <th className="p-3 font-semibold text-gray-600">Método</th>
-                                    <th className="p-3 font-semibold text-gray-600">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {shiftSales.length > 0 ? (
-                                    shiftSales.map(sale => {
-                                        const isExpanded = expandedSales[sale.id];
-                                        return (
-                                            <React.Fragment key={sale.id}>
-                                                <tr
-                                                    className="border-b hover:bg-gray-50 cursor-pointer"
-                                                    onClick={() => toggleSaleExpansion(sale.id)}
-                                                >
-                                                    <td className="p-3 whitespace-nowrap text-sm">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-gray-400 text-xs">
-                                                                {isExpanded ? '▼' : '▶'}
-                                                            </span>
-                                                            {new Date(sale.date).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                                                        </div>
-                                                    </td>
-                                                    <td className="p-3 text-sm">{getItemsCount(sale.items)} ítems</td>
-                                                    <td className="p-3 text-sm">{sale.paymentMethod || 'N/A'}</td>
-                                                    <td className="p-3 font-bold text-gray-800 text-sm">${formatNumber(sale.finalAmount || sale.totalAmount)}</td>
-                                                </tr>
-                                                {isExpanded && (
-                                                    <tr className="bg-gray-50 border-b">
-                                                        <td colSpan="4" className="p-3 pl-8">
-                                                            {renderSaleItems(sale.items)}
+                        {/* Desktop Table */}
+                        <div className="hidden md:block">
+                            <table className="w-full text-left">
+                                <thead className="bg-gray-100 sticky top-0">
+                                    <tr>
+                                        <th className="p-3 font-semibold text-gray-600">Hora</th>
+                                        <th className="p-3 font-semibold text-gray-600">Ítems</th>
+                                        <th className="p-3 font-semibold text-gray-600">Método</th>
+                                        <th className="p-3 font-semibold text-gray-600">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {shiftSales.length > 0 ? (
+                                        shiftSales.map(sale => {
+                                            const isExpanded = expandedSales[sale.id];
+                                            return (
+                                                <React.Fragment key={sale.id}>
+                                                    <tr
+                                                        className="border-b hover:bg-gray-50 cursor-pointer"
+                                                        onClick={() => toggleSaleExpansion(sale.id)}
+                                                    >
+                                                        <td className="p-3 whitespace-nowrap text-sm">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-gray-400 text-xs">
+                                                                    {isExpanded ? '▼' : '▶'}
+                                                                </span>
+                                                                {new Date(sale.date).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                                                            </div>
                                                         </td>
+                                                        <td className="p-3 text-sm">{getItemsCount(sale.items)} ítems</td>
+                                                        <td className="p-3 text-sm">{sale.paymentMethod || 'N/A'}</td>
+                                                        <td className="p-3 font-bold text-gray-800 text-sm">${formatNumber(sale.finalAmount || sale.totalAmount)}</td>
                                                     </tr>
-                                                )}
-                                            </React.Fragment>
-                                        );
-                                    })
-                                ) : (
-                                    <tr><td colSpan="4" className="text-center p-8 text-gray-500">Aún no hay ventas en este turno.</td></tr>
-                                )}
-                            </tbody>
-                        </table>
+                                                    {isExpanded && (
+                                                        <tr className="bg-gray-50 border-b">
+                                                            <td colSpan="4" className="p-3 pl-8">
+                                                                {renderSaleItems(sale.items)}
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </React.Fragment>
+                                            );
+                                        })
+                                    ) : (
+                                        <tr><td colSpan="4" className="text-center p-8 text-gray-500">Aún no hay ventas en este turno.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        {/* Mobile Cards */}
+                        <div className="md:hidden flex flex-col gap-3">
+                            {shiftSales.length > 0 ? (
+                                shiftSales.map(sale => {
+                                    const isExpanded = expandedSales[sale.id];
+                                    return (
+                                        <div key={sale.id} className="bg-gray-50 border rounded-lg p-3 shadow-sm">
+                                            <div
+                                                className="flex justify-between items-center cursor-pointer"
+                                                onClick={() => toggleSaleExpansion(sale.id)}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-gray-400 text-xs">{isExpanded ? '▼' : '▶'}</span>
+                                                    <span className="text-sm font-semibold text-gray-700">{new Date(sale.date).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                </div>
+                                                <span className="font-bold text-gray-800 text-sm">${formatNumber(sale.finalAmount || sale.totalAmount)}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center mt-2 text-sm text-gray-600 ml-4">
+                                                <span>{getItemsCount(sale.items)} ítems</span>
+                                                <span>{sale.paymentMethod || 'N/A'}</span>
+                                            </div>
+                                            {isExpanded && (
+                                                <div className="mt-3 pt-3 border-t ml-4">
+                                                    {renderSaleItems(sale.items)}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="text-center p-8 text-gray-500">Aún no hay ventas en este turno.</div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
