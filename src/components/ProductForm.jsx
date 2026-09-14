@@ -30,8 +30,23 @@ const ProductForm = ({ productToEdit, onClose }) => {
 
     useEffect(() => {
         if (isEditMode) {
+            let productLine = '';
+            let variationName = productToEdit.subtype || '';
+
+            if (variationName.includes(' - ')) {
+                const parts = variationName.split(' - ');
+                productLine = parts[0];
+                variationName = parts.slice(1).join(' - ');
+            } else if (variationName.startsWith('- ')) {
+                // Handle cases where the product was created with an empty line but with a dash
+                productLine = '';
+                variationName = variationName.substring(2);
+            }
+
             setEditData({
                 ...productToEdit,
+                productLine,
+                variationName,
                 lowStockThreshold: productToEdit.lowStockThreshold == null ? 10 : productToEdit.lowStockThreshold,
             });
             setNotifyLowStock(productToEdit.lowStockThreshold > 0);
@@ -143,8 +158,13 @@ const ProductForm = ({ productToEdit, onClose }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (isEditMode) {
+            const subtype = editData.productLine && editData.productLine.trim() !== ''
+                ? `${editData.productLine.trim()} - ${editData.variationName.trim()}`
+                : editData.variationName.trim();
+
             const finalEditData = {
                 ...editData,
+                subtype,
                 purchasePrice: parseFloat(editData.purchasePrice),
                 quantity: parseInt(editData.quantity, 10),
                 salePrices: editData.salePrices.map(p => ({ ...p, price: parseFloat(p.price || 0) })),
@@ -185,10 +205,26 @@ const ProductForm = ({ productToEdit, onClose }) => {
                     </div>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <input name="brand" value={editData.brand || ''} onChange={handleEditChange} placeholder="Marca" className="p-2 border rounded" />
-                            <input name="name" value={editData.name} onChange={handleEditChange} placeholder="Nombre del Producto" className="p-2 border rounded" required />
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Marca (Opcional)</label>
+                                <input name="brand" value={editData.brand || ''} onChange={handleEditChange} placeholder="Ej: Aromanza" className="p-2 border rounded w-full" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Producto</label>
+                                <input name="name" value={editData.name || ''} onChange={handleEditChange} placeholder="Ej: Sahumerio" className="p-2 border rounded w-full" required />
+                            </div>
                         </div>
-                        <input name="subtype" value={editData.subtype} onChange={handleEditChange} placeholder="Subtipo / Variación" className="p-2 border rounded w-full" required />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Línea (Opcional)</label>
+                                <input name="productLine" value={editData.productLine || ''} onChange={handleEditChange} placeholder="Ej: Momentos" className="p-2 border rounded w-full" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Variación / Aroma</label>
+                                <input name="variationName" value={editData.variationName || ''} onChange={handleEditChange} placeholder="Ej: Palo Santo" className="p-2 border rounded w-full" required />
+                            </div>
+                        </div>
 
                         <div>
                             <label htmlFor="code-edit" className="text-sm font-medium text-gray-700">Código (Opcional)</label>
