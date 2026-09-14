@@ -357,10 +357,12 @@ const InventoryPage = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 mb-6 bg-white p-3.5 rounded-lg shadow-sm border border-gray-100 overflow-x-auto">
-                        <FiLayers className="text-gray-400 flex-shrink-0" size={20} />
-                        <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">Agrupar vista por:</span>
-                        <div className="flex gap-2">
+                    <div className="flex flex-wrap items-center gap-3 mb-6 bg-white p-3.5 rounded-lg shadow-sm border border-gray-100">
+                        <div className="flex items-center gap-2">
+                            <FiLayers className="text-gray-400 flex-shrink-0" size={20} />
+                            <span className="text-sm font-semibold text-gray-700 whitespace-nowrap">Agrupar vista por:</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
                             <button onClick={() => setGroupBy('none')} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${groupBy === 'none' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Lista Plana</button>
                             <button onClick={() => setGroupBy('brand')} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${groupBy === 'brand' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Marca</button>
                             <button onClick={() => setGroupBy('name')} className={`px-4 py-1.5 rounded-md text-sm font-bold transition-colors whitespace-nowrap ${groupBy === 'name' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>Tipo</button>
