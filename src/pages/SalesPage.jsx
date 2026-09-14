@@ -248,7 +248,7 @@ const SalesPage = () => {
                     )}
                 </div>
 
-                <div className="flex justify-between items-center pt-3 md:pt-5 mt-3 md:mt-4 border-t-2 pb-20 md:pb-0">
+                <div className="flex justify-between items-center pt-3 md:pt-5 mt-3 md:mt-4 border-t-2 pb-24 md:pb-0">
                     <button
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                         disabled={currentPage === 1}
@@ -335,10 +335,25 @@ const SalesPage = () => {
 
             {/* BOTÓN FLOTANTE MOBILE */}
             {!showCartOnMobile && (
-                <button onClick={() => setShowCartOnMobile(true)} className="md:hidden fixed bottom-6 right-6 bg-green-600 text-white rounded-full p-4 shadow-2xl flex items-center gap-2 hover:bg-green-700">
-                    <FiShoppingCart className="w-7 h-7" />
-                    <span className="font-bold text-xl">{cart.length}</span>
-                </button>
+                <div className="md:hidden fixed bottom-0 left-0 w-full z-50">
+                    <button
+                        onClick={() => setShowCartOnMobile(true)}
+                        disabled={cart.length === 0}
+                        className={`w-full py-4 text-lg font-bold flex justify-center items-center gap-2 transition-colors ${
+                            cart.length === 0
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-green-600 text-white hover:bg-green-700 shadow-lg'
+                        }`}
+                    >
+                        <FiShoppingCart className="w-6 h-6" />
+                        <span className="uppercase">Ver carrito</span>
+                        {cart.length > 0 && (
+                            <span className="bg-white text-green-600 rounded-full px-2 py-0.5 text-sm ml-2">
+                                {cart.length}
+                            </span>
+                        )}
+                    </button>
+                </div>
             )}
         </div>
     );
