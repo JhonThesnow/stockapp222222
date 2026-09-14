@@ -8,6 +8,11 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
         console.log("¡Base de datos conectada!");
 
         db.serialize(() => {
+            // Optimizaciones de rendimiento (WAL y pragmas)
+            db.run('PRAGMA journal_mode = WAL;');
+            db.run('PRAGMA synchronous = NORMAL;');
+            db.run('PRAGMA busy_timeout = 5000;');
+            db.run('PRAGMA cache_size = -64000;');
             // Habilitar claves foráneas
             db.run('PRAGMA foreign_keys = ON;');
 
@@ -106,6 +111,18 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 date TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'in_progress', groups TEXT NOT NULL, notes TEXT
             )`);
+
+            // --- ÍNDICES PARA OPTIMIZACIÓN ---
+            db.run(`CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(date)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_sales_status ON sales(status)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_sales_payment_method ON sales(paymentMethod)`);
+
+            db.run(`CREATE INDEX IF NOT EXISTS idx_products_code ON products(code)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_products_name ON products(name)`);
+
+            db.run(`CREATE INDEX IF NOT EXISTS idx_account_movements_account_id ON account_movements(accountId)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_expenses_account_id ON expenses(accountId)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_cash_closings_account_id ON cash_closings(accountId)`);
 
             // --- SEEDING DE DATOS INICIALES ESENCIALES ---
             const seedEssentialData = () => {
