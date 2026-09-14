@@ -248,7 +248,7 @@ const SalesPage = () => {
                     )}
                 </div>
 
-                <div className="flex justify-between items-center pt-3 md:pt-5 mt-3 md:mt-4 border-t-2">
+                <div className="flex justify-between items-center pt-3 md:pt-5 mt-3 md:mt-4 border-t-2 pb-20 md:pb-0">
                     <button
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                         disabled={currentPage === 1}
