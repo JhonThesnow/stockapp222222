@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import useProductStore from '../store/useProductStore';
-import { FiSearch, FiPercent, FiDollarSign, FiChevronDown, FiChevronUp, FiTrash } from 'react-icons/fi';
+import { FiSearch, FiPercent, FiDollarSign, FiChevronDown, FiChevronUp, FiTrash, FiCamera } from 'react-icons/fi';
 import { formatDateOnly } from '../utils/formatting';
-
+import BarcodeScannerModal from './BarcodeScannerModal';
 
 const PriceIncreases = () => {
     const { products, increasePrices, fetchPriceIncreaseHistory, priceIncreaseHistory, deletePriceIncrease } = useProductStore();
     const [searchTerm, setSearchTerm] = useState('');
+    const [showScanner, setShowScanner] = useState(false);
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [increaseType, setIncreaseType] = useState('percentage'); // 'percentage' or 'fixed'
     const [increaseValue, setIncreaseValue] = useState('');
@@ -75,6 +76,23 @@ const PriceIncreases = () => {
         setOpenEntries(prev => ({ ...prev, [entryId]: !prev[entryId] }));
     };
 
+    const onBarcodeDetected = (code) => {
+        setShowScanner(false);
+        setSearchTerm(code);
+
+        // Find product with matching code
+        const product = products.find(p => p.code === code);
+
+        if (product) {
+            // Check if already selected
+            const isAlreadySelected = selectedProducts.some(p => p.id === product.id);
+
+            if (!isAlreadySelected) {
+                setSelectedProducts(prev => [...prev, product]);
+            }
+        }
+    };
+
     const handleDelete = (id) => {
         if (window.confirm('¿Estás seguro de eliminar este registro del historial? Esta acción no se puede deshacer.')) {
             deletePriceIncrease(id);
@@ -82,7 +100,7 @@ const PriceIncreases = () => {
     };
 
     const filteredProducts = products.filter(product =>
-        `${product.brand || ''} ${product.name} ${product.subtype}`.toLowerCase().includes(searchTerm.toLowerCase())
+        `${product.brand || ''} ${product.name} ${product.subtype} ${product.code || ''}`.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -118,9 +136,24 @@ const PriceIncreases = () => {
                         placeholder="Buscar productos para aumentar precio..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border rounded-lg"
+                        className="w-full pl-10 pr-12 py-2 border rounded-lg"
                     />
+                    <button
+                        onClick={() => setShowScanner(true)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-600 p-1"
+                        title="Escanear Código de Barras"
+                    >
+                        <FiCamera size={20} />
+                    </button>
                 </div>
+
+                {showScanner && (
+                    <BarcodeScannerModal
+                        onDetected={onBarcodeDetected}
+                        onClose={() => setShowScanner(false)}
+                    />
+                )}
+
                 <div className="max-h-64 overflow-y-auto border rounded-lg p-2 space-y-2">
                     {filteredProducts.map(product => (
                         <div key={product.id} className="flex items-center p-2 bg-gray-50 rounded">
