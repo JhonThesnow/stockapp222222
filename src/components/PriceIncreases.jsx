@@ -154,22 +154,29 @@ const PriceIncreases = () => {
                     />
                 )}
 
-                <div className="max-h-64 overflow-y-auto border rounded-lg p-2 space-y-2">
-                    {filteredProducts.map(product => (
-                        <div key={product.id} className="flex items-center p-2 bg-gray-50 rounded">
-                            <input
-                                type="checkbox"
-                                className="mr-4"
-                                checked={selectedProducts.some(p => p.id === product.id)}
-                                onChange={() => handleToggleProduct(product)}
-                            />
-                            <div className="flex-grow">
-                                <p className="font-semibold">{product.name} - {product.subtype}</p>
-                                <p className="text-sm text-gray-500">P. Compra: ${product.purchasePrice} | {product.salePrices[0]?.name}: ${product.salePrices[0]?.price}</p>
+                {filteredProducts.length > 0 ? (
+                    <div className="max-h-64 overflow-y-auto border rounded-lg p-2 space-y-2">
+                        {filteredProducts.map(product => (
+                            <div key={product.id} className="flex items-center p-2 bg-gray-50 rounded">
+                                <input
+                                    type="checkbox"
+                                    className="mr-4"
+                                    checked={selectedProducts.some(p => p.id === product.id)}
+                                    onChange={() => handleToggleProduct(product)}
+                                />
+                                <div className="flex-grow">
+                                    <p className="font-semibold">{product.name} - {product.subtype}</p>
+                                    <p className="text-sm text-gray-500">P. Compra: ${product.purchasePrice} | {product.salePrices[0]?.name}: ${product.salePrices[0]?.price}</p>
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center p-8 text-gray-500 bg-gray-50 rounded-lg border border-gray-200 mt-2">
+                        <FiSearch size={48} className="mx-auto mb-4 text-gray-300" />
+                        <p className="text-lg">No se encontraron productos que coincidan con tu búsqueda.</p>
+                    </div>
+                )}
                 <button onClick={handleApplyIncrease} className="w-full mt-4 bg-orange-500 text-white py-2 rounded-lg font-bold">
                     Aplicar Aumento
                 </button>
