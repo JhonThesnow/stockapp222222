@@ -8,11 +8,10 @@ import CancelSaleModal from '../components/CancelSaleModal';
 import { formatNumber } from '../utils/formatting';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { startOfMonth, endOfMonth, format } from 'date-fns';
+import { startOfMonth, endOfMonth, format, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const VentasPage = () => {
-    const [activeTab, setActiveTab] = useState('historial');
     const [saleToComplete, setSaleToComplete] = useState(null);
     const [saleToEdit, setSaleToEdit] = useState(null);
     const [saleToCancel, setSaleToCancel] = useState(null);
@@ -39,9 +38,8 @@ const VentasPage = () => {
     const [expenseAccountId, setExpenseAccountId] = useState('');
     const [expenseCategoryId, setExpenseCategoryId] = useState('');
 
-    // State for pagination in history
-    const [historyPage, setHistoryPage] = useState(1);
     const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+    const [useDateRange, setUseDateRange] = useState(false);
 
     // State for pagination in daily breakdown
     const [dailyPage, setDailyPage] = useState(1);
@@ -55,10 +53,30 @@ const VentasPage = () => {
     }, [fetchAllSales, fetchAccounts, fetchCategories]);
 
     useEffect(() => {
-        if (activeTab === 'info') {
-            fetchSummary(startDate.toISOString(), endDate.toISOString());
-        }
-    }, [activeTab, startDate, endDate, fetchSummary]);
+        fetchSummary(startDate.toISOString(), endDate.toISOString());
+    }, [startDate, endDate, fetchSummary]);
+
+    const handleMonthChange = (e) => {
+        const monthStr = e.target.value;
+        setSelectedMonth(monthStr);
+        setUseDateRange(false);
+        const parsedDate = parse(monthStr, 'yyyy-MM', new Date());
+        setStartDate(startOfMonth(parsedDate));
+        setEndDate(endOfMonth(parsedDate));
+        setDailyPage(1);
+    };
+
+    const handleStartDateChange = (date) => {
+        setStartDate(date);
+        setUseDateRange(true);
+        setDailyPage(1);
+    };
+
+    const handleEndDateChange = (date) => {
+        setEndDate(date);
+        setUseDateRange(true);
+        setDailyPage(1);
+    };
 
     useEffect(() => {
         if (highlightedSaleId) {
@@ -136,29 +154,23 @@ const VentasPage = () => {
             </ul>
         );
     };
-    // Group sales by month for the history tab
+
+    // Calculate available months for the dropdown
     const pastSales = useMemo(() => {
         if (!currentShift) return completedSales;
         return completedSales.filter(sale => sale.shiftId !== currentShift.id);
     }, [completedSales, currentShift]);
 
-    const salesByMonth = useMemo(() => {
-        return pastSales.reduce((acc, sale) => {
+    const availableMonths = useMemo(() => {
+        const monthsSet = new Set();
+        pastSales.forEach(sale => {
             const month = format(new Date(sale.date), 'yyyy-MM');
-            if (!acc[month]) {
-                acc[month] = [];
-            }
-            acc[month].push(sale);
-            return acc;
-        }, {});
+            monthsSet.add(month);
+        });
+        const currentMonth = format(new Date(), 'yyyy-MM');
+        monthsSet.add(currentMonth);
+        return Array.from(monthsSet).sort().reverse();
     }, [pastSales]);
-
-    const availableMonths = Object.keys(salesByMonth).sort().reverse();
-
-    const salesForSelectedMonth = salesByMonth[selectedMonth] || [];
-    const historyPages = Math.ceil(salesForSelectedMonth.length / 5);
-    const paginatedHistory = salesForSelectedMonth.slice((historyPage - 1) * 5, historyPage * 5);
-
 
     return (
         <div className="p-4 md:p-6 bg-gray-50 min-h-full">
@@ -166,91 +178,167 @@ const VentasPage = () => {
             {saleToEdit && <EditSaleModal sale={saleToEdit} onClose={() => setSaleToEdit(null)} />}
             {saleToCancel && <CancelSaleModal sale={saleToCancel} onClose={() => setSaleToCancel(null)} />}
 
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Gestión de Ventas</h1>
-
-            <div className="flex border-b mb-6">
-                <button onClick={() => setActiveTab('historial')} className={`py-2 px-4 ${activeTab === 'historial' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Historial</button>
-                <button onClick={() => setActiveTab('info')} className={`py-2 px-4 ${activeTab === 'info' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Información</button>
-            </div>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Gestión de Ventas</h1>
 
             <div>
-                {activeTab === 'info' && (
-                    <div>
-                        <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-col md:flex-row gap-4 items-center">
-                            <div className="flex gap-4 items-center">
-                                <DatePicker selected={startDate} onChange={date => setStartDate(date)} dateFormat="dd/MM/yyyy" popperPlacement="bottom-end" className="p-2 border rounded w-full md:w-auto" />
-                                <span>-</span>
-                                <DatePicker selected={endDate} onChange={date => setEndDate(date)} dateFormat="dd/MM/yyyy" popperPlacement="bottom-end" className="p-2 border rounded w-full md:w-auto" />
+                <div>
+                    <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+                        <div className="flex flex-col sm:flex-row gap-4 items-center w-full md:w-auto">
+                            <div className="flex items-center gap-2">
+                                <label className="text-sm text-gray-600 font-medium">Mes:</label>
+                                <select
+                                    value={useDateRange ? '' : selectedMonth}
+                                    onChange={handleMonthChange}
+                                    className="p-2 border rounded bg-white min-w-[150px]"
+                                >
+                                    {useDateRange && <option value="">Personalizado</option>}
+                                    {availableMonths.map(month => (
+                                        <option key={month} value={month}>{format(new Date(month + '-02'), 'MMMM yyyy', { locale: es })}</option>
+                                    ))}
+                                </select>
                             </div>
-                            <button onClick={() => setShowExpenseForm(!showExpenseForm)} className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 w-full md:w-auto mt-2 md:mt-0">
-                                {showExpenseForm ? 'Cancelar' : 'Agregar Gasto'}
-                            </button>
+                            <span className="hidden sm:inline text-gray-400">|</span>
+                            <div className="flex items-center gap-2">
+                                <label className="text-sm text-gray-600 font-medium">Rango:</label>
+                                <DatePicker
+                                    selected={startDate}
+                                    onChange={handleStartDateChange}
+                                    dateFormat="dd/MM/yyyy"
+                                    popperPlacement="bottom-start"
+                                    className="p-2 border rounded w-full sm:w-[120px] text-center"
+                                />
+                                <span className="text-gray-500">-</span>
+                                <DatePicker
+                                    selected={endDate}
+                                    onChange={handleEndDateChange}
+                                    dateFormat="dd/MM/yyyy"
+                                    popperPlacement="bottom-end"
+                                    className="p-2 border rounded w-full sm:w-[120px] text-center"
+                                />
+                            </div>
                         </div>
-                        {showExpenseForm && (
-                            <form onSubmit={handleExpenseSubmit} className="bg-white p-4 rounded-lg shadow mb-6 flex flex-col md:flex-row gap-4 items-end">
-                                <div className="flex-grow"><label className="text-sm">Descripción</label><input value={expenseDescription} onChange={e => setExpenseDescription(e.target.value)} className="p-2 border rounded w-full" required /></div>
-                                <div className="flex-grow"><label className="text-sm">Monto</label><input type="number" value={expenseAmount} onChange={e => setExpenseAmount(e.target.value)} className="p-2 border rounded w-full" required /></div>
-                                <div className="flex-grow"><label className="text-sm">Cuenta</label>
-                                    <select value={expenseAccountId} onChange={e => setExpenseAccountId(e.target.value)} className="p-2 border rounded w-full" required>
-                                        <option value="">Seleccionar cuenta</option>
-                                        {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
-                                    </select>
+                        <button onClick={() => setShowExpenseForm(!showExpenseForm)} className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 w-full md:w-auto mt-2 md:mt-0 font-medium whitespace-nowrap">
+                            {showExpenseForm ? 'Cancelar Gasto' : 'Agregar Gasto'}
+                        </button>
+                    </div>
+
+                    {showExpenseForm && (
+                        <form onSubmit={handleExpenseSubmit} className="bg-white p-4 rounded-lg shadow mb-6 flex flex-col md:flex-row gap-4 items-end">
+                            <div className="flex-grow"><label className="text-sm">Descripción</label><input value={expenseDescription} onChange={e => setExpenseDescription(e.target.value)} className="p-2 border rounded w-full" required /></div>
+                            <div className="flex-grow"><label className="text-sm">Monto</label><input type="number" value={expenseAmount} onChange={e => setExpenseAmount(e.target.value)} className="p-2 border rounded w-full" required /></div>
+                            <div className="flex-grow"><label className="text-sm">Cuenta</label>
+                                <select value={expenseAccountId} onChange={e => setExpenseAccountId(e.target.value)} className="p-2 border rounded w-full" required>
+                                    <option value="">Seleccionar cuenta</option>
+                                    {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="flex-grow"><label className="text-sm">Categoría</label>
+                                <select value={expenseCategoryId} onChange={e => setExpenseCategoryId(e.target.value)} className="p-2 border rounded w-full" required>
+                                    <option value="">Seleccionar categoría</option>
+                                    {categories.filter(c => c.type === 'withdrawal').map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                                </select>
+                            </div>
+                            <button type="submit" className="bg-blue-600 text-white py-2 px-4 rounded w-full md:w-auto">Guardar</button>
+                        </form>
+                    )}
+
+                    {loading ? <p className="text-center p-4">Cargando datos...</p> : monthlySummary && (
+                        <div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                                <div className="bg-white p-6 rounded-lg shadow">
+                                    <p className="text-gray-500 font-semibold flex items-center justify-between">Ingresos Totales</p>
+                                    <p className="text-3xl font-bold">${formatNumber(monthlySummary.totalRevenue)}</p>
                                 </div>
-                                <div className="flex-grow"><label className="text-sm">Categoría</label>
-                                    <select value={expenseCategoryId} onChange={e => setExpenseCategoryId(e.target.value)} className="p-2 border rounded w-full" required>
-                                        <option value="">Seleccionar categoría</option>
-                                        {categories.filter(c => c.type === 'withdrawal').map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                                    </select>
+                                <div className="bg-white p-6 rounded-lg shadow relative group">
+                                    <p className="text-gray-500 font-semibold flex items-center justify-between">
+                                        Ganancia Bruta
+                                        <span className="cursor-help text-gray-400 hover:text-gray-600" title="Ingresos Totales - Costo de los productos vendidos">ℹ️</span>
+                                    </p>
+                                    <p className="text-3xl font-bold text-green-600">${formatNumber(monthlySummary.totalProfit)}</p>
+                                    <p className="text-xs text-gray-400 mt-2">(Ingresos - Costos)</p>
                                 </div>
-                                <button type="submit" className="bg-blue-600 text-white py-2 px-4 rounded w-full md:w-auto">Guardar</button>
-                            </form>
-                        )}
-                        {loading ? <p>Cargando resumen...</p> : monthlySummary && (
-                            <div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                                    <div className="bg-white p-6 rounded-lg shadow">
-                                        <p className="text-gray-500 font-semibold flex items-center justify-between">Ingresos Totales</p>
-                                        <p className="text-3xl font-bold">${formatNumber(monthlySummary.totalRevenue)}</p>
-                                    </div>
-                                    <div className="bg-white p-6 rounded-lg shadow relative group">
-                                        <p className="text-gray-500 font-semibold flex items-center justify-between">
-                                            Ganancia Bruta
-                                            <span className="cursor-help text-gray-400 hover:text-gray-600" title="Ingresos Totales - Costo de los productos vendidos">ℹ️</span>
-                                        </p>
-                                        <p className="text-3xl font-bold text-green-600">${formatNumber(monthlySummary.totalProfit)}</p>
-                                        <p className="text-xs text-gray-400 mt-2">(Ingresos - Costos)</p>
-                                    </div>
-                                    <div className="bg-white p-6 rounded-lg shadow">
-                                        <p className="text-gray-500 font-semibold flex items-center justify-between">Gastos Totales</p>
-                                        <p className="text-3xl font-bold text-red-500">-${formatNumber(monthlySummary.totalExpenses)}</p>
-                                    </div>
-                                    <div className="bg-white p-6 rounded-lg shadow relative group">
-                                        <p className="text-gray-500 font-semibold flex items-center justify-between">
-                                            Ganancia Neta
-                                            <span className="cursor-help text-gray-400 hover:text-gray-600" title="Ganancia Bruta - Gastos Totales - Impuestos">ℹ️</span>
-                                        </p>
-                                        <p className="text-3xl font-bold text-blue-600">${formatNumber(monthlySummary.netProfit)}</p>
-                                        <p className="text-xs text-gray-400 mt-2">(Ganancia Bruta - Gastos)</p>
-                                    </div>
+                                <div className="bg-white p-6 rounded-lg shadow">
+                                    <p className="text-gray-500 font-semibold flex items-center justify-between">Gastos Totales</p>
+                                    <p className="text-3xl font-bold text-red-500">-${formatNumber(monthlySummary.totalExpenses)}</p>
                                 </div>
-                                <h3 className="text-xl font-bold mb-4">Desglose Diario</h3>
-                                <div className="space-y-2">
+                                <div className="bg-white p-6 rounded-lg shadow relative group">
+                                    <p className="text-gray-500 font-semibold flex items-center justify-between">
+                                        Ganancia Neta
+                                        <span className="cursor-help text-gray-400 hover:text-gray-600" title="Ganancia Bruta - Gastos Totales - Impuestos">ℹ️</span>
+                                    </p>
+                                    <p className="text-3xl font-bold text-blue-600">${formatNumber(monthlySummary.netProfit)}</p>
+                                    <p className="text-xs text-gray-400 mt-2">(Ganancia Bruta - Gastos)</p>
+                                </div>
+                            </div>
+
+                            <h3 className="text-xl font-bold mb-4">Desglose Diario y Actividad</h3>
+
+                            {paginatedDailyMovementsDays.length > 0 ? (
+                                <div className="space-y-3">
                                     {paginatedDailyMovementsDays.map(day => (
-                                        <div key={day} className="bg-white rounded-lg shadow-sm">
-                                            <button onClick={() => toggleDay(day)} className="w-full p-3 font-semibold text-left flex justify-between"><span>{day}</span><span>{openDays[day] ? '-' : '+'}</span></button>
+                                        <div key={day} className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                                            <button
+                                                onClick={() => toggleDay(day)}
+                                                className="w-full p-4 font-semibold text-left flex justify-between items-center bg-gray-50 hover:bg-gray-100 transition-colors"
+                                            >
+                                                <span className="text-gray-800">{day} <span className="text-sm font-normal text-gray-500 ml-2">({dailyMovements[day].length} movs)</span></span>
+                                                <span className="text-gray-400">{openDays[day] ? '▲' : '▼'}</span>
+                                            </button>
+
                                             {openDays[day] && (
-                                                <div className="p-3 border-t">
+                                                <div className="p-0 border-t">
                                                     {dailyMovements[day].map(mov => (
-                                                        <div key={mov.key} className={`py-2 flex justify-between items-center text-sm border-b last:border-b-0 ${mov.status === 'canceled' ? 'text-red-500' : ''}`}>
-                                                            <div className="flex items-center gap-2">
-                                                                {mov.type === 'sale' ? <span className={mov.status === 'canceled' ? 'font-bold' : 'text-green-500'}>{mov.status === 'canceled' ? 'Venta Cancelada' : 'Venta'}</span> : <span className="text-red-500">Gasto</span>}
-                                                                <div className="text-gray-600">{mov.type === 'sale' ? renderSaleItems(mov.items) : mov.description}</div>
+                                                        <div key={mov.key} className={`p-4 flex flex-col sm:flex-row justify-between sm:items-center text-sm border-b last:border-b-0 gap-4 transition-colors ${highlightedSaleId === mov.id ? 'bg-blue-50' : 'hover:bg-gray-50'} ${mov.status === 'canceled' ? 'bg-red-50/30' : ''}`}>
+                                                            <div className="flex-grow flex flex-col gap-1">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    {mov.type === 'sale' ? (
+                                                                        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${mov.status === 'canceled' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                                                                            {mov.status === 'canceled' ? 'Venta Cancelada' : 'Venta'}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="px-2 py-0.5 rounded text-xs font-semibold bg-orange-100 text-orange-800">
+                                                                            Gasto
+                                                                        </span>
+                                                                    )}
+
+                                                                    <span className="text-gray-500 text-xs">
+                                                                        {formatDate(mov.date).split(',')[1]}
+                                                                    </span>
+
+                                                                    {mov.type === 'sale' && mov.paymentMethod && (
+                                                                        <span className="text-gray-500 text-xs px-2 border-l">
+                                                                            {mov.paymentMethod}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="text-gray-700">
+                                                                    {mov.type === 'sale' ? renderSaleItems(mov.items) : <span className="font-medium">{mov.description}</span>}
+                                                                </div>
                                                             </div>
-                                                            <div className="flex items-center gap-4">
-                                                                <p className={`font-bold ${mov.status === 'canceled' ? 'text-red-500' : mov.type === 'sale' ? 'text-green-600' : 'text-red-500'}`}>
-                                                                    {mov.type === 'sale' ? (mov.status === 'canceled' ? `-${formatNumber(mov.finalAmount)}` : `+${formatNumber(mov.finalAmount)}`) : `-${formatNumber(mov.amount)}`}
+
+                                                            <div className="flex flex-row sm:flex-col sm:items-end justify-between items-center gap-2 sm:gap-1 mt-2 sm:mt-0">
+                                                                <p className={`text-lg font-bold ${mov.status === 'canceled' ? 'text-gray-400 line-through' : mov.type === 'sale' ? 'text-green-600' : 'text-red-500'}`}>
+                                                                    {mov.type === 'sale' ? `$${formatNumber(mov.finalAmount)}` : `-$${formatNumber(mov.amount)}`}
                                                                 </p>
-                                                                {mov.type === 'sale' && mov.status !== 'canceled' ? <button onClick={() => handleSaleClick(mov)} className="text-blue-500 hover:underline text-xs">Ver en Historial</button> : mov.type === 'expense' ? <button onClick={() => deleteExpense(mov.id)} className="text-red-500 p-1 rounded-full hover:bg-red-100"><FiX size={14} /></button> : null}
+
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    {mov.type === 'sale' && mov.status === 'completed' && (
+                                                                        <>
+                                                                            <button onClick={() => setSaleToEdit(mov)} title="Editar Venta" className="text-yellow-600 p-1.5 rounded-full hover:bg-yellow-100 transition-colors"><FiEdit size={16} /></button>
+                                                                            <button onClick={() => setSaleToCancel(mov)} title="Cancelar y Devolver Stock" className="text-orange-600 p-1.5 rounded-full hover:bg-orange-100 transition-colors"><FiRotateCcw size={16} /></button>
+                                                                        </>
+                                                                    )}
+                                                                    {mov.type === 'sale' && (mov.status === 'completed' || mov.status === 'canceled') && (
+                                                                        <button onClick={() => deleteCompletedSale(mov.id)} title="Eliminar Permanentemente" className="text-red-600 p-1.5 rounded-full hover:bg-red-100 transition-colors"><FiTrash size={16} /></button>
+                                                                    )}
+                                                                    {mov.type === 'sale' && mov.status === 'canceled' && (
+                                                                        <span title={mov.cancellationReason} className="text-red-500 p-1.5 cursor-help"><FiAlertTriangle size={16} /></span>
+                                                                    )}
+                                                                    {mov.type === 'expense' && (
+                                                                        <button onClick={() => deleteExpense(mov.id)} title="Eliminar Gasto" className="text-red-500 p-1.5 rounded-full hover:bg-red-100 transition-colors"><FiTrash size={16} /></button>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -259,80 +347,22 @@ const VentasPage = () => {
                                         </div>
                                     ))}
                                 </div>
-                                {dailyMovementsDays.length > DAILY_ITEMS_PER_PAGE && (
-                                    <div className="flex justify-center mt-4">
-                                        <button onClick={() => setDailyPage(p => Math.max(1, p - 1))} disabled={dailyPage === 1} className="px-4 py-2 mx-1 bg-white border rounded">Anterior</button>
-                                        <span className="px-4 py-2">Página {dailyPage} de {Math.ceil(dailyMovementsDays.length / DAILY_ITEMS_PER_PAGE)}</span>
-                                        <button onClick={() => setDailyPage(p => p + 1)} disabled={dailyPage * DAILY_ITEMS_PER_PAGE >= dailyMovementsDays.length} className="px-4 py-2 mx-1 bg-white border rounded">Siguiente</button>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )}
-                {activeTab === 'historial' && (
-                    <div className="bg-white rounded-lg shadow overflow-x-auto">
-                        <div className="p-4">
-                            <select value={selectedMonth} onChange={e => { setSelectedMonth(e.target.value); setHistoryPage(1); }} className="p-2 border rounded">
-                                {availableMonths.map(month => (
-                                    <option key={month} value={month}>{format(new Date(month + '-02'), 'MMMM yyyy', { locale: es })}</option>
-                                ))}
-                            </select>
+                            ) : (
+                                <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 text-center text-gray-500">
+                                    No hay movimientos registrados para las fechas seleccionadas.
+                                </div>
+                            )}
+
+                            {dailyMovementsDays.length > DAILY_ITEMS_PER_PAGE && (
+                                <div className="flex justify-center mt-6">
+                                    <button onClick={() => setDailyPage(p => Math.max(1, p - 1))} disabled={dailyPage === 1} className="px-4 py-2 mx-1 bg-white border rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 transition-colors">Anterior</button>
+                                    <span className="px-4 py-2 text-gray-600 font-medium">Página {dailyPage} de {Math.ceil(dailyMovementsDays.length / DAILY_ITEMS_PER_PAGE)}</span>
+                                    <button onClick={() => setDailyPage(p => p + 1)} disabled={dailyPage * DAILY_ITEMS_PER_PAGE >= dailyMovementsDays.length} className="px-4 py-2 mx-1 bg-white border rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 transition-colors">Siguiente</button>
+                                </div>
+                            )}
                         </div>
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="p-4 font-semibold">Fecha</th>
-                                    <th className="p-4 font-semibold">Ítems</th>
-                                    <th className="p-4 font-semibold">Método Pago</th>
-                                    <th className="p-4 font-semibold">Total</th>
-                                    <th className="p-4 font-semibold">Estado</th>
-                                    <th className="p-4 font-semibold">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading && !completedSales.length ? (
-                                    <tr><td colSpan="6" className="text-center p-10">Cargando...</td></tr>
-                                ) : paginatedHistory.length > 0 ? (
-                                    paginatedHistory.map(sale => (
-                                        <tr key={sale.id} className={`border-b transition-colors duration-1000 ${highlightedSaleId === sale.id ? 'bg-blue-100' : ''} ${sale.status === 'canceled' ? 'bg-red-50 text-gray-500' : 'hover:bg-gray-50'}`}>
-                                            <td className="p-4 whitespace-nowrap">{formatDate(sale.date)}</td>
-                                            <td className="p-4">{renderSaleItems(sale.items)}</td>
-                                            <td className="p-4 capitalize">{sale.paymentMethod}</td>
-                                            <td className="p-4 font-bold">${formatNumber(sale.finalAmount)}</td>
-                                            <td className="p-4">
-                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${sale.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                    {sale.status === 'completed' ? 'Completada' : 'Cancelada'}
-                                                </span>
-                                            </td>
-                                            <td className="p-4 flex gap-1">
-                                                {sale.status === 'completed' && (
-                                                    <>
-                                                        <button onClick={() => setSaleToEdit(sale)} title="Editar Venta" className="text-yellow-600 p-2 rounded-full hover:bg-yellow-100"><FiEdit /></button>
-                                                        <button onClick={() => setSaleToCancel(sale)} title="Cancelar y Devolver Stock" className="text-orange-600 p-2 rounded-full hover:bg-orange-100"><FiRotateCcw /></button>
-                                                    </>
-                                                )}
-                                                {(sale.status === 'completed' || sale.status === 'canceled') && (
-                                                    <button onClick={() => deleteCompletedSale(sale.id)} title="Eliminar Permanentemente" className="text-red-600 p-2 rounded-full hover:bg-red-100"><FiTrash /></button>
-                                                )}
-                                                {sale.status === 'canceled' && <FiAlertTriangle title={sale.cancellationReason} className="text-red-500" />}
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr><td colSpan="6" className="text-center p-10 text-gray-500">No hay ventas en el historial para este mes.</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                        {historyPages > 1 && (
-                            <div className="p-4 flex justify-center">
-                                <button onClick={() => setHistoryPage(p => Math.max(1, p - 1))} disabled={historyPage === 1} className="px-4 py-2 mx-1 bg-white border rounded">Anterior</button>
-                                <span className="px-4 py-2">Página {historyPage} de {historyPages}</span>
-                                <button onClick={() => setHistoryPage(p => p + 1)} disabled={historyPage === historyPages} className="px-4 py-2 mx-1 bg-white border rounded">Siguiente</button>
-                            </div>
-                        )}
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );
