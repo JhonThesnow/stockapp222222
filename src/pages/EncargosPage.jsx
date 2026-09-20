@@ -158,7 +158,7 @@ const EncargosPage = () => {
                             </div>
                             <div className="lg:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Descripción del Encargo (Obligatorio)</label>
-                                <div className="flex space-x-2">
+                                <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
                                     <textarea
                                         required
                                         rows="2"
@@ -170,7 +170,7 @@ const EncargosPage = () => {
                                     <button
                                         type="submit"
                                         disabled={loading}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded flex items-center justify-center h-fit self-end disabled:opacity-50"
+                                        className="bg-blue-600 hover:bg-blue-700 text-white p-2 sm:px-4 rounded flex items-center justify-center sm:w-auto w-full h-[42px] disabled:opacity-50 whitespace-nowrap"
                                     >
                                         <FiSave size={20} className="mr-1" /> Guardar
                                     </button>
@@ -182,8 +182,8 @@ const EncargosPage = () => {
                     {/* Active Orders List */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-gray-50 border-b">
+                            <table className="w-full text-left border-collapse block md:table">
+                                <thead className="bg-gray-50 border-b hidden md:table-header-group">
                                     <tr>
                                         <th className="p-4 font-semibold text-gray-600">Fecha</th>
                                         <th className="p-4 font-semibold text-gray-600">Cliente</th>
@@ -193,57 +193,61 @@ const EncargosPage = () => {
                                         <th className="p-4 font-semibold text-gray-600 text-right">Acciones</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="block md:table-row-group">
                                     {orders.length === 0 ? (
                                         <tr><td colSpan="6" className="text-center py-8 text-gray-500">No hay encargos activos.</td></tr>
                                     ) : (
                                         orders.map(order => (
-                                            <tr key={order.id} className="border-b hover:bg-gray-50">
-                                                <td className="p-4 align-top">
-                                                    {format(new Date(order.date), "d 'de' MMM, HH:mm", { locale: es })}
+                                            <tr key={order.id} className="border-b hover:bg-gray-50 block md:table-row bg-white rounded-lg shadow-sm md:shadow-none mb-4 md:mb-0 p-4 md:p-0">
+                                                <td className="p-2 md:p-4 align-top block md:table-cell border-b border-gray-100 md:border-none last:border-none">
+                                                    <span className="inline-block md:hidden font-bold text-gray-500 mr-2">Fecha:</span> {format(new Date(order.date), "d 'de' MMM, HH:mm", { locale: es })}
                                                 </td>
-                                                <td className="p-4 align-top">
+                                                <td className="p-2 md:p-4 align-top block md:table-cell border-b border-gray-100 md:border-none last:border-none">
+                                                    <span className="inline-block md:hidden font-bold text-gray-500 mr-2">Cliente:</span>
                                                     {editingOrderId === order.id ? (
                                                         <input type="text" className="w-full p-1 border rounded" value={editForm.customer_name} onChange={e => setEditForm({...editForm, customer_name: e.target.value})} />
                                                     ) : (
                                                         <span className="font-medium">{order.customer_name}</span>
                                                     )}
                                                 </td>
-                                                <td className="p-4 align-top">
+                                                <td className="p-2 md:p-4 align-top block md:table-cell border-b border-gray-100 md:border-none last:border-none">
+                                                    <span className="inline-block md:hidden font-bold text-gray-500 mr-2">Teléfono:</span>
                                                     {editingOrderId === order.id ? (
                                                         <input type="text" className="w-full p-1 border rounded" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
                                                     ) : (
                                                         <span className="text-gray-600">{order.phone || '-'}</span>
                                                     )}
                                                 </td>
-                                                <td className="p-4 align-top max-w-xs whitespace-pre-wrap">
+                                                <td className="p-2 md:p-4 align-top max-w-none md:max-w-xs whitespace-pre-wrap block md:table-cell border-b border-gray-100 md:border-none last:border-none">
+                                                    <span className="inline-block md:hidden font-bold text-gray-500 mr-2">Descripción:</span>
                                                     {editingOrderId === order.id ? (
                                                         <textarea rows="2" className="w-full p-1 border rounded resize-none" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} />
                                                     ) : (
                                                         order.description
                                                     )}
                                                 </td>
-                                                <td className="p-4 align-top">
+                                                <td className="p-2 md:p-4 align-top block md:table-cell border-b border-gray-100 md:border-none last:border-none">
+                                                    <span className="inline-block md:hidden font-bold text-gray-500 mr-2">Seña:</span>
                                                     {editingOrderId === order.id ? (
                                                         <input type="number" step="0.01" className="w-full p-1 border rounded" value={editForm.advance_payment} onChange={e => setEditForm({...editForm, advance_payment: e.target.value})} />
                                                     ) : (
                                                         <span className="text-green-600 font-medium">${order.advance_payment?.toFixed(2) || '0.00'}</span>
                                                     )}
                                                 </td>
-                                                <td className="p-4 align-top text-right space-x-2 whitespace-nowrap">
+                                                <td className="p-3 md:p-4 align-top flex flex-wrap md:table-cell md:text-right gap-2 space-x-0 md:space-x-2 whitespace-normal md:whitespace-nowrap block border-b border-gray-100 md:border-none last:border-none">
                                                     {editingOrderId === order.id ? (
-                                                        <>
-                                                            <button onClick={() => saveEdit(order.id)} className="text-green-600 hover:bg-green-100 p-2 rounded-full" title="Guardar"><FiSave size={18} /></button>
-                                                            <button onClick={() => setEditingOrderId(null)} className="text-gray-600 hover:bg-gray-100 p-2 rounded-full" title="Cancelar"><FiX size={18} /></button>
-                                                        </>
+                                                        <div className="flex gap-2 w-full md:w-auto md:justify-end md:inline-flex items-center">
+                                                            <button onClick={() => saveEdit(order.id)} className="text-white bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded flex items-center text-sm font-medium transition-colors" title="Guardar"><FiSave className="mr-1" size={16} /> Guardar</button>
+                                                            <button onClick={() => setEditingOrderId(null)} className="text-gray-700 bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded flex items-center text-sm font-medium transition-colors" title="Cancelar"><FiX className="mr-1" size={16} /> Cancelar</button>
+                                                        </div>
                                                     ) : (
-                                                        <>
+                                                        <div className="flex flex-wrap gap-2 w-full md:w-auto md:justify-end md:inline-flex items-center">
                                                             <button onClick={() => handleStatusChange(order.id, 'completed')} className="text-white bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded flex items-center text-sm font-medium transition-colors" title="Marcar como Completado">
                                                                 <FiCheckCircle className="mr-1" /> Completado
                                                             </button>
                                                             <button onClick={() => startEditing(order)} className="text-blue-600 hover:bg-blue-100 p-2 rounded-full" title="Editar"><FiEdit size={18} /></button>
                                                             <button onClick={() => handleDelete(order.id)} className="text-red-600 hover:bg-red-100 p-2 rounded-full" title="Eliminar"><FiTrash2 size={18} /></button>
-                                                        </>
+                                                        </div>
                                                     )}
                                                 </td>
                                             </tr>
@@ -260,8 +264,8 @@ const EncargosPage = () => {
             {activeTab === 'historial' && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-gray-50 border-b">
+                        <table className="w-full text-left border-collapse block md:table">
+                            <thead className="bg-gray-50 border-b hidden md:table-header-group">
                                 <tr>
                                     <th className="p-4 font-semibold text-gray-600">Fecha</th>
                                     <th className="p-4 font-semibold text-gray-600">Cliente</th>
@@ -271,57 +275,61 @@ const EncargosPage = () => {
                                     <th className="p-4 font-semibold text-gray-600 text-right">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="block md:table-row-group">
                                 {orders.length === 0 ? (
                                     <tr><td colSpan="6" className="text-center py-8 text-gray-500">No hay encargos completados en el historial.</td></tr>
                                 ) : (
                                     orders.map(order => (
-                                        <tr key={order.id} className="border-b hover:bg-gray-50 opacity-80">
-                                            <td className="p-4 align-top">
-                                                {format(new Date(order.date), "d 'de' MMM, HH:mm", { locale: es })}
+                                        <tr key={order.id} className="border-b hover:bg-gray-50 opacity-80 block md:table-row bg-white rounded-lg shadow-sm md:shadow-none mb-4 md:mb-0 p-4 md:p-0">
+                                            <td className="p-2 md:p-4 align-top block md:table-cell border-b border-gray-100 md:border-none last:border-none">
+                                                <span className="inline-block md:hidden font-bold text-gray-500 mr-2">Fecha:</span> {format(new Date(order.date), "d 'de' MMM, HH:mm", { locale: es })}
                                             </td>
-                                            <td className="p-4 align-top">
+                                            <td className="p-2 md:p-4 align-top block md:table-cell border-b border-gray-100 md:border-none last:border-none">
+                                                <span className="inline-block md:hidden font-bold text-gray-500 mr-2">Cliente:</span>
                                                 {editingOrderId === order.id ? (
                                                     <input type="text" className="w-full p-1 border rounded" value={editForm.customer_name} onChange={e => setEditForm({...editForm, customer_name: e.target.value})} />
                                                 ) : (
                                                     <span className="font-medium">{order.customer_name}</span>
                                                 )}
                                             </td>
-                                            <td className="p-4 align-top">
+                                            <td className="p-2 md:p-4 align-top block md:table-cell border-b border-gray-100 md:border-none last:border-none">
+                                                <span className="inline-block md:hidden font-bold text-gray-500 mr-2">Teléfono:</span>
                                                 {editingOrderId === order.id ? (
                                                     <input type="text" className="w-full p-1 border rounded" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
                                                 ) : (
                                                     <span className="text-gray-600">{order.phone || '-'}</span>
                                                 )}
                                             </td>
-                                            <td className="p-4 align-top max-w-xs whitespace-pre-wrap">
+                                            <td className="p-2 md:p-4 align-top max-w-none md:max-w-xs whitespace-pre-wrap block md:table-cell border-b border-gray-100 md:border-none last:border-none">
+                                                <span className="inline-block md:hidden font-bold text-gray-500 mr-2">Descripción:</span>
                                                 {editingOrderId === order.id ? (
                                                     <textarea rows="2" className="w-full p-1 border rounded resize-none" value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} />
                                                 ) : (
                                                     order.description
                                                 )}
                                             </td>
-                                            <td className="p-4 align-top">
+                                            <td className="p-2 md:p-4 align-top block md:table-cell border-b border-gray-100 md:border-none last:border-none">
+                                                <span className="inline-block md:hidden font-bold text-gray-500 mr-2">Seña:</span>
                                                 {editingOrderId === order.id ? (
                                                     <input type="number" step="0.01" className="w-full p-1 border rounded" value={editForm.advance_payment} onChange={e => setEditForm({...editForm, advance_payment: e.target.value})} />
                                                 ) : (
                                                     <span className="text-green-600 font-medium">${order.advance_payment?.toFixed(2) || '0.00'}</span>
                                                 )}
                                             </td>
-                                            <td className="p-4 align-top text-right space-x-2 whitespace-nowrap">
+                                            <td className="p-3 md:p-4 align-top flex flex-wrap md:table-cell md:text-right gap-2 space-x-0 md:space-x-2 whitespace-normal md:whitespace-nowrap block border-b border-gray-100 md:border-none last:border-none">
                                                 {editingOrderId === order.id ? (
-                                                    <>
-                                                        <button onClick={() => saveEdit(order.id)} className="text-green-600 hover:bg-green-100 p-2 rounded-full" title="Guardar"><FiSave size={18} /></button>
-                                                        <button onClick={() => setEditingOrderId(null)} className="text-gray-600 hover:bg-gray-100 p-2 rounded-full" title="Cancelar"><FiX size={18} /></button>
-                                                    </>
+                                                    <div className="flex gap-2 w-full md:w-auto md:justify-end md:inline-flex items-center">
+                                                        <button onClick={() => saveEdit(order.id)} className="text-white bg-green-500 hover:bg-green-600 px-3 py-1.5 rounded flex items-center text-sm font-medium transition-colors" title="Guardar"><FiSave className="mr-1" size={16} /> Guardar</button>
+                                                        <button onClick={() => setEditingOrderId(null)} className="text-gray-700 bg-gray-200 hover:bg-gray-300 px-3 py-1.5 rounded flex items-center text-sm font-medium transition-colors" title="Cancelar"><FiX className="mr-1" size={16} /> Cancelar</button>
+                                                    </div>
                                                 ) : (
-                                                    <>
+                                                    <div className="flex flex-wrap gap-2 w-full md:w-auto md:justify-end md:inline-flex items-center">
                                                         <button onClick={() => handleStatusChange(order.id, 'active')} className="text-orange-500 hover:bg-orange-50 px-3 py-1.5 rounded flex items-center text-sm font-medium transition-colors border border-orange-200" title="Volver a Activo">
                                                             <FiClock className="mr-1" /> Reabrir
                                                         </button>
                                                         <button onClick={() => startEditing(order)} className="text-blue-600 hover:bg-blue-100 p-2 rounded-full" title="Editar"><FiEdit size={18} /></button>
                                                         <button onClick={() => handleDelete(order.id)} className="text-red-600 hover:bg-red-100 p-2 rounded-full" title="Eliminar"><FiTrash2 size={18} /></button>
-                                                    </>
+                                                    </div>
                                                 )}
                                             </td>
                                         </tr>
