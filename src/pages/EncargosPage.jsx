@@ -213,7 +213,7 @@ const EncargosPage = () => {
                                 </thead>
                                 <tbody className="block md:table-row-group">
                                     {orders.length === 0 ? (
-                                        <tr className="block w-full"><td colSpan="6" className="block w-full text-center py-8 text-gray-500">No hay encargos activos.</td></tr>
+                                        <tr className="block md:table-row w-full"><td colSpan="6" className="block md:table-cell w-full text-center py-8 text-gray-500">No hay encargos activos.</td></tr>
                                     ) : (
                                         orders.map(order => (
                                             <tr key={order.id} className="border-b hover:bg-gray-50 block md:table-row bg-white rounded-lg shadow-sm md:shadow-none mb-4 md:mb-0 p-4 md:p-0">
@@ -295,7 +295,7 @@ const EncargosPage = () => {
                             </thead>
                             <tbody className="block md:table-row-group">
                                 {orders.length === 0 ? (
-                                    <tr className="block w-full"><td colSpan="6" className="block w-full text-center py-8 text-gray-500">No hay encargos completados en el historial.</td></tr>
+                                    <tr className="block md:table-row w-full"><td colSpan="6" className="block md:table-cell w-full text-center py-8 text-gray-500">No hay encargos completados en el historial.</td></tr>
                                 ) : (
                                     orders.map(order => (
                                         <tr key={order.id} className="border-b hover:bg-gray-50 opacity-80 block md:table-row bg-white rounded-lg shadow-sm md:shadow-none mb-4 md:mb-0 p-4 md:p-0">
