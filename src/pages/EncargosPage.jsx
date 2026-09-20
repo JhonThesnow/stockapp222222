@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import useCustomOrderStore from '../store/useCustomOrderStore';
 import { FiPlus, FiTrash2, FiSave, FiEdit, FiCheckCircle, FiClock, FiX } from 'react-icons/fi';
 import { format } from 'date-fns';
@@ -19,13 +19,28 @@ const EncargosPage = () => {
     const [editingOrderId, setEditingOrderId] = useState(null);
     const [editForm, setEditForm] = useState({ customer_name: '', phone: '', description: '', advance_payment: '' });
 
+    // Pagination State for History Tab
+    const [historyPage, setHistoryPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
+
     useEffect(() => {
         if (activeTab === 'activos') {
             fetchOrders('active');
         } else if (activeTab === 'historial') {
             fetchOrders('completed');
+            setHistoryPage(1); // Reset page on tab change
         }
     }, [activeTab, fetchOrders]);
+
+    // Derived State for Pagination
+    const paginatedHistoryOrders = useMemo(() => {
+        if (activeTab !== 'historial') return [];
+        const startIndex = (historyPage - 1) * ITEMS_PER_PAGE;
+        const endIndex = startIndex + ITEMS_PER_PAGE;
+        return orders.slice(startIndex, endIndex);
+    }, [orders, activeTab, historyPage]);
+
+    const totalPages = Math.ceil(orders.length / ITEMS_PER_PAGE);
 
     const handleCreateOrder = async (e) => {
         e.preventDefault();
@@ -297,7 +312,7 @@ const EncargosPage = () => {
                                 {orders.length === 0 ? (
                                     <tr className="block md:table-row w-full"><td colSpan="6" className="block md:table-cell w-full text-center py-8 text-gray-500">No hay encargos completados en el historial.</td></tr>
                                 ) : (
-                                    orders.map(order => (
+                                    paginatedHistoryOrders.map(order => (
                                         <tr key={order.id} className="border-b hover:bg-gray-50 opacity-80 block md:table-row bg-white rounded-lg shadow-sm md:shadow-none mb-4 md:mb-0 p-4 md:p-0">
                                             <td className="p-2 md:p-4 align-top block md:table-cell border-b border-gray-100 md:border-none last:border-none">
                                                 <span className="inline-block md:hidden font-bold text-gray-500 mr-2">Fecha:</span> {format(new Date(order.date), "d 'de' MMM, HH:mm", { locale: es })}
@@ -356,6 +371,27 @@ const EncargosPage = () => {
                             </tbody>
                         </table>
                     </div>
+                    {orders.length > ITEMS_PER_PAGE && (
+                        <div className="flex justify-center mt-6 mb-6">
+                            <button
+                                onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                                disabled={historyPage === 1}
+                                className="px-4 py-2 mx-1 bg-white border rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                            >
+                                Anterior
+                            </button>
+                            <span className="px-4 py-2 text-gray-600 font-medium">
+                                Página {historyPage} de {totalPages}
+                            </span>
+                            <button
+                                onClick={() => setHistoryPage(p => p + 1)}
+                                disabled={historyPage >= totalPages}
+                                className="px-4 py-2 mx-1 bg-white border rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                            >
+                                Siguiente
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
