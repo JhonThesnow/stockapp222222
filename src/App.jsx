@@ -17,7 +17,7 @@ const Navigation = ({ onLinkClick }) => {
   };
   return (
     <nav className="bg-gray-800 text-white w-64 h-full p-4 flex flex-col flex-shrink-0">
-      <div className="text-2xl font-bold mb-10 text-center">Hindumar STOCK</div>
+      <div className="text-2xl font-bold mb-10 text-center">STOCK</div>
       <ul className="space-y-2">
         <li>
           <NavLink to="/" style={({ isActive }) => isActive ? activeLinkStyle : undefined} onClick={onLinkClick} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors">

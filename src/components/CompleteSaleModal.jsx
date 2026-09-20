@@ -6,8 +6,8 @@ import { formatNumber, roundCash } from '../utils/formatting.js';
 const CompleteSaleModal = ({ sale, onClose }) => {
     const { completeSale, paymentMethods, fetchPaymentMethods, loading, error } = useSalesStore();
 
-    // Empezamos con el método que ya traía la venta, si no, Efectivo
-    const initialMethod = sale.paymentMethod || 'Efectivo';
+    // Empezamos con el método que ya traía la venta, si no, vacío ("Seleccionar método")
+    const initialMethod = sale.paymentMethod || '';
     const [paymentMethod, setPaymentMethod] = useState(initialMethod);
 
     // Si viene con un descuento previo, lo usamos. Si no, y es Efectivo, aplicamos 10%.
