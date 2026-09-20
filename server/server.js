@@ -1095,6 +1095,55 @@ app.delete('/api/purchase_orders/:id', (req, res) => {
     });
 });
 
+// Endpoints de Encargos (Custom Orders)
+app.get('/api/custom_orders', (req, res) => {
+    const status = req.query.status;
+    let query = 'SELECT * FROM custom_orders';
+    let params = [];
+    if (status) {
+        query += ' WHERE status = ?';
+        params.push(status);
+    }
+    query += ' ORDER BY date DESC';
+
+    db.all(query, params, (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ data: rows });
+    });
+});
+
+app.post('/api/custom_orders', (req, res) => {
+    const { customer_name, phone, description, advance_payment, date, status } = req.body;
+    db.run(
+        'INSERT INTO custom_orders (customer_name, phone, description, advance_payment, date, status) VALUES (?, ?, ?, ?, ?, ?)',
+        [customer_name, phone, description, advance_payment || 0, date || new Date().toISOString(), status || 'active'],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ id: this.lastID });
+        }
+    );
+});
+
+app.put('/api/custom_orders/:id', (req, res) => {
+    const { customer_name, phone, description, advance_payment, status } = req.body;
+    db.run(
+        'UPDATE custom_orders SET customer_name = ?, phone = ?, description = ?, advance_payment = ?, status = ? WHERE id = ?',
+        [customer_name, phone, description, advance_payment, status, req.params.id],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ updated: this.changes });
+        }
+    );
+});
+
+app.delete('/api/custom_orders/:id', (req, res) => {
+    db.run('DELETE FROM custom_orders WHERE id = ?', [req.params.id], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ deleted: this.changes });
+    });
+});
+
+
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });

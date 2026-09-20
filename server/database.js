@@ -112,6 +112,16 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                 date TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'in_progress', groups TEXT NOT NULL, notes TEXT
             )`);
 
+            db.run(`CREATE TABLE IF NOT EXISTS custom_orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                customer_name TEXT NOT NULL,
+                phone TEXT,
+                description TEXT NOT NULL,
+                advance_payment REAL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'active'
+            )`);
+
             // --- ÍNDICES PARA OPTIMIZACIÓN ---
             db.run(`CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(date)`);
             db.run(`CREATE INDEX IF NOT EXISTS idx_sales_status ON sales(status)`);
