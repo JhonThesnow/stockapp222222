@@ -148,11 +148,18 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                     }
                 });
 
+
+                db.get("SELECT id FROM movement_categories WHERE name = 'Otro' AND type = 'deposit'", (err, row) => {
+                    if (!err && !row) {
+                        db.run("INSERT INTO movement_categories (name, type) VALUES ('Otro', 'deposit')");
+                    }
+                });
+
                 db.get("SELECT COUNT(*) as count FROM movement_categories", (err, row) => {
                     if (row.count === 0) {
                         console.log("Seeding: Creando categorías de movimientos...");
                         db.run(`INSERT INTO movement_categories (name, type) VALUES
-                            ('Aporte de Capital', 'deposit'), ('Préstamo', 'deposit'),
+                            ('Aporte de Capital', 'deposit'), ('Préstamo', 'deposit'), ('Otro', 'deposit'),
                             ('Retiro Personal', 'withdrawal'), ('Pago a Proveedores', 'withdrawal'),
                             ('Alquiler', 'withdrawal'), ('Servicios (Luz, Agua)', 'withdrawal'),
                             ('Sueldos', 'withdrawal'), ('Marketing', 'withdrawal'),
