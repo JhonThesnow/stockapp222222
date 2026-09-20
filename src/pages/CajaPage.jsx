@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import useSalesStore from '../store/useSalesStore';
+import useAccountStore from '../store/useAccountStore';
 import { formatNumber } from '../utils/formatting';
 import { FiPlay, FiPower, FiTrash, FiEdit, FiAlertTriangle, FiDollarSign } from 'react-icons/fi';
 import CompleteSaleModal from '../components/CompleteSaleModal';
@@ -11,6 +12,8 @@ const CajaPage = () => {
         currentShift, fetchCurrentShift, startShift, endShift,
         pendingSales, completedSales, fetchAllSales, loading, deletePendingSale
     } = useSalesStore();
+
+    const { accounts, fetchAccounts } = useAccountStore();
 
     const [saleToComplete, setSaleToComplete] = useState(null);
     const [saleToEdit, setSaleToEdit] = useState(null);
@@ -29,7 +32,8 @@ const CajaPage = () => {
     useEffect(() => {
         fetchCurrentShift();
         fetchAllSales();
-    }, [fetchCurrentShift, fetchAllSales]);
+        fetchAccounts();
+    }, [fetchCurrentShift, fetchAllSales, fetchAccounts]);
 
     // Check URL parameters for direct sale completion
     useEffect(() => {
@@ -64,6 +68,49 @@ const CajaPage = () => {
         const res = await endShift(currentShift.id);
         if (!res.success) {
             alert('Error al terminar turno: ' + res.error);
+        } else {
+            // Guardar cierre de caja automáticamente para cada método con ventas
+            const closuresPromises = [];
+
+            Object.entries(dashboardData.byMethod).forEach(([method, data]) => {
+                if (data.amount > 0) {
+                    // Mapear método de pago a cuenta
+                    let accountName = method;
+                    if (method === 'Efectivo') {
+                        accountName = 'Caja Principal';
+                    }
+
+                    const account = accounts.find(a => a.name === accountName);
+
+                    if (account) {
+                        const closingData = {
+                            accountId: account.id,
+                            expected: data.amount,
+                            counted: data.amount,
+                            difference: 0,
+                            notes: `Cierre automático (Turno #${currentShift.id})`
+                        };
+
+                        closuresPromises.push(
+                            fetch('/api/cash-closings', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(closingData)
+                            })
+                        );
+                    } else {
+                        console.warn(`No se encontró cuenta para el método de pago: ${method}`);
+                    }
+                }
+            });
+
+            if (closuresPromises.length > 0) {
+                try {
+                    await Promise.all(closuresPromises);
+                } catch (err) {
+                    console.error("Error guardando cierres de caja automáticos:", err);
+                }
+            }
         }
     };
 
