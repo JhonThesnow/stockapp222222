@@ -8,7 +8,8 @@ import SalesReportsPage from './pages/SalesReportsPage';
 import AccountPage from './pages/AccountPage';
 import OrdersPage from './pages/OrdersPage';
 import CajaPage from './pages/CajaPage';
-import { FiBox, FiTag, FiBarChart2, FiShoppingCart, FiMenu, FiUser, FiHome, FiClipboard, FiDollarSign } from 'react-icons/fi';
+import EncargosPage from './pages/EncargosPage';
+import { FiBox, FiTag, FiBarChart2, FiShoppingCart, FiMenu, FiUser, FiHome, FiClipboard, FiDollarSign, FiEdit3 } from 'react-icons/fi';
 
 const Navigation = ({ onLinkClick }) => {
   const activeLinkStyle = {
@@ -67,6 +68,12 @@ const Navigation = ({ onLinkClick }) => {
             <span>Reportes</span>
           </NavLink>
         </li>
+        <li>
+          <NavLink to="/encargos" style={({ isActive }) => isActive ? activeLinkStyle : undefined} onClick={onLinkClick} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors">
+            <FiEdit3 />
+            <span>Encargos</span>
+          </NavLink>
+        </li>
       </ul>
     </nav>
   );
@@ -100,6 +107,7 @@ const AppLayout = () => {
             <Route path="/sales" element={<SalesPage />} />
             <Route path="/ventas" element={<VentasPage />} />
             <Route path="/reports" element={<SalesReportsPage />} />
+            <Route path="/encargos" element={<EncargosPage />} />
           </Routes>
         </main>
       </div>
