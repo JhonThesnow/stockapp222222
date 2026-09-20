@@ -120,7 +120,7 @@ const EncargosPage = () => {
                     {!isFormOpen ? (
                         <button
                             onClick={() => setIsFormOpen(true)}
-                            className="w-full md:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl flex items-center font-medium shadow-sm transition-colors"
+                            className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl flex items-center font-medium shadow-sm transition-colors"
                         >
                             <FiPlus className="mr-2" size={20} /> Nuevo Encargo
                         </button>
@@ -213,7 +213,7 @@ const EncargosPage = () => {
                                 </thead>
                                 <tbody className="block md:table-row-group">
                                     {orders.length === 0 ? (
-                                        <tr className="block w-full"><td colSpan="6" className="block w-full text-center py-8 text-gray-500">No hay encargos activos.</td></tr>
+                                        <tr><td colSpan="6" className="text-center py-8 text-gray-500">No hay encargos activos.</td></tr>
                                     ) : (
                                         orders.map(order => (
                                             <tr key={order.id} className="border-b hover:bg-gray-50 block md:table-row bg-white rounded-lg shadow-sm md:shadow-none mb-4 md:mb-0 p-4 md:p-0">
@@ -295,7 +295,7 @@ const EncargosPage = () => {
                             </thead>
                             <tbody className="block md:table-row-group">
                                 {orders.length === 0 ? (
-                                    <tr className="block w-full"><td colSpan="6" className="block w-full text-center py-8 text-gray-500">No hay encargos completados en el historial.</td></tr>
+                                    <tr><td colSpan="6" className="text-center py-8 text-gray-500">No hay encargos completados en el historial.</td></tr>
                                 ) : (
                                     orders.map(order => (
                                         <tr key={order.id} className="border-b hover:bg-gray-50 opacity-80 block md:table-row bg-white rounded-lg shadow-sm md:shadow-none mb-4 md:mb-0 p-4 md:p-0">
