@@ -9,6 +9,7 @@ const EncargosPage = () => {
     const [activeTab, setActiveTab] = useState('activos');
 
     // Form State
+    const [isFormOpen, setIsFormOpen] = useState(false);
     const [customerName, setCustomerName] = useState('');
     const [phone, setPhone] = useState('');
     const [description, setDescription] = useState('');
@@ -44,6 +45,7 @@ const EncargosPage = () => {
         setPhone('');
         setDescription('');
         setAdvancePayment('');
+        setIsFormOpen(false);
 
         // Refresh
         fetchOrders('active');
@@ -115,69 +117,85 @@ const EncargosPage = () => {
             {activeTab === 'activos' && (
                 <div className="space-y-6">
                     {/* Add New Order Form */}
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                        <h2 className="text-lg font-semibold mb-4 flex items-center">
-                            <FiPlus className="mr-2" /> Nuevo Encargo
-                        </h2>
-                        <form onSubmit={handleCreateOrder} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-start">
-                            <div className="lg:col-span-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre (Obligatorio)</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
-                                    value={customerName}
-                                    onChange={e => setCustomerName(e.target.value)}
-                                    placeholder="Ej. Juan Pérez"
-                                />
-                            </div>
-                            <div className="lg:col-span-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono (Opcional)</label>
-                                <input
-                                    type="text"
-                                    className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
-                                    value={phone}
-                                    onChange={e => setPhone(e.target.value)}
-                                    placeholder="Ej. 099123456"
-                                />
-                            </div>
-                            <div className="lg:col-span-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Seña (Opcional)</label>
-                                <div className="relative">
-                                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                    {!isFormOpen ? (
+                        <button
+                            onClick={() => setIsFormOpen(true)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-xl flex items-center font-medium shadow-sm transition-colors"
+                        >
+                            <FiPlus className="mr-2" size={20} /> Nuevo Encargo
+                        </button>
+                    ) : (
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative">
+                            <button
+                                onClick={() => setIsFormOpen(false)}
+                                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                                title="Cerrar"
+                            >
+                                <FiX size={24} />
+                            </button>
+                            <h2 className="text-lg font-semibold mb-4 flex items-center">
+                                <FiPlus className="mr-2" /> Nuevo Encargo
+                            </h2>
+                            <form onSubmit={handleCreateOrder} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-start">
+                                <div className="lg:col-span-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Nombre (Obligatorio)</label>
                                     <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        className="w-full pl-8 p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
-                                        value={advancePayment}
-                                        onChange={e => setAdvancePayment(e.target.value)}
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                            </div>
-                            <div className="lg:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción del Encargo (Obligatorio)</label>
-                                <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
-                                    <textarea
+                                        type="text"
                                         required
-                                        rows="2"
-                                        className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500 resize-none"
-                                        value={description}
-                                        onChange={e => setDescription(e.target.value)}
-                                        placeholder="Ej. 2 docenas de velas de miel..."
+                                        className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
+                                        value={customerName}
+                                        onChange={e => setCustomerName(e.target.value)}
+                                        placeholder="Ej. Juan Pérez"
                                     />
-                                    <button
-                                        type="submit"
-                                        disabled={loading}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white p-2 sm:px-4 rounded flex items-center justify-center sm:w-auto w-full h-[42px] disabled:opacity-50 whitespace-nowrap"
-                                    >
-                                        <FiSave size={20} className="mr-1" /> Guardar
-                                    </button>
                                 </div>
-                            </div>
-                        </form>
-                    </div>
+                                <div className="lg:col-span-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono (Opcional)</label>
+                                    <input
+                                        type="text"
+                                        className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
+                                        value={phone}
+                                        onChange={e => setPhone(e.target.value)}
+                                        placeholder="Ej. 099123456"
+                                    />
+                                </div>
+                                <div className="lg:col-span-1">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Seña (Opcional)</label>
+                                    <div className="relative">
+                                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">$</span>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            className="w-full pl-8 p-2 border rounded focus:ring-blue-500 focus:border-blue-500"
+                                            value={advancePayment}
+                                            onChange={e => setAdvancePayment(e.target.value)}
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="lg:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Descripción del Encargo (Obligatorio)</label>
+                                    <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-end">
+                                        <textarea
+                                            required
+                                            rows="2"
+                                            className="w-full p-2 border rounded focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                            value={description}
+                                            onChange={e => setDescription(e.target.value)}
+                                            placeholder="Ej. 2 docenas de velas de miel..."
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={loading}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white p-2 sm:px-4 rounded flex items-center justify-center sm:w-auto w-full h-[42px] disabled:opacity-50 whitespace-nowrap"
+                                        >
+                                            <FiSave size={20} className="mr-1" /> Guardar
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    )}
 
                     {/* Active Orders List */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
