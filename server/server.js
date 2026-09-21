@@ -31,12 +31,14 @@ app.get('/api/shifts/current', (req, res) => {
 });
 
 app.post('/api/shifts/start', (req, res) => {
+    const { initialCash = 0 } = req.body || {};
+
     db.get("SELECT id FROM shifts WHERE status = 'active' LIMIT 1", [], (err, row) => {
         if (err) return res.status(500).json({ error: err.message });
         if (row) return res.status(400).json({ error: 'Ya hay un turno activo.' });
 
         const startTime = new Date().toISOString();
-        db.run("INSERT INTO shifts (startTime, status) VALUES (?, 'active')", [startTime], function(err) {
+        db.run("INSERT INTO shifts (startTime, status, initialCash) VALUES (?, 'active', ?)", [startTime, initialCash], function(err) {
             if (err) return res.status(500).json({ error: err.message });
             db.get("SELECT * FROM shifts WHERE id = ?", [this.lastID], (err, newShift) => {
                 if (err) return res.status(500).json({ error: err.message });

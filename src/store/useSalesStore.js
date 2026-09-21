@@ -32,9 +32,13 @@ const useSalesStore = create((set, get) => ({
             console.error("Error fetching shift:", error);
         }
     },
-    startShift: async () => {
+    startShift: async (initialCash = 0) => {
         try {
-            const res = await fetch(`${API_URL}/shifts/start`, { method: 'POST' });
+            const res = await fetch(`${API_URL}/shifts/start`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ initialCash })
+            });
             const json = await res.json();
             if (res.ok) {
                 set({ currentShift: json.data });
