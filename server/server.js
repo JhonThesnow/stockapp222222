@@ -838,8 +838,12 @@ app.get('/api/account/summary', (req, res) => {
     let queryParams = [...baseParams];
 
     if (accountId) {
-        accountFilter = ' AND accountId = ?';
-        queryParams.push(accountId);
+        if (accountId === 'dni_efectivo') {
+            accountFilter = " AND accountId IN (SELECT id FROM accounts WHERE name IN ('Caja Principal', 'Cuenta DNI'))";
+        } else {
+            accountFilter = ' AND accountId = ?';
+            queryParams.push(accountId);
+        }
     }
 
     const salesSql = `SELECT finalAmount FROM sales WHERE status = 'completed' AND date >= ? AND date <= ? ${accountFilter}`;
@@ -929,8 +933,12 @@ app.get('/api/cash-closings', (req, res) => {
     let params = [startDate, endDate];
 
     if (accountId) {
-        sql += " AND cc.accountId = ?";
-        params.push(accountId);
+        if (accountId === 'dni_efectivo') {
+            sql += " AND a.name IN ('Caja Principal', 'Cuenta DNI')";
+        } else {
+            sql += " AND cc.accountId = ?";
+            params.push(accountId);
+        }
     }
     sql += " ORDER BY cc.date DESC";
 
@@ -1011,8 +1019,12 @@ app.get('/api/account/movements', (req, res) => {
     let params = [startDate, endDate];
     let accountFilter = '';
     if (accountId) {
-        accountFilter = "AND accountId = ?";
-        params.push(accountId);
+        if (accountId === 'dni_efectivo') {
+            accountFilter = " AND accountId IN (SELECT id FROM accounts WHERE name IN ('Caja Principal', 'Cuenta DNI'))";
+        } else {
+            accountFilter = "AND accountId = ?";
+            params.push(accountId);
+        }
     }
 
     const sql = `
@@ -1025,8 +1037,10 @@ app.get('/api/account/movements', (req, res) => {
         WHERE date >= ? AND date <= ? ${accountFilter}
         ORDER BY date DESC
     `;
+
+    // Add params for the second part of the UNION ALL
     params.push(startDate, endDate);
-    if (accountId) {
+    if (accountId && accountId !== 'dni_efectivo') {
         params.push(accountId);
     }
 
