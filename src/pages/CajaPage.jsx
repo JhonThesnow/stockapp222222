@@ -49,7 +49,16 @@ const CajaPage = () => {
     }, [searchParams, pendingSales, setSearchParams]);
 
     const handleStartShift = async () => {
-        const res = await startShift();
+        const input = window.prompt("Ingresa la cantidad de dinero con la que arranca la caja:", "0");
+        if (input === null) return; // User cancelled
+
+        const initialCash = parseFloat(input);
+        if (isNaN(initialCash) || initialCash < 0) {
+            alert("Por favor, ingresa un monto válido mayor o igual a cero.");
+            return;
+        }
+
+        const res = await startShift(initialCash);
         if (!res.success) {
             alert('Error al iniciar turno: ' + res.error);
         }
@@ -103,6 +112,27 @@ const CajaPage = () => {
                     }
                 }
             });
+
+            // Add initial cash closing register if it was set
+            if (currentShift.initialCash > 0) {
+                const cajaPrincipal = accounts.find(a => a.name === 'Caja Principal');
+                if (cajaPrincipal) {
+                    const closingData = {
+                        accountId: cajaPrincipal.id,
+                        expected: currentShift.initialCash,
+                        counted: currentShift.initialCash,
+                        difference: 0,
+                        notes: `Caja de inicio (Turno #${currentShift.id})`
+                    };
+                    closuresPromises.push(
+                        fetch('/api/cash-closings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(closingData)
+                        })
+                    );
+                }
+            }
 
             if (closuresPromises.length > 0) {
                 try {
@@ -160,6 +190,7 @@ const CajaPage = () => {
         let total = 0;
         let profit = 0;
         const byMethod = {};
+        let cajaAmount = 0;
 
         shiftSales.forEach(sale => {
             if (sale.status === 'completed') {
@@ -171,6 +202,10 @@ const CajaPage = () => {
                     byMethod[method] = { amount: 0, profit: 0 };
                 }
                 byMethod[method].amount += saleTotal;
+
+                if (method === 'Efectivo' || method === 'Cuenta DNI') {
+                    cajaAmount += saleTotal;
+                }
 
                 // Approximate profit: finalAmount - total purchase price
                 let totalCost = 0;
@@ -188,7 +223,7 @@ const CajaPage = () => {
             }
         });
 
-        return { total, profit, byMethod };
+        return { total, profit, byMethod, cajaAmount };
     }, [shiftSales]);
 
     if (loading && !currentShift) {
@@ -222,7 +257,12 @@ const CajaPage = () => {
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-800">Caja Activa</h1>
-                    <p className="text-gray-500">Iniciada: {new Date(currentShift.startTime).toLocaleString('es-AR')}</p>
+                    <div className="flex items-center gap-4 text-gray-500">
+                        <p>Iniciada: {new Date(currentShift.startTime).toLocaleString('es-AR')}</p>
+                        {currentShift.initialCash !== undefined && currentShift.initialCash > 0 && (
+                            <p className="font-semibold px-2 py-1 bg-green-100 text-green-800 rounded">Caja de inicio: ${formatNumber(currentShift.initialCash)}</p>
+                        )}
+                    </div>
                 </div>
                 <button
                     onClick={handleEndShift}
@@ -388,10 +428,14 @@ const CajaPage = () => {
             {/* Resumen del Turno (Dashboard) */}
             <div className="bg-white rounded-xl shadow p-6 shrink-0 border-t-4 border-blue-500">
                 <h2 className="text-xl font-bold text-gray-800 mb-4">Resumen del Turno</h2>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div className="bg-blue-50 p-4 rounded-lg">
                         <p className="text-sm text-blue-600 font-semibold mb-1">Ventas Totales</p>
                         <p className="text-2xl font-black text-blue-800">${formatNumber(dashboardData.total)}</p>
+                    </div>
+                    <div className="bg-purple-50 p-4 rounded-lg">
+                        <p className="text-sm text-purple-600 font-semibold mb-1">Caja</p>
+                        <p className="text-2xl font-black text-purple-800">${formatNumber(dashboardData.cajaAmount)}</p>
                     </div>
                     <div className="bg-green-50 p-4 rounded-lg">
                         <p className="text-sm text-green-600 font-semibold mb-1">Ganancia Estimada</p>

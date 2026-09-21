@@ -52,8 +52,15 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 startTime TEXT NOT NULL,
                 endTime TEXT,
-                status TEXT NOT NULL DEFAULT 'active'
+                status TEXT NOT NULL DEFAULT 'active',
+                initialCash REAL DEFAULT 0
             )`);
+
+            db.run(`ALTER TABLE shifts ADD COLUMN initialCash REAL DEFAULT 0`, (err) => {
+                if (err && !err.message.includes("duplicate column")) {
+                    console.log("Error adding initialCash to shifts:", err.message);
+                }
+            });
 
             db.run(`CREATE TABLE IF NOT EXISTS sales (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
