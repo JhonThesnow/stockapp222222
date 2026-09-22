@@ -2,12 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import useInventoryStore from '../store/useInventoryStore';
 import { FiSearch, FiPercent, FiDollarSign, FiChevronDown, FiChevronUp, FiTrash, FiCamera } from 'react-icons/fi';
 import { formatDateOnly } from '../utils/formatting';
-import BarcodeScannerModal from './BarcodeScannerModal';
 
 const PriceIncreases = () => {
     const { products, increasePrices, fetchPriceIncreaseHistory, priceIncreaseHistory, deletePriceIncrease } = useInventoryStore();
     const [searchTerm, setSearchTerm] = useState('');
-    const [showScanner, setShowScanner] = useState(false);
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [increaseType, setIncreaseType] = useState('percentage'); // 'percentage' or 'fixed'
     const [increaseValue, setIncreaseValue] = useState('');
@@ -76,23 +74,6 @@ const PriceIncreases = () => {
         setOpenEntries(prev => ({ ...prev, [entryId]: !prev[entryId] }));
     };
 
-    const onBarcodeDetected = (code) => {
-        setShowScanner(false);
-        setSearchTerm(code);
-
-        // Find product with matching code
-        const product = products.find(p => p.code === code);
-
-        if (product) {
-            // Check if already selected
-            const isAlreadySelected = selectedProducts.some(p => p.id === product.id);
-
-            if (!isAlreadySelected) {
-                setSelectedProducts(prev => [...prev, product]);
-            }
-        }
-    };
-
     const handleDelete = (id) => {
         if (window.confirm('¿Estás seguro de eliminar este registro del historial? Esta acción no se puede deshacer.')) {
             deletePriceIncrease(id);
@@ -138,21 +119,7 @@ const PriceIncreases = () => {
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-12 py-2 border rounded-lg"
                     />
-                    <button
-                        onClick={() => setShowScanner(true)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-600 p-1"
-                        title="Escanear Código de Barras"
-                    >
-                        <FiCamera size={20} />
-                    </button>
                 </div>
-
-                {showScanner && (
-                    <BarcodeScannerModal
-                        onDetected={onBarcodeDetected}
-                        onClose={() => setShowScanner(false)}
-                    />
-                )}
 
                 {filteredProducts.length > 0 ? (
                     <div className="max-h-64 overflow-y-auto border rounded-lg p-2 space-y-2">

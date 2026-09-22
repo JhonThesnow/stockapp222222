@@ -10,6 +10,8 @@ const useInventoryStore = create((set, get) => ({
     priceIncreaseHistory: { entries: [], totalPages: 1 },
     loading: false,
     error: null,
+    globalSearchTerm: '',
+    setGlobalSearchTerm: (term) => set({ globalSearchTerm: term }),
 
     fetchProducts: async (params = {}) => {
         set({ loading: true, error: null });

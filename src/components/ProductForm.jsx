@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import useInventoryStore from '../store/useInventoryStore.js';
 import { FiX, FiPlus, FiTrash, FiCamera, FiCopy } from 'react-icons/fi';
-import BarcodeScannerModal from './BarcodeScannerModal.jsx';
 
 const newVariation = {
     variationName: '',
@@ -23,10 +22,6 @@ const ProductForm = ({ productToEdit, onClose }) => {
 
     const [editData, setEditData] = useState(null);
     const [notifyLowStock, setNotifyLowStock] = useState(true);
-
-    // State for barcode scanner
-    const [showScanner, setShowScanner] = useState(false);
-    const [scanningVariationIndex, setScanningVariationIndex] = useState(null);
 
     useEffect(() => {
         if (isEditMode) {
@@ -52,19 +47,6 @@ const ProductForm = ({ productToEdit, onClose }) => {
             setNotifyLowStock(productToEdit.lowStockThreshold > 0);
         }
     }, [productToEdit, isEditMode]);
-
-    const handleBarcodeDetected = (scannedCode) => {
-        setShowScanner(false);
-        if (isEditMode) {
-            setEditData(prev => ({ ...prev, code: scannedCode }));
-        } else if (scanningVariationIndex !== null) {
-            const newVariations = [...variations];
-            newVariations[scanningVariationIndex].code = scannedCode;
-            setVariations(newVariations);
-            setScanningVariationIndex(null);
-        }
-    };
-
 
     const handleCommonChange = (e) => {
         setCommonData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -197,7 +179,6 @@ const ProductForm = ({ productToEdit, onClose }) => {
         if (!editData) return null;
         return (
             <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-                {showScanner && <BarcodeScannerModal onDetected={handleBarcodeDetected} onClose={() => setShowScanner(false)} />}
                 <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-2xl font-bold">Editar Producto</h2>
@@ -234,17 +215,9 @@ const ProductForm = ({ productToEdit, onClose }) => {
                                     name="code"
                                     value={editData.code || ''}
                                     onChange={handleEditChange}
-                                    placeholder="Escanear o ingresar código de barras"
-                                    className="p-2 border rounded w-full pr-10"
+                                    placeholder="Ingresar código de barras"
+                                    className="p-2 border rounded w-full"
                                 />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowScanner(true)}
-                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-blue-600"
-                                    aria-label="Escanear código de barras"
-                                >
-                                    <FiCamera size={20} />
-                                </button>
                             </div>
                         </div>
 
@@ -289,7 +262,6 @@ const ProductForm = ({ productToEdit, onClose }) => {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-            {showScanner && <BarcodeScannerModal onDetected={handleBarcodeDetected} onClose={() => setShowScanner(false)} />}
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
                 <div className="flex justify-between items-center mb-6 border-b pb-4">
                     <div className="flex items-center gap-4">
@@ -356,15 +328,7 @@ const ProductForm = ({ productToEdit, onClose }) => {
                                             <div className="w-full md:w-48">
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Código de Barras</label>
                                                 <div className="relative">
-                                                    <input name="code" placeholder="Opcional" value={v.code || ''} onChange={e => handleVariationChange(vIndex, e)} className="p-2.5 border border-gray-300 rounded-lg w-full pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => { setScanningVariationIndex(vIndex); setShowScanner(true); }}
-                                                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-blue-600 transition-colors"
-                                                        title="Escanear código"
-                                                    >
-                                                        <FiCamera size={18} />
-                                                    </button>
+                                                    <input name="code" placeholder="Opcional" value={v.code || ''} onChange={e => handleVariationChange(vIndex, e)} className="p-2.5 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                                                 </div>
                                             </div>
                                         </div>
