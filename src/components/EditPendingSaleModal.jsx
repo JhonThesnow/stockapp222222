@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import useSalesStore from '../store/useSalesStore';
-import useProductStore from '../store/useProductStore';
+import useInventoryStore from '../store/useInventoryStore';
 import Select from 'react-select';
 import { FiX, FiSave, FiPlus, FiMinus, FiXCircle, FiShoppingCart } from 'react-icons/fi';
 import { formatNumber } from '../utils/formatting';
 
 const EditPendingSaleModal = ({ sale, onClose }) => {
     const { updatePendingSale, loading, error } = useSalesStore();
-    const { products, fetchProducts } = useProductStore();
+    const { products, fetchProducts } = useInventoryStore();
 
     useEffect(() => {
         fetchProducts({ limit: 9999 });

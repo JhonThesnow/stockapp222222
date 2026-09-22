@@ -3,7 +3,7 @@ import ProductForm from '../components/ProductForm.jsx';
 import RestockModal from '../components/RestockModal.jsx';
 import ConfirmModal from '../components/ConfirmModal.jsx';
 import { FiPlusCircle, FiBox, FiEdit, FiTrash2, FiChevronDown, FiChevronUp, FiDollarSign, FiTrendingUp, FiSearch, FiPlus, FiCamera, FiFilter, FiLayers } from 'react-icons/fi';
-import useProductStore from '../store/useProductStore.js';
+import useInventoryStore from '../store/useInventoryStore.js';
 import { formatNumber } from '../utils/formatting.js';
 import BarcodeScannerModal from '../components/BarcodeScannerModal.jsx';
 import StockIncome from '../components/StockIncome.jsx';
@@ -96,7 +96,7 @@ const InventoryPage = () => {
 
     const [deleteModalConfig, setDeleteModalConfig] = useState({ isOpen: false, productId: null });
 
-    const { products, totalPages, loading, error, fetchProducts, deleteProduct } = useProductStore();
+    const { products, totalPages, loading, error, fetchProducts, deleteProduct } = useInventoryStore();
     const [allProducts, setAllProducts] = useState([]);
 
     // Cargar todos los productos para los selectores de filtros

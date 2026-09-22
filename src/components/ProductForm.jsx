@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import useProductStore from '../store/useProductStore.js';
+import useInventoryStore from '../store/useInventoryStore.js';
 import { FiX, FiPlus, FiTrash, FiCamera, FiCopy } from 'react-icons/fi';
 import BarcodeScannerModal from './BarcodeScannerModal.jsx';
 
@@ -14,7 +14,7 @@ const newVariation = {
 };
 
 const ProductForm = ({ productToEdit, onClose }) => {
-    const { addBatchProducts, updateProduct } = useProductStore();
+    const { addBatchProducts, updateProduct } = useInventoryStore();
 
     const isEditMode = Boolean(productToEdit);
 

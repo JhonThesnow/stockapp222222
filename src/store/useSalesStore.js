@@ -1,5 +1,6 @@
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, format } from 'date-fns';
 import { create } from 'zustand';
-import useProductStore from './useProductStore';
+import useInventoryStore from './useInventoryStore';
 import useAccountStore from './useAccountStore';
 import { roundCash } from '../utils/formatting';
 
@@ -15,6 +16,16 @@ const useSalesStore = create((set, get) => ({
     paymentMethods: [],
     monthlySummary: null,
     currentPaymentMethod: null,
+    reports: { today: null, week: null, month: null },
+    reportFilters: {
+        startDate: startOfMonth(new Date()),
+        endDate: endOfMonth(new Date()),
+        names: [],
+        brands: [],
+        lines: [],
+        compare: false,
+    },
+    reportData: null,
     loading: false,
     error: null,
 
@@ -92,7 +103,7 @@ const useSalesStore = create((set, get) => ({
         set(state => ({ cart: state.cart.filter((item) => item.id !== productId) }));
     },
     updateItemQuantity: (productId, quantity) => {
-        const productInDB = useProductStore.getState().products.find(p => p.id === productId);
+        const productInDB = useInventoryStore.getState().products.find(p => p.id === productId);
         let newQuantity = parseInt(quantity, 10);
         if (isNaN(newQuantity) || newQuantity < 1) newQuantity = 1;
 
@@ -215,7 +226,7 @@ const useSalesStore = create((set, get) => ({
                 throw new Error(errorText.error || 'Falló al completar la venta');
             }
             get().fetchAllSales();
-            useProductStore.getState().fetchProducts();
+            useInventoryStore.getState().fetchProducts();
             useAccountStore.getState().fetchAccountSummary();
             return { success: true };
         } catch (e) {
@@ -237,7 +248,7 @@ const useSalesStore = create((set, get) => ({
                 throw new Error(err.error || 'Falló al cancelar la venta.');
             }
             get().fetchAllSales();
-            useProductStore.getState().fetchProducts();
+            useInventoryStore.getState().fetchProducts();
             useAccountStore.getState().fetchDataForCurrentState();
             return { success: true };
         } catch (e) {
@@ -384,6 +395,141 @@ const useSalesStore = create((set, get) => ({
             return { success: false };
         }
     }
+,
+
+    // --- REPORTS ---
+    generateReports: async () => {
+        set({ loading: true, error: null });
+        try {
+            const allSales = get().completedSales.map(s => ({ ...s, date: new Date(s.date) }));
+            const allProducts = useInventoryStore.getState().products;
+
+            const todayReport = processSalesData(allSales, startOfDay(new Date()), endOfDay(new Date()));
+            const weekReport = processSalesData(allSales, startOfWeek(new Date(), { weekStartsOn: 1 }), endOfWeek(new Date(), { weekStartsOn: 1 }));
+            const monthReport = processSalesData(allSales, startOfMonth(new Date()), endOfMonth(new Date()));
+
+            const topProducts = calculateTopProducts(allSales, allProducts);
+
+            set({
+                reports: {
+                    today: { ...todayReport, topProducts: calculateTopProducts(todayReport.sales, allProducts) },
+                    week: { ...weekReport, topProducts: calculateTopProducts(weekReport.sales, allProducts) },
+                    month: { ...monthReport, topProducts },
+                },
+                loading: false,
+            });
+        } catch (e) {
+            console.error("Error generating reports:", e);
+            set({ loading: false, error: e.message });
+        }
+    },
+
+    setReportFilters: (newFilters) => {
+        set(state => ({
+            reportFilters: { ...state.reportFilters, ...newFilters }
+        }));
+    },
+
+    resetReportFilters: () => {
+        set({
+            reportFilters: {
+                startDate: startOfMonth(new Date()),
+                endDate: endOfMonth(new Date()),
+                names: [],
+                brands: [],
+                lines: [],
+                compare: false,
+            }
+        });
+        get().fetchReportData();
+    },
+
+    fetchReportData: async () => {
+        set({ loading: true, error: null });
+        const { reportFilters } = get();
+        try {
+            const response = await fetch(`${API_URL}/sales-report-data`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    startDate: format(reportFilters.startDate, "yyyy-MM-dd"),
+                    endDate: format(reportFilters.endDate, "yyyy-MM-dd"),
+                    names: reportFilters.names ? reportFilters.names.map(n => n.value) : [],
+                    brands: reportFilters.brands ? reportFilters.brands.map(b => b.value) : [],
+                    lines: reportFilters.lines ? reportFilters.lines.map(l => l.value) : [],
+                    compare: reportFilters.compare,
+                }),
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || "Failed to fetch report data");
+            }
+            const data = await response.json();
+            set({ reportData: data, loading: false });
+        } catch (e) {
+            set({ loading: false, error: e.message });
+        }
+    }
 }));
 
+
+// --- Helper Functions ---
+
+const processSalesData = (allSales, startDate, endDate) => {
+    const filteredSales = allSales.filter(sale => sale.date >= startDate && sale.date <= endDate);
+
+    let totalRevenue = 0;
+    let totalProfit = 0;
+    let cashRevenue = 0;
+    let cardRevenue = 0;
+
+    filteredSales.forEach(sale => {
+        totalRevenue += sale.totalAmount;
+        if (sale.paymentMethod && sale.paymentMethod.toLowerCase() === "efectivo") {
+            cashRevenue += sale.totalAmount;
+        } else {
+            cardRevenue += sale.totalAmount;
+        }
+
+        if (sale.items) {
+            sale.items.forEach(item => {
+                const profitPerItem = (item.unitPrice - item.purchasePrice) * item.quantity;
+                totalProfit += profitPerItem;
+            });
+        }
+    });
+
+    return {
+        sales: filteredSales,
+        totalSales: filteredSales.length,
+        totalRevenue,
+        totalProfit,
+        cashRevenue,
+        cardRevenue
+    };
+};
+
+const calculateTopProducts = (sales, products) => {
+    const productSales = {};
+
+    sales.forEach(sale => {
+        if (sale.items) {
+            sale.items.forEach(item => {
+                if (productSales[item.productId]) {
+                    productSales[item.productId].quantity += item.quantity;
+                } else {
+                    const productInfo = products.find(p => p.id === item.productId);
+                    productSales[item.productId] = {
+                        name: productInfo ? productInfo.name : "Producto Eliminado",
+                        quantity: item.quantity,
+                    };
+                }
+            });
+        }
+    });
+
+    return Object.values(productSales)
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, 10);
+};
 export default useSalesStore;

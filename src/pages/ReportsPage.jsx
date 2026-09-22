@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import useReportsStore from '../store/reportsStore';
+import useSalesStore from '../store/useSalesStore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { FiTrendingUp, FiDollarSign, FiAward, FiCalendar, FiFileText } from 'react-icons/fi';
 import { format } from 'date-fns';
@@ -19,11 +19,11 @@ const StatCard = ({ title, value, icon, color }) => (
 );
 
 const ReportsPage = () => {
-    const { reports, loading, generateReports } = useReportsStore();
+    const { reports, loading, generateReports, fetchAllSales } = useSalesStore();
     const [activePeriod, setActivePeriod] = useState('today'); // 'today', 'week', 'month'
 
     useEffect(() => {
-        generateReports();
+        fetchAllSales().then(() => generateReports());
     }, []);
 
     const activeReport = reports[activePeriod];

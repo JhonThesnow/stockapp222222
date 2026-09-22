@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import useProductStore from '../store/useProductStore';
+import useInventoryStore from '../store/useInventoryStore';
 import useSalesStore from '../store/useSalesStore';
 import { FiSearch, FiPlus, FiMinus, FiXCircle, FiShoppingCart, FiChevronLeft, FiChevronRight, FiCamera, FiPlusCircle, FiDollarSign, FiAlertTriangle } from 'react-icons/fi';
 import GoToCajaModal from '../components/GoToCajaModal';
@@ -20,7 +20,7 @@ const SalesPage = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 7;
 
-    const { products, totalPages, fetchProducts, loading: productsLoading } = useProductStore();
+    const { products, totalPages, fetchProducts, loading: productsLoading } = useInventoryStore();
     const {
         cart,
         addItemToCart,

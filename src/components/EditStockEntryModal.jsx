@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import useProductStore from '../store/useProductStore.js';
+import useInventoryStore from '../store/useInventoryStore.js';
 import { FiX, FiPlus, FiTrash, FiSave } from 'react-icons/fi';
 
 const EditStockEntryModal = ({ entry, onClose }) => {
-    const { updateStockEntry, products: allProducts } = useProductStore();
+    const { updateStockEntry, products: allProducts } = useInventoryStore();
     const [products, setProducts] = useState([]);
     const [showAddProduct, setShowAddProduct] = useState(false);
     const [productToAdd, setProductToAdd] = useState('');
