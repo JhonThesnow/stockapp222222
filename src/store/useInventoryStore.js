@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 const API_URL = '/api';
 
-const useProductStore = create((set, get) => ({
+const useInventoryStore = create((set, get) => ({
     products: [],
     totalPages: 1,
     currentPage: 1,
@@ -178,4 +178,4 @@ const useProductStore = create((set, get) => ({
     },
 }));
 
-export default useProductStore;
+export default useInventoryStore;

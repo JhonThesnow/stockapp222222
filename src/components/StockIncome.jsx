@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import useProductStore from '../store/useProductStore';
+import useInventoryStore from '../store/useInventoryStore';
 import { FiSearch, FiChevronDown, FiChevronUp, FiEdit, FiTrash, FiCamera } from 'react-icons/fi';
 import { formatDateOnly } from '../utils/formatting';
 import BarcodeScannerModal from './BarcodeScannerModal.jsx';
 
 const StockIncome = () => {
-    const { products, batchRestock, fetchStockEntriesHistory, stockEntriesHistory, deleteStockEntry, updateStockEntry, fetchProducts } = useProductStore();
+    const { products, batchRestock, fetchStockEntriesHistory, stockEntriesHistory, deleteStockEntry, updateStockEntry, fetchProducts } = useInventoryStore();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedProducts, setSelectedProducts] = useState({});
     const [currentPage, setCurrentPage] = useState(1);

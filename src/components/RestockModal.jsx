@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import useProductStore from '../store/useProductStore';
+import useInventoryStore from '../store/useInventoryStore';
 import { FiX, FiPackage } from 'react-icons/fi';
 
 const RestockModal = ({ product, onClose }) => {
-    const { restockProduct, loading } = useProductStore();
+    const { restockProduct, loading } = useInventoryStore();
     const [quantity, setQuantity] = useState('');
 
     const handleSubmit = async (e) => {
