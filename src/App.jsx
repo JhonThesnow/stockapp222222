@@ -3,13 +3,11 @@ import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 're
 import DashboardPage from './pages/DashboardPage';
 import InventoryPage from './pages/InventoryPage';
 import SalesPage from './pages/SalesPage';
-import VentasPage from './pages/VentasPage';
-import SalesReportsPage from './pages/SalesReportsPage';
+import ReportsPage from './pages/ReportsPage';
 import AccountPage from './pages/AccountPage';
-import OrdersPage from './pages/OrdersPage';
 import CajaPage from './pages/CajaPage';
 import EncargosPage from './pages/EncargosPage';
-import { FiBox, FiTag, FiBarChart2, FiShoppingCart, FiMenu, FiUser, FiHome, FiClipboard, FiDollarSign, FiEdit3 } from 'react-icons/fi';
+import { FiBox, FiBarChart2, FiShoppingCart, FiMenu, FiUser, FiHome, FiClipboard, FiDollarSign } from 'react-icons/fi';
 
 const Navigation = ({ onLinkClick }) => {
   const activeLinkStyle = {
@@ -39,12 +37,6 @@ const Navigation = ({ onLinkClick }) => {
           </NavLink>
         </li>
         <li>
-          <NavLink to="/pedidos" style={({ isActive }) => isActive ? activeLinkStyle : undefined} onClick={onLinkClick} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors">
-            <FiClipboard />
-            <span>Pedidos</span>
-          </NavLink>
-        </li>
-        <li>
           <NavLink to="/caja" style={({ isActive }) => isActive ? activeLinkStyle : undefined} onClick={onLinkClick} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors">
             <FiDollarSign />
             <span>Caja</span>
@@ -52,12 +44,6 @@ const Navigation = ({ onLinkClick }) => {
         </li>
         <li>
           <NavLink to="/sales" style={({ isActive }) => isActive ? activeLinkStyle : undefined} onClick={onLinkClick} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors">
-            <FiTag />
-            <span>Cobrar</span>
-          </NavLink>
-        </li>
-        <li>
-          <NavLink to="/ventas" style={({ isActive }) => isActive ? activeLinkStyle : undefined} onClick={onLinkClick} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors">
             <FiShoppingCart />
             <span>Ventas</span>
           </NavLink>
@@ -70,7 +56,7 @@ const Navigation = ({ onLinkClick }) => {
         </li>
         <li>
           <NavLink to="/encargos" style={({ isActive }) => isActive ? activeLinkStyle : undefined} onClick={onLinkClick} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors">
-            <FiEdit3 />
+            <FiClipboard />
             <span>Encargos</span>
           </NavLink>
         </li>
@@ -102,11 +88,9 @@ const AppLayout = () => {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/cuenta" element={<AccountPage />} />
             <Route path="/inventario" element={<InventoryPage />} />
-            <Route path="/pedidos" element={<OrdersPage />} />
             <Route path="/caja" element={<CajaPage />} />
             <Route path="/sales" element={<SalesPage />} />
-            <Route path="/ventas" element={<VentasPage />} />
-            <Route path="/reports" element={<SalesReportsPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
             <Route path="/encargos" element={<EncargosPage />} />
           </Routes>
         </main>
