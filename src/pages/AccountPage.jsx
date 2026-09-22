@@ -4,7 +4,7 @@ import { formatNumber } from '../utils/formatting';
 import { FiTrendingUp, FiTrendingDown, FiPlus, FiX, FiFileText, FiEdit, FiTrash, FiDollarSign } from 'react-icons/fi';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import EditMovementModal from '../components/EditMovementModal';
+import EditMovementDrawer from '../components/EditMovementDrawer';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 const ModifyFundsModal = ({ onClose, accounts, selectedAccountId }) => {
@@ -148,7 +148,7 @@ const AccountPage = () => {
     return (
         <div className="p-4 md:p-6 bg-gray-50 min-h-full">
             {showModifyFundsModal && <ModifyFundsModal onClose={() => setShowModifyFundsModal(false)} accounts={accounts} selectedAccountId={selectedAccountId} />}
-            {movementToEdit && <EditMovementModal movement={movementToEdit} onClose={() => setMovementToEdit(null)} />}
+            {movementToEdit && <EditMovementDrawer movement={movementToEdit} onClose={() => setMovementToEdit(null)} />}
 
             {/* Cabecera Principal y Selección de Cuenta */}
             <div className="flex flex-col lg:flex-row justify-between lg:items-center mb-6 gap-4">
