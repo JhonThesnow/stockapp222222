@@ -2,15 +2,11 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import useInventoryStore from '../store/useInventoryStore';
 import useSalesStore from '../store/useSalesStore';
 import { FiSearch, FiPlus, FiMinus, FiXCircle, FiShoppingCart, FiChevronLeft, FiChevronRight, FiCamera, FiPlusCircle, FiDollarSign, FiAlertTriangle } from 'react-icons/fi';
-import GoToCajaModal from '../components/GoToCajaModal';
-import BarcodeScannerModal from '../components/BarcodeScannerModal';
 import QuickSaleModal from '../components/QuickSaleModal';
 import { formatNumber, roundCash } from '../utils/formatting';
 
 const SalesPage = () => {
     const [showCartOnMobile, setShowCartOnMobile] = useState(false);
-    const [showScanner, setShowScanner] = useState(false);
-    const [createdSaleId, setCreatedSaleId] = useState(null);
     const [showQuickSale, setShowQuickSale] = useState(false);
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -107,19 +103,6 @@ const SalesPage = () => {
         }
     };
 
-    const onBarcodeDetected = (code) => {
-        setShowScanner(false);
-        const productFound = allProducts.find(p => p.code && p.code.toLowerCase() === code.toLowerCase());
-        if (productFound) {
-            handleAddItem(productFound);
-        } else {
-            setSearchTerm(code);
-            if (window.innerWidth > 768) {
-                searchInputRef.current?.focus();
-            }
-        }
-    };
-
     const handleDirectCobrar = async () => {
         const saleDetails = {
             subtotal: cartSubtotal,
@@ -131,7 +114,6 @@ const SalesPage = () => {
         const res = await createPendingSale(saleDetails);
         if (res.success) {
             setShowCartOnMobile(false);
-            setCreatedSaleId(res.saleId);
         } else {
             alert("Hubo un error al registrar la venta: " + res.error);
         }
@@ -151,14 +133,7 @@ const SalesPage = () => {
 
     return (
         <div className="flex flex-col md:grid md:grid-cols-3 md:gap-6 h-full p-2 md:p-4 bg-gray-50">
-            {createdSaleId && (
-                <GoToCajaModal
-                    saleId={createdSaleId}
-                    onClose={() => setCreatedSaleId(null)}
-                />
-            )}
 
-            {showScanner && <BarcodeScannerModal onDetected={onBarcodeDetected} onClose={() => setShowScanner(false)} />}
             {showQuickSale && <QuickSaleModal onClose={() => setShowQuickSale(false)} />}
 
 
@@ -184,11 +159,8 @@ const SalesPage = () => {
                                     setSelectedBrand('Todas');
                                 }
                             }}
-                            className="w-full pl-8 md:pl-10 pr-10 md:pr-12 py-2 md:py-2.5 border rounded-xl text-sm md:text-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
+                            className="w-full pl-8 md:pl-10 pr-4 py-2 md:py-2.5 border rounded-xl text-sm md:text-lg focus:ring-blue-500 focus:border-blue-500 transition-all"
                         />
-                        <button onClick={() => setShowScanner(true)} className="absolute right-2 md:right-3 top-1/2 -translate-y-1/2 text-white bg-blue-600 hover:bg-blue-700 p-2 rounded-lg">
-                            <FiCamera className="w-4 h-4 md:w-5 md:h-5" />
-                        </button>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
                         <select

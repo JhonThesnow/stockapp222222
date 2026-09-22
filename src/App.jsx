@@ -8,6 +8,10 @@ import AccountPage from './pages/AccountPage';
 import CajaPage from './pages/CajaPage';
 import EncargosPage from './pages/EncargosPage';
 import { FiBox, FiBarChart2, FiShoppingCart, FiMenu, FiUser, FiHome, FiClipboard, FiDollarSign } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
+import { useHotkeys } from 'react-hotkeys-hook';
+import { useGlobalScanner } from './hooks/useGlobalScanner';
+import { Toaster } from 'sonner';
 
 const Navigation = ({ onLinkClick }) => {
   const activeLinkStyle = {
@@ -68,9 +72,19 @@ const Navigation = ({ onLinkClick }) => {
 const AppLayout = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useGlobalScanner();
+
+  useHotkeys('f12', (e) => {
+    e.preventDefault();
+    navigate('/caja');
+  }, { enableOnFormTags: true });
+
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location]);
+
   return (
     <div className="h-screen flex bg-gray-100">
       <div className="hidden md:flex">
@@ -110,6 +124,7 @@ const AppLayout = () => {
 const App = () => (
   <Router>
     <AppLayout />
+    <Toaster position="top-right" richColors />
   </Router>
 );
 

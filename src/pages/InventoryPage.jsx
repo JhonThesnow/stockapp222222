@@ -5,7 +5,6 @@ import ConfirmModal from '../components/ConfirmModal.jsx';
 import { FiPlusCircle, FiBox, FiEdit, FiTrash2, FiChevronDown, FiChevronUp, FiDollarSign, FiTrendingUp, FiSearch, FiPlus, FiCamera, FiFilter, FiLayers } from 'react-icons/fi';
 import useInventoryStore from '../store/useInventoryStore.js';
 import { formatNumber } from '../utils/formatting.js';
-import BarcodeScannerModal from '../components/BarcodeScannerModal.jsx';
 import StockIncome from '../components/StockIncome.jsx';
 import PriceIncreases from '../components/PriceIncreases.jsx';
 
@@ -85,7 +84,6 @@ const InventoryPage = () => {
     const [debouncedSearch, setDebouncedSearch] = useState('');
 
     const [activeFilters, setActiveFilters] = useState({ brand: '', name: '', sortBy: '' });
-    const [showScanner, setShowScanner] = useState(false);
     const [showMobileFilters, setShowMobileFilters] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
 
@@ -96,8 +94,15 @@ const InventoryPage = () => {
 
     const [deleteModalConfig, setDeleteModalConfig] = useState({ isOpen: false, productId: null });
 
-    const { products, totalPages, loading, error, fetchProducts, deleteProduct } = useInventoryStore();
+    const { products, totalPages, loading, error, fetchProducts, deleteProduct, globalSearchTerm, setGlobalSearchTerm } = useInventoryStore();
     const [allProducts, setAllProducts] = useState([]);
+
+    useEffect(() => {
+        if (globalSearchTerm) {
+            setSearchInput(globalSearchTerm);
+            setGlobalSearchTerm('');
+        }
+    }, [globalSearchTerm, setGlobalSearchTerm]);
 
     // Cargar todos los productos para los selectores de filtros
     useEffect(() => {
@@ -229,11 +234,6 @@ const InventoryPage = () => {
         setDeleteModalConfig({ isOpen: false, productId: null });
     };
 
-    const onBarcodeDetected = (code) => {
-        setShowScanner(false);
-        setSearchInput(code);
-    };
-
     const renderProductCard = (product, currentGroupBy) => {
         const isLowStock = product.quantity <= product.lowStockThreshold && product.lowStockThreshold > 0;
         const isExpanded = selectedProductId === product.id;
@@ -320,14 +320,8 @@ const InventoryPage = () => {
                                     placeholder="Buscar por nombre, línea, aroma o código..."
                                     value={searchInput}
                                     onChange={handleSearchChange}
-                                    className="w-full pl-12 pr-12 py-3 border rounded-lg text-base focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full pl-12 pr-4 py-3 border rounded-lg text-base focus:ring-blue-500 focus:border-blue-500"
                                 />
-                                <button
-                                    onClick={() => setShowScanner(true)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-600 p-1"
-                                >
-                                    <FiCamera size={24} />
-                                </button>
                             </div>
 
                             <button
@@ -370,7 +364,6 @@ const InventoryPage = () => {
                         </div>
                     </div>
 
-                    {showScanner && <BarcodeScannerModal onDetected={onBarcodeDetected} onClose={() => setShowScanner(false)} />}
                     {showForm && <ProductForm productToEdit={productToEdit} onClose={handleCloseForm} />}
                     {productToRestock && <RestockModal product={productToRestock} onClose={() => setProductToRestock(null)} />}
 

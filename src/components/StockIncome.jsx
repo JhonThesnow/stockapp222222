@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import useInventoryStore from '../store/useInventoryStore';
 import { FiSearch, FiChevronDown, FiChevronUp, FiEdit, FiTrash, FiCamera } from 'react-icons/fi';
 import { formatDateOnly } from '../utils/formatting';
-import BarcodeScannerModal from './BarcodeScannerModal.jsx';
 
 const StockIncome = () => {
     const { products, batchRestock, fetchStockEntriesHistory, stockEntriesHistory, deleteStockEntry, updateStockEntry, fetchProducts } = useInventoryStore();
@@ -18,8 +17,6 @@ const StockIncome = () => {
     // --- NUEVO: Estado para la paginación de la selección ---
     const [selectionPage, setSelectionPage] = useState(1);
     const SELECTION_ITEMS_PER_PAGE = 5;
-
-    const [showScanner, setShowScanner] = useState(false);
 
     // Cargar todos los productos para la búsqueda y edición
     useEffect(() => {
@@ -159,7 +156,6 @@ const StockIncome = () => {
 
     return (
         <div>
-            {showScanner && <BarcodeScannerModal onDetected={handleBarcodeDetected} onClose={() => setShowScanner(false)} />}
             <div className="bg-white p-4 rounded-lg shadow mb-6">
                 <h2 className="text-xl font-bold mb-4">
                     {editingEntry ? `Editando Ingreso del ${formatDateOnly(editingEntry.date)}` : 'Ingresar Stock'}
@@ -175,14 +171,6 @@ const StockIncome = () => {
                             className="w-full pl-10 pr-4 py-2 border rounded-lg"
                         />
                     </div>
-                    <button
-                        onClick={() => setShowScanner(true)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
-                        title="Escanear código de barras"
-                    >
-                        <FiCamera size={20} />
-                        <span className="hidden sm:inline">Escanear</span>
-                    </button>
                 </div>
                 {searchTerm && (
                     <div className="max-h-64 overflow-y-auto border rounded-lg p-2 space-y-2 mb-4">
