@@ -12,6 +12,10 @@ import { useNavigate } from 'react-router-dom';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useGlobalScanner } from './hooks/useGlobalScanner';
 import { Toaster } from 'sonner';
+import BottomNav from './components/BottomNav';
+import ScannerFAB from './components/ScannerFAB';
+import NativeScannerModal from './components/NativeScannerModal';
+import useSalesStore from './store/useSalesStore';
 
 const Navigation = ({ onLinkClick }) => {
   const activeLinkStyle = {
@@ -71,8 +75,10 @@ const Navigation = ({ onLinkClick }) => {
 
 const AppLayout = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isNativeScannerOpen, setIsNativeScannerOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const addScannedProduct = useSalesStore(state => state.addScannedProduct);
 
   useGlobalScanner();
 
@@ -90,8 +96,8 @@ const AppLayout = () => {
       <div className="hidden md:flex">
         <Navigation />
       </div>
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="md:hidden bg-white shadow-md p-4 flex justify-between items-center z-10">
+      <div className="flex-1 flex flex-col overflow-hidden pb-20 md:pb-0">
+        <header className="hidden bg-white shadow-md p-4 flex justify-between items-center z-10">
           <h1 className="text-xl font-bold">Hindumar STOCK</h1>
           <button onClick={() => setIsMenuOpen(true)}>
             <FiMenu size={24} />
@@ -117,6 +123,17 @@ const AppLayout = () => {
           </div>
         </>
       )}
+      {isNativeScannerOpen && (
+        <NativeScannerModal
+          onClose={() => setIsNativeScannerOpen(false)}
+          onScan={(barcode) => {
+            addScannedProduct(barcode);
+            setIsNativeScannerOpen(false);
+          }}
+        />
+      )}
+      <ScannerFAB onClick={() => setIsNativeScannerOpen(true)} />
+      <BottomNav />
     </div>
   );
 };

@@ -1,12 +1,13 @@
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, format } from 'date-fns';
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import useInventoryStore from './useInventoryStore';
 import useAccountStore from './useAccountStore';
 import { roundCash } from '../utils/formatting';
 
 const API_URL = '/api';
 
-const useSalesStore = create((set, get) => ({
+const useSalesStore = create(persist((set, get) => ({
     // --- STATE ---
     currentShift: null,
     cart: [],
@@ -75,6 +76,16 @@ const useSalesStore = create((set, get) => ({
     },
 
     // --- CART ACTIONS ---
+    addScannedProduct: (barcode) => {
+        const products = useInventoryStore.getState().products;
+        const product = products.find(p => p.code === barcode);
+        if (product) {
+            get().addItemToCart(product);
+            console.log(`Producto escaneado agregado: ${product.name}`);
+        } else {
+            console.log(`Producto con código ${barcode} no encontrado en el inventario.`);
+        }
+    },
     addItemToCart: (product) => {
         set(state => {
             if (product.id.toString().startsWith('qs-')) {
@@ -470,7 +481,7 @@ const useSalesStore = create((set, get) => ({
             set({ loading: false, error: e.message });
         }
     }
-}));
+}), { name: 'sales-store', partialize: (state) => ({ cart: state.cart }) }));
 
 
 // --- Helper Functions ---
@@ -532,4 +543,5 @@ const calculateTopProducts = (sales, products) => {
         .sort((a, b) => b.quantity - a.quantity)
         .slice(0, 10);
 };
+
 export default useSalesStore;
