@@ -59,15 +59,6 @@ const ProductForm = ({ productToEdit, onClose }) => {
         }
     }, []);
 
-    useEffect(() => {
-        const fab = document.getElementById('scanner-fab');
-        if (fab) fab.style.display = 'none';
-        return () => {
-            const fab = document.getElementById('scanner-fab');
-            if (fab) fab.style.display = 'flex';
-        }
-    }, []);
-
     const handleCommonChange = (e) => {
         setCommonData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
@@ -274,29 +265,13 @@ const ProductForm = ({ productToEdit, onClose }) => {
                             ))}
                             <button type="button" onClick={addPriceToEdit} className="flex items-center gap-2 text-sm text-blue-600 hover:underline"><FiPlus /> Agregar precio</button>
                         </div>
-                        <div className="flex justify-end gap-3 mt-8 border-t pt-5 sticky bottom-0 bg-white pb-2">
-                            <button type="button" onClick={onClose} className="py-2.5 px-5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors shadow-sm">Cancelar</button>
-                            <button type="submit" className="py-2.5 px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-sm flex items-center gap-2">Guardar Cambios</button>
+                        <div className="flex justify-end gap-4 mt-6">
+                            <button type="button" onClick={onClose} className="py-2 px-4 bg-gray-200 rounded">Cancelar</button>
+                            <button type="submit" className="py-2 px-4 bg-blue-600 text-white rounded">Guardar Cambios</button>
                         </div>
                     </form>
                 </div>
             </div>
-            {activeScannerIndex !== null && (
-                <NativeScannerModal
-                    onClose={() => setActiveScannerIndex(null)}
-                    onScan={(barcode) => {
-                        if (activeScannerIndex === 'edit') {
-                            setEditData({ ...editData, code: barcode });
-                        } else {
-                            const newVariations = [...variations];
-                            newVariations[activeScannerIndex].code = barcode;
-                            setVariations(newVariations);
-                        }
-                        setActiveScannerIndex(null);
-                    }}
-                />
-            )}
-            </>
         );
     }
 
@@ -458,6 +433,7 @@ const ProductForm = ({ productToEdit, onClose }) => {
                     }}
                 />
             )}
+        </>
         </div>
     );
 };
