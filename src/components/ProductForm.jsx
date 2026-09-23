@@ -211,15 +211,18 @@ const ProductForm = ({ productToEdit, onClose }) => {
 
                         <div>
                             <label htmlFor="code-edit" className="text-sm font-medium text-gray-700">Código (Opcional)</label>
-                            <div className="relative mt-1">
+                            <div className="relative mt-1 flex">
                                 <input
                                     id="code-edit"
                                     name="code"
                                     value={editData.code || ''}
                                     onChange={handleEditChange}
                                     placeholder="Ingresar código de barras"
-                                    className="p-2 border rounded w-full"
+                                    className="p-2 border border-gray-300 rounded-l-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 />
+                                <button type="button" onClick={() => setActiveScannerIndex('edit')} className="p-2.5 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-200 text-gray-600 transition-colors" title="Escanear Código">
+                                    <FiCamera size={18} />
+                                </button>
                             </div>
                         </div>
 
@@ -409,9 +412,13 @@ const ProductForm = ({ productToEdit, onClose }) => {
                 <NativeScannerModal
                     onClose={() => setActiveScannerIndex(null)}
                     onScan={(barcode) => {
-                        const newVariations = [...variations];
-                        newVariations[activeScannerIndex].code = barcode;
-                        setVariations(newVariations);
+                        if (activeScannerIndex === 'edit') {
+                            setEditData({ ...editData, code: barcode });
+                        } else {
+                            const newVariations = [...variations];
+                            newVariations[activeScannerIndex].code = barcode;
+                            setVariations(newVariations);
+                        }
                         setActiveScannerIndex(null);
                     }}
                 />
