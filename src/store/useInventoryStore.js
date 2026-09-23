@@ -12,6 +12,23 @@ const useInventoryStore = create((set, get) => ({
     error: null,
     globalSearchTerm: '',
     setGlobalSearchTerm: (term) => set({ globalSearchTerm: term }),
+    selectedProductsForIncome: {},
+    setSelectedProductsForIncome: (products) => {
+        if (typeof products === 'function') {
+            set((state) => ({ selectedProductsForIncome: products(state.selectedProductsForIncome) }));
+        } else {
+            set({ selectedProductsForIncome: products });
+        }
+    },
+    updateSelectedProductQuantity: (productId, quantity) => set((state) => {
+        if (quantity <= 0 || isNaN(quantity)) {
+            const updated = { ...state.selectedProductsForIncome };
+            delete updated[productId];
+            return { selectedProductsForIncome: updated };
+        }
+        return { selectedProductsForIncome: { ...state.selectedProductsForIncome, [productId]: quantity } };
+    }),
+    clearSelectedProductsForIncome: () => set({ selectedProductsForIncome: {} }),
 
     fetchProducts: async (params = {}) => {
         set({ loading: true, error: null });

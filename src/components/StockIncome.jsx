@@ -4,9 +4,8 @@ import { FiSearch, FiChevronDown, FiChevronUp, FiEdit, FiTrash, FiCamera } from 
 import { formatDateOnly } from '../utils/formatting';
 
 const StockIncome = () => {
-    const { products, batchRestock, fetchStockEntriesHistory, stockEntriesHistory, deleteStockEntry, updateStockEntry, fetchProducts } = useInventoryStore();
+    const { products, batchRestock, fetchStockEntriesHistory, stockEntriesHistory, deleteStockEntry, updateStockEntry, fetchProducts, selectedProductsForIncome: selectedProducts, setSelectedProductsForIncome: setSelectedProducts, updateSelectedProductQuantity: updateSelectedProductQuantity, clearSelectedProductsForIncome } = useInventoryStore();
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedProducts, setSelectedProducts] = useState({});
     const [currentPage, setCurrentPage] = useState(1);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
     const [openEntries, setOpenEntries] = useState({});
@@ -61,15 +60,7 @@ const StockIncome = () => {
     }, [globalSearchTerm, setGlobalSearchTerm, handleBarcodeDetected]);
 
     const handleQuantityChange = (productId, newQuantity) => {
-        if (newQuantity <= 0 || isNaN(newQuantity)) {
-            setSelectedProducts(prev => {
-                const updated = { ...prev };
-                delete updated[productId];
-                return updated;
-            });
-        } else {
-            setSelectedProducts(prev => ({ ...prev, [productId]: newQuantity }));
-        }
+        updateSelectedProductQuantity(productId, newQuantity);
     };
 
     const handleConfirm = async () => {
@@ -106,7 +97,7 @@ const StockIncome = () => {
             }
         }
 
-        setSelectedProducts({});
+        clearSelectedProductsForIncome();
         fetchStockEntriesHistory(1, 10);
     };
 
@@ -125,7 +116,7 @@ const StockIncome = () => {
 
     const handleCancelEdit = () => {
         setEditingEntry(null);
-        setSelectedProducts({});
+        clearSelectedProductsForIncome();
     };
 
     const handleDelete = (id) => {
