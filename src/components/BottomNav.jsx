@@ -78,7 +78,7 @@ const BottomNav = () => {
                 </>
             )}
 
-            <nav className="fixed bottom-0 w-full bg-white border-t flex justify-around p-3 z-50 md:hidden">
+            <nav className="fixed bottom-0 w-full bg-white border-t flex justify-around p-3 z-40 md:hidden">
                 <NavLink
                     to="/caja"
                     className="flex flex-col items-center gap-1"

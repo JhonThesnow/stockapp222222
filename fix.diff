@@ -1,0 +1,9 @@
+--- src/components/ProductForm.jsx
++++ src/components/ProductForm.jsx
+@@ -458,6 +458,7 @@
+                     }}
+                 />
+             )}
++        </div>
+     );
+ };

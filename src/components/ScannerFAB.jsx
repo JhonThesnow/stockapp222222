@@ -4,7 +4,7 @@ const ScannerFAB = ({ onClick }) => {
     return (
         <button
             onClick={onClick}
-            className="fixed bottom-20 right-4 bg-blue-600 text-white p-4 rounded-full shadow-lg z-50 md:hidden"
+            id="scanner-fab" className="fixed bottom-20 right-4 bg-blue-600 text-white p-4 rounded-full shadow-lg z-40 md:hidden"
             aria-label="Escanear código de barras"
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

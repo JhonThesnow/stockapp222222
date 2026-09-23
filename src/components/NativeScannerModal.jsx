@@ -65,7 +65,7 @@ const NativeScannerModal = ({ onClose, onScan }) => {
     }, [onScan]);
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm">
             <div className="relative bg-white w-full max-w-md m-4 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[70vh] max-h-[600px]">
                 <div className="flex justify-between items-center p-4 bg-gray-800 text-white">
                     <h3 className="font-bold text-lg">Escanear Código</h3>
