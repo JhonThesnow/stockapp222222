@@ -132,7 +132,7 @@ const SalesPage = () => {
     }
 
     return (
-        <div className="flex flex-col md:grid md:grid-cols-3 md:gap-6 h-full p-2 md:p-4 bg-gray-50">
+        <div className="flex flex-col md:grid md:grid-cols-3 md:gap-6 h-full p-2 md:p-4 bg-gray-50 pb-20 md:pb-4">
 
             {showQuickSale && <QuickSaleModal onClose={() => setShowQuickSale(false)} />}
 
@@ -297,7 +297,7 @@ const SalesPage = () => {
 
             {/* BOTÓN FLOTANTE MOBILE */}
             {!showCartOnMobile && (
-                <div className="md:hidden fixed bottom-0 left-0 w-full z-50">
+                <div className="md:hidden fixed bottom-[60px] left-0 w-full z-40">
                     <button
                         onClick={() => setShowCartOnMobile(true)}
                         disabled={cart.length === 0}
