@@ -15,6 +15,16 @@ const PriceIncreases = () => {
     const [openDays, setOpenDays] = useState({});
     const [openEntries, setOpenEntries] = useState({});
 
+    const globalSearchTerm = useInventoryStore(state => state.globalSearchTerm);
+    const setGlobalSearchTerm = useInventoryStore(state => state.setGlobalSearchTerm);
+
+    useEffect(() => {
+        if (globalSearchTerm) {
+            setSearchTerm(globalSearchTerm);
+            setGlobalSearchTerm('');
+        }
+    }, [globalSearchTerm, setGlobalSearchTerm]);
+
     useEffect(() => {
         if (isHistoryOpen) {
             fetchPriceIncreaseHistory(currentPage, 10);

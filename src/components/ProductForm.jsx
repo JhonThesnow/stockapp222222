@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useInventoryStore from '../store/useInventoryStore.js';
 import { FiX, FiPlus, FiTrash, FiCamera, FiCopy } from 'react-icons/fi';
+import NativeScannerModal from './NativeScannerModal';
 
 const newVariation = {
     variationName: '',
@@ -22,6 +23,7 @@ const ProductForm = ({ productToEdit, onClose }) => {
 
     const [editData, setEditData] = useState(null);
     const [notifyLowStock, setNotifyLowStock] = useState(true);
+    const [activeScannerIndex, setActiveScannerIndex] = useState(null);
 
     useEffect(() => {
         if (isEditMode) {
@@ -327,8 +329,11 @@ const ProductForm = ({ productToEdit, onClose }) => {
                                             </div>
                                             <div className="w-full md:w-48">
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">Código de Barras</label>
-                                                <div className="relative">
-                                                    <input name="code" placeholder="Opcional" value={v.code || ''} onChange={e => handleVariationChange(vIndex, e)} className="p-2.5 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                                <div className="relative flex">
+                                                    <input name="code" placeholder="Opcional" value={v.code || ''} onChange={e => handleVariationChange(vIndex, e)} className="p-2.5 border border-gray-300 rounded-l-lg w-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                                    <button type="button" onClick={() => setActiveScannerIndex(vIndex)} className="p-2.5 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-200 text-gray-600 transition-colors" title="Escanear Código">
+                                                        <FiCamera size={18} />
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -399,6 +404,18 @@ const ProductForm = ({ productToEdit, onClose }) => {
                         </div>
                 </form>
             </div>
+
+            {activeScannerIndex !== null && (
+                <NativeScannerModal
+                    onClose={() => setActiveScannerIndex(null)}
+                    onScan={(barcode) => {
+                        const newVariations = [...variations];
+                        newVariations[activeScannerIndex].code = barcode;
+                        setVariations(newVariations);
+                        setActiveScannerIndex(null);
+                    }}
+                />
+            )}
         </div>
     );
 };

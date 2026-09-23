@@ -18,6 +18,9 @@ const StockIncome = () => {
     const [selectionPage, setSelectionPage] = useState(1);
     const SELECTION_ITEMS_PER_PAGE = 5;
 
+    const globalSearchTerm = useInventoryStore(state => state.globalSearchTerm);
+    const setGlobalSearchTerm = useInventoryStore(state => state.setGlobalSearchTerm);
+
     // Cargar todos los productos para la búsqueda y edición
     useEffect(() => {
         fetchProducts({ limit: 9999 });
@@ -34,7 +37,7 @@ const StockIncome = () => {
         setSelectionPage(1);
     }, [Object.keys(selectedProducts).length]);
 
-    const handleBarcodeDetected = (code) => {
+    const handleBarcodeDetected = useCallback((code) => {
         const productFound = products.find(p => p.code && p.code.toLowerCase() === code.toLowerCase());
 
         if (productFound) {
@@ -42,18 +45,20 @@ const StockIncome = () => {
                 const currentQty = prev[productFound.id] || 0;
                 return { ...prev, [productFound.id]: currentQty + 1 };
             });
-            const continueScanning = window.confirm(`Producto ${productFound.name} agregado. ¿Quieres seguir escaneando?`);
-            if (!continueScanning) {
-                setShowScanner(false);
-            }
+            // Automatically handled, just clean up global search if needed.
+            setSearchTerm('');
         } else {
-            alert('Producto no encontrado');
-            const continueScanning = window.confirm('¿Quieres seguir escaneando?');
-            if (!continueScanning) {
-                setShowScanner(false);
-            }
+            // Not found, leave in search
+            setSearchTerm(code);
         }
-    };
+    }, [products]);
+
+    useEffect(() => {
+        if (globalSearchTerm) {
+            handleBarcodeDetected(globalSearchTerm);
+            setGlobalSearchTerm('');
+        }
+    }, [globalSearchTerm, setGlobalSearchTerm, handleBarcodeDetected]);
 
     const handleQuantityChange = (productId, newQuantity) => {
         if (newQuantity <= 0 || isNaN(newQuantity)) {
