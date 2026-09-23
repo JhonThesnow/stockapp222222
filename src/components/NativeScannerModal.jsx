@@ -8,6 +8,7 @@ const NativeScannerModal = ({ onClose, onScan }) => {
 
     useEffect(() => {
         let animationFrameId;
+        let isMounted = true;
 
         const startCamera = async () => {
             try {
@@ -19,10 +20,25 @@ const NativeScannerModal = ({ onClose, onScan }) => {
                     video: { facingMode: 'environment' }
                 });
 
+                if (!isMounted) {
+                    stream.getTracks().forEach(track => track.stop());
+                    return;
+                }
+
                 streamRef.current = stream;
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream;
-                    await videoRef.current.play();
+
+                    try {
+                        await videoRef.current.play();
+                    } catch (playError) {
+                        if (playError.name !== 'AbortError' && playError.name !== 'NotAllowedError') {
+                            console.error("Play error:", playError);
+                        }
+                        return;
+                    }
+
+                    if (!isMounted) return;
                     setHasStarted(true);
 
                     const barcodeDetector = new window.BarcodeDetector({
@@ -30,6 +46,7 @@ const NativeScannerModal = ({ onClose, onScan }) => {
                     });
 
                     const detectCode = async () => {
+                        if (!isMounted) return;
                         if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
                             try {
                                 const barcodes = await barcodeDetector.detect(videoRef.current);
@@ -41,20 +58,25 @@ const NativeScannerModal = ({ onClose, onScan }) => {
                                 console.error("Error detecting barcode:", e);
                             }
                         }
-                        animationFrameId = requestAnimationFrame(detectCode);
+                        if (isMounted) {
+                            animationFrameId = requestAnimationFrame(detectCode);
+                        }
                     };
 
                     detectCode();
                 }
             } catch (err) {
-                console.error("Camera error:", err);
-                setError(err.message || "Error al acceder a la cámara.");
+                if (isMounted) {
+                    console.error("Camera error:", err);
+                    setError(err.message || "Error al acceder a la cámara.");
+                }
             }
         };
 
         startCamera();
 
         return () => {
+            isMounted = false;
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
             }

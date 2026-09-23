@@ -132,7 +132,7 @@ const SalesPage = () => {
     }
 
     return (
-        <div className="flex flex-col md:grid md:grid-cols-3 md:gap-6 h-full p-2 md:p-4 bg-gray-50 pb-20 md:pb-4">
+        <div className="flex flex-col md:grid md:grid-cols-3 md:gap-6 h-full p-2 md:p-4 bg-gray-50 pb-32 md:pb-4">
 
             {showQuickSale && <QuickSaleModal onClose={() => setShowQuickSale(false)} />}
 
@@ -210,7 +210,7 @@ const SalesPage = () => {
                     )}
                 </div>
 
-                <div className="flex justify-between items-center pt-3 md:pt-5 mt-3 md:mt-4 border-t-2 pb-24 md:pb-0">
+                <div className="flex justify-between items-center pt-3 md:pt-5 mt-3 md:mt-4 border-t-2">
                     <button
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                         disabled={currentPage === 1}
