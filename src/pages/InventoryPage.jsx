@@ -98,11 +98,11 @@ const InventoryPage = () => {
     const [allProducts, setAllProducts] = useState([]);
 
     useEffect(() => {
-        if (globalSearchTerm) {
+        if (globalSearchTerm && activeTab === 'inventory') {
             setSearchInput(globalSearchTerm);
             setGlobalSearchTerm('');
         }
-    }, [globalSearchTerm, setGlobalSearchTerm]);
+    }, [globalSearchTerm, setGlobalSearchTerm, activeTab]);
 
     // Cargar todos los productos para los selectores de filtros
     useEffect(() => {

@@ -10,7 +10,7 @@ import EncargosPage from './pages/EncargosPage';
 import { FiBox, FiBarChart2, FiShoppingCart, FiMenu, FiUser, FiHome, FiClipboard, FiDollarSign } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { useGlobalScanner } from './hooks/useGlobalScanner';
+import { useGlobalScanner, handleGlobalScan } from './hooks/useGlobalScanner';
 import { Toaster } from 'sonner';
 import BottomNav from './components/BottomNav';
 import ScannerFAB from './components/ScannerFAB';
@@ -78,7 +78,6 @@ const AppLayout = () => {
   const [isNativeScannerOpen, setIsNativeScannerOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const addScannedProduct = useSalesStore(state => state.addScannedProduct);
 
   useGlobalScanner();
 
@@ -127,7 +126,7 @@ const AppLayout = () => {
         <NativeScannerModal
           onClose={() => setIsNativeScannerOpen(false)}
           onScan={(barcode) => {
-            addScannedProduct(barcode);
+            handleGlobalScan(barcode, location.pathname);
             setIsNativeScannerOpen(false);
           }}
         />

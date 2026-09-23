@@ -27,7 +27,7 @@ export const useGlobalScanner = () => {
                     e.preventDefault();
                     const scannedCode = barcodeBuffer.current;
                     barcodeBuffer.current = '';
-                    handleScan(scannedCode);
+                    handleGlobalScan(scannedCode, location.pathname);
                 }
             } else {
                 barcodeBuffer.current += e.key;
@@ -42,33 +42,6 @@ export const useGlobalScanner = () => {
             }, 100);
         };
 
-        const handleScan = async (scannedCode) => {
-            // Rule 2: If in Inventory mode, set the global search term
-            if (location.pathname === '/inventario') {
-                useInventoryStore.getState().setGlobalSearchTerm(scannedCode);
-            } else {
-                // Rule 3: Global Sales Mode
-                try {
-                    const response = await fetch(`/api/products?searchTerm=${encodeURIComponent(scannedCode)}&limit=1`);
-                    if (!response.ok) throw new Error('Falló al buscar producto');
-                    const data = await response.json();
-
-                    if (data.data && data.data.length > 0) {
-                        const product = data.data[0];
-                        // Double check exact match if possible, since searchTerm might be partial
-                        // We will add the first match
-                        useSalesStore.getState().addItemToCart({ ...product, quantity: 1 });
-                        toast.success(`${product.name} agregado al carrito`);
-                    } else {
-                        toast.error(`Producto no encontrado: ${scannedCode}`);
-                    }
-                } catch (error) {
-                    console.error('Error scanning product:', error);
-                    toast.error('Error al buscar el producto');
-                }
-            }
-        };
-
         window.addEventListener('keydown', handleKeyDown);
 
         return () => {
@@ -78,4 +51,31 @@ export const useGlobalScanner = () => {
             }
         };
     }, [location.pathname]);
+};
+
+export const handleGlobalScan = async (scannedCode, pathname) => {
+    // Rule 1: If in Inventory mode, set the global search term
+    if (pathname === '/inventario') {
+        useInventoryStore.getState().setGlobalSearchTerm(scannedCode);
+    } else {
+        // Rule 2: Global Sales Mode
+        try {
+            const response = await fetch(`/api/products?searchTerm=${encodeURIComponent(scannedCode)}&limit=1`);
+            if (!response.ok) throw new Error('Falló al buscar producto');
+            const data = await response.json();
+
+            if (data.data && data.data.length > 0) {
+                const product = data.data[0];
+                // Double check exact match if possible, since searchTerm might be partial
+                // We will add the first match
+                useSalesStore.getState().addItemToCart({ ...product, quantity: 1 });
+                toast.success(`${product.name} agregado al carrito`);
+            } else {
+                toast.error(`Producto no encontrado: ${scannedCode}`);
+            }
+        } catch (error) {
+            console.error('Error scanning product:', error);
+            toast.error('Error al buscar el producto');
+        }
+    }
 };
