@@ -668,7 +668,8 @@ const getTopPieChartData = (data, key = 'value', topN = 6) => {
 };
 
 const processReportData = (sales, productMap, productMapByCode, filters = {}) => {
-    const { names = [], brands = [], lines = [] } = filters;
+    const { names = [], brands = [], lines = [], types = [] } = filters;
+    const hasTypeFilter = types.length > 0;
     const hasNameFilter = names.length > 0;
     const hasBrandFilter = brands.length > 0;
     const hasLineFilter = lines.length > 0;
@@ -676,6 +677,10 @@ const processReportData = (sales, productMap, productMapByCode, filters = {}) =>
     let totalRevenue = 0;
     let totalProductsSold = 0;
     let grossProfit = 0;
+
+    let cashRevenue = 0;
+    let cardRevenue = 0;
+
     const salesByDay = {};
     const productData = {};
     const revenueByBrand = {};
@@ -696,11 +701,12 @@ const processReportData = (sales, productMap, productMapByCode, filters = {}) =>
             const productInfo = productMap.get(item.productId) || productMapByCode.get(item.productId);
             if (!productInfo) return;
 
+            const typeMatch = !hasTypeFilter || types.includes(productInfo.type);
             const nameMatch = !hasNameFilter || names.includes(productInfo.name);
             const brandMatch = !hasBrandFilter || brands.includes(productInfo.brand);
             const lineMatch = !hasLineFilter || lines.some(line => productInfo.subtype && productInfo.subtype.startsWith(line));
 
-            if (nameMatch && brandMatch && lineMatch) {
+            if (typeMatch && nameMatch && brandMatch && lineMatch) {
                 saleHasMatchingItems = true;
 
                 const itemRevenue = item.unitPrice * item.quantity;
@@ -711,12 +717,19 @@ const processReportData = (sales, productMap, productMapByCode, filters = {}) =>
                 grossProfit += itemProfit;
                 totalProductsSold += item.quantity;
 
+                if (sale.paymentMethod && sale.paymentMethod.toLowerCase() === "efectivo") {
+                    cashRevenue += itemRevenue;
+                } else {
+                    cardRevenue += itemRevenue;
+                }
+
+
                 if (!salesByDay[saleDate]) salesByDay[saleDate] = { sales: 0, items: 0 };
                 salesByDay[saleDate].sales += itemRevenue;
                 salesByDay[saleDate].items += item.quantity;
 
                 if (!productData[item.fullName]) {
-                    productData[item.fullName] = { name: item.fullName, quantity: 0, revenue: 0, profit: 0 };
+                    productData[item.fullName] = { name: item.fullName, type: productInfo.type, brand: productInfo.brand, subtype: productInfo.subtype, quantity: 0, revenue: 0, profit: 0 };
                 }
                 productData[item.fullName].quantity += item.quantity;
                 productData[item.fullName].revenue += itemRevenue;
@@ -748,6 +761,8 @@ const processReportData = (sales, productMap, productMapByCode, filters = {}) =>
             totalSales: uniqueSales.size,
             grossProfit,
             profitMargin: totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0,
+            cashRevenue,
+            cardRevenue
         },
         salesByDay,
         topProducts,
@@ -756,9 +771,42 @@ const processReportData = (sales, productMap, productMapByCode, filters = {}) =>
     };
 };
 
+
+app.get('/api/product-options', (req, res) => {
+    const query = `
+        SELECT
+            DISTINCT type, brand,
+            CASE
+                WHEN instr(subtype, ' ') > 0 THEN substr(subtype, 1, instr(subtype, ' ') - 1)
+                ELSE subtype
+            END as line
+        FROM products
+        WHERE type IS NOT NULL OR brand IS NOT NULL OR subtype IS NOT NULL
+    `;
+    db.all(query, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        const types = new Set();
+        const brands = new Set();
+        const lines = new Set();
+
+        rows.forEach(row => {
+            if (row.type) types.add(row.type);
+            if (row.brand) brands.add(row.brand);
+            if (row.line) lines.add(row.line);
+        });
+
+        res.json({
+            types: Array.from(types).sort(),
+            brands: Array.from(brands).sort(),
+            lines: Array.from(lines).sort()
+        });
+    });
+});
+
 app.post('/api/sales-report-data', async (req, res) => {
     try {
-        const { startDate: startDateString, endDate: endDateString, names = [], brands = [], lines = [], compare } = req.body;
+        const { startDate: startDateString, endDate: endDateString, names = [], brands = [], lines = [], types = [], compare } = req.body;
 
         const products = await new Promise((resolve, reject) => {
             db.all('SELECT id, name, brand, subtype, code FROM products', [], (err, rows) => err ? reject(err) : resolve(rows));
@@ -776,7 +824,7 @@ app.post('/api/sales-report-data', async (req, res) => {
 
         const getSalesForPeriod = (startUtc, endUtc) => new Promise((resolve, reject) => {
             const salesQuery = `
-                SELECT id, date, finalAmount, items
+                SELECT id, date, finalAmount, items, paymentMethod
                 FROM sales
                 WHERE status = 'completed' AND date >= ? AND date < ?
             `;
@@ -787,7 +835,7 @@ app.post('/api/sales-report-data', async (req, res) => {
         const currentRangeStart = getUtcRangeFromArgentinaDate(startDateString);
         const currentRangeEnd = getUtcRangeFromArgentinaDate(endDateString, true);
         const currentSales = await getSalesForPeriod(currentRangeStart, currentRangeEnd);
-        const currentPeriodData = processReportData(currentSales, productMap, productMapByCode, { names, brands, lines });
+        const currentPeriodData = processReportData(currentSales, productMap, productMapByCode, { names, brands, lines, types });
 
         // --- Período de Comparación ---
         let previousPeriodData = null;
@@ -800,7 +848,7 @@ app.post('/api/sales-report-data', async (req, res) => {
             const previousRangeStart = new Date(startDate.getTime() - diffInMs).toISOString();
 
             const previousSales = await getSalesForPeriod(previousRangeStart, previousRangeEnd);
-            previousPeriodData = processReportData(previousSales, productMap, productMapByCode, { names, brands, lines });
+            previousPeriodData = processReportData(previousSales, productMap, productMapByCode, { names, brands, lines, types });
         }
 
         res.json({ currentPeriod: currentPeriodData, previousPeriod: previousPeriodData });
