@@ -26,6 +26,7 @@ const useSalesStore = create(persist((set, get) => ({
         brands: [],
         lines: [],
         compare: false,
+        sortOrder: 'desc',
     },
     reportData: null,
     loading: false,
@@ -452,6 +453,7 @@ const useSalesStore = create(persist((set, get) => ({
                 brands: [],
                 lines: [],
                 compare: false,
+                sortOrder: 'desc',
             }
         });
         get().fetchReportData();
