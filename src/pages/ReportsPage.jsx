@@ -65,9 +65,13 @@ const ReportsPage = () => {
         }
     };
 
-    const handleCustomDateChange = (dates) => {
-        const [start, end] = dates;
-        setReportFilters({ startDate: start, endDate: end });
+    const handleStartDateChange = (date) => {
+        setReportFilters({ startDate: date, endDate: reportFilters.endDate });
+        setActivePeriod('custom');
+    };
+
+    const handleEndDateChange = (date) => {
+        setReportFilters({ startDate: reportFilters.startDate, endDate: date });
         setActivePeriod('custom');
     };
 
@@ -104,13 +108,7 @@ const ReportsPage = () => {
         <div className="p-4 md:p-6 bg-gray-50 min-h-screen pb-32">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800">Reportes y Estadísticas</h1>
-                <button
-                    onClick={() => setIsFilterOpen(!isFilterOpen)}
-                    className="flex items-center gap-2 bg-white border border-gray-300 px-4 py-2 rounded-lg shadow-sm hover:bg-gray-50"
-                >
-                    <FiFilter />
-                    Filtros Avanzados
-                </button>
+
             </div>
 
             {/* Panel de Filtros (Collapsible) */}
@@ -123,18 +121,34 @@ const ReportsPage = () => {
                         <FiX size={20} />
                     </button>
                     <h2 className="text-lg font-bold mb-4">Filtros Avanzados</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Rango de Fechas (Específico)</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio</label>
                             <DatePicker
-                                selectsRange={true}
+                                selected={reportFilters.startDate}
+                                onChange={handleStartDateChange}
+                                selectsStart
                                 startDate={reportFilters.startDate}
                                 endDate={reportFilters.endDate}
-                                onChange={handleCustomDateChange}
                                 className="w-full p-2 border rounded"
                                 dateFormat="dd/MM/yyyy"
                                 isClearable={true}
-                                placeholderText="Seleccionar fechas"
+                                placeholderText="Inicio"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Fin</label>
+                            <DatePicker
+                                selected={reportFilters.endDate}
+                                onChange={handleEndDateChange}
+                                selectsEnd
+                                startDate={reportFilters.startDate}
+                                endDate={reportFilters.endDate}
+                                minDate={reportFilters.startDate}
+                                className="w-full p-2 border rounded"
+                                dateFormat="dd/MM/yyyy"
+                                isClearable={true}
+                                placeholderText="Fin"
                             />
                         </div>
                         <div>
@@ -175,12 +189,21 @@ const ReportsPage = () => {
                 </div>
             )}
 
-            {/* Selector de Periodo Rápido */}
-            <div className="flex gap-2 mb-6 bg-white p-2 rounded-lg shadow-sm max-w-md">
-                <button onClick={() => handlePeriodChange('today')} className={`flex-1 p-2 rounded ${activePeriod === 'today' ? 'bg-blue-600 text-white' : ''}`}>Hoy</button>
-                <button onClick={() => handlePeriodChange('week')} className={`flex-1 p-2 rounded ${activePeriod === 'week' ? 'bg-blue-600 text-white' : ''}`}>Esta Semana</button>
-                <button onClick={() => handlePeriodChange('month')} className={`flex-1 p-2 rounded ${activePeriod === 'month' ? 'bg-blue-600 text-white' : ''}`}>Este Mes</button>
-                <button onClick={() => {}} className={`flex-1 p-2 rounded ${activePeriod === 'custom' ? 'bg-blue-600 text-white' : 'text-gray-400 cursor-not-allowed'}`} disabled>Personalizado</button>
+            {/* Selector de Periodo Rápido y Filtros */}
+            <div className="flex flex-wrap gap-2 mb-6 bg-white p-2 rounded-lg shadow-sm w-fit">
+                <button onClick={() => handlePeriodChange('today')} className={`px-4 py-2 rounded ${activePeriod === 'today' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}>Hoy</button>
+                <button onClick={() => handlePeriodChange('week')} className={`px-4 py-2 rounded ${activePeriod === 'week' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}>Esta Semana</button>
+                <button onClick={() => handlePeriodChange('month')} className={`px-4 py-2 rounded ${activePeriod === 'month' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}>Este Mes</button>
+
+                <div className="w-px bg-gray-300 mx-1"></div>
+
+                <button
+                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${isFilterOpen ? 'bg-gray-200 text-gray-800' : 'hover:bg-gray-100'}`}
+                >
+                    <FiFilter />
+                    Filtros Avanzados
+                </button>
             </div>
 
             {/* KPIs Principales */}
