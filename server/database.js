@@ -234,7 +234,17 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                                 
                                 -- Accesorios
                                 ('HR001', 'Hornillo', 'Accesorios', 'Artesanal', 'Cerámica Básico', 15, 3000, '[{"name": "Minorista", "price": 6500}]', 4),
-                                ('PH001', 'Portasahumerio', 'Accesorios', 'Artesanal', 'Madera Simple', 40, 500, '[{"name": "Minorista", "price": 1200}]', 10);
+                                ('PH001', 'Portasahumerio', 'Accesorios', 'Artesanal', 'Madera Simple', 40, 500, '[{"name": "Minorista", "price": 1200}]', 10),
+
+                                -- Nuevos Productos (Aceites, Velas Forma, Estatuillas)
+                                ('AE001', 'Aceite Esencial', 'Aromaterapia', 'Iluminarte', 'Rosa', 30, 1500, '[{"name": "Minorista", "price": 3000}]', 10),
+                                ('AE002', 'Aceite Esencial', 'Aromaterapia', 'Iluminarte', 'Jazmín', 25, 1500, '[{"name": "Minorista", "price": 3000}]', 10),
+                                ('VF001', 'Vela Forma', 'Velas', 'Artesanal', 'Tijera (Corte)', 40, 600, '[{"name": "Minorista", "price": 1200}]', 15),
+                                ('VF002', 'Vela Forma', 'Velas', 'Artesanal', 'Pareja (Unión)', 35, 800, '[{"name": "Minorista", "price": 1600}]', 15),
+                                ('ES003', 'Estatuilla', 'Decoración', 'Resina', 'Buda Feliz 15cm', 10, 4500, '[{"name": "Minorista", "price": 9000}]', 5),
+                                ('ES004', 'Estatuilla', 'Decoración', 'Resina', 'San Expedito 20cm', 12, 5000, '[{"name": "Minorista", "price": 10000}]', 5),
+                                ('SM005', 'Sahumerios', 'Sahumerios', 'Sagrada Madre', 'Palo Santo y Lavanda', 50, 1300, '[{"name": "Minorista", "price": 2600}]', 10),
+                                ('IL013', 'Vela Noche', 'Velas', 'Iluminarte', 'Blanca x 50', 20, 2000, '[{"name": "Minorista", "price": 4000}]', 5);
                         `, (err) => {
                             if (err) return console.error("Error inserting santería products:", err.message);
 
@@ -251,15 +261,16 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
 
                                     const paymentMethods = ['Efectivo', 'Débito', 'Crédito', 'Cuenta DNI'];
 
-                                    // Bucle de fechas: Desde 1 de Enero 2025 hasta 31 de Diciembre 2025
-                                    const startDate = new Date('2025-01-01T00:00:00Z');
-                                    const endDate = new Date('2025-12-31T23:59:59Z');
+                                    // Bucle de fechas: Desde 1 de Enero 2026 hasta 31 de Diciembre 2026
+                                    const startDate = new Date('2026-01-01T00:00:00Z');
+                                    const endDate = new Date('2026-12-31T23:59:59Z');
 
                                     let totalSalesGenerated = 0;
 
                                     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-                                        // Generar 10 ventas para el día actual "d"
-                                        for (let i = 0; i < 10; i++) {
+                                        // Generar entre 10 y 30 ventas para el día actual "d"
+                                        const dailySalesCount = Math.floor(Math.random() * 21) + 10;
+                                        for (let i = 0; i < dailySalesCount; i++) {
                                             // Asignar una hora aleatoria de apertura de local (entre 9 AM y 8 PM)
                                             const saleDate = new Date(d);
                                             saleDate.setHours(9 + Math.floor(Math.random() * 11), Math.floor(Math.random() * 60), 0);
@@ -307,25 +318,30 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                                         if (commitErr) {
                                             console.error("Error commiting seeded sales:", commitErr.message);
                                         } else {
-                                            console.log(`¡Éxito! Se generaron ${totalSalesGenerated} ventas (10 por día) para todo el año 2025.`);
+                                            console.log(`¡Éxito! Se generaron ${totalSalesGenerated} ventas (entre 10 y 30 por día) para todo el año 2026.`);
                                         }
                                     });
                                 });
                             });
                         });
 
-                        // Pequeño registro falso de stock y aumentos para la Santería
+                        // Pequeño registro falso de stock y aumentos para la Santería (Año 2026)
                         db.run(`
                             INSERT INTO "stock_entries" ("date", "products")
                             VALUES
-                                ('2025-01-15T10:00:00Z', '[{"id":1,"name":"Sahumerios","subtype":"Palo Santo Natural","quantity":20},{"id":2,"name":"Sahumerios","subtype":"Rosa y Olibano","quantity":10}]'),
-                                ('2025-03-20T09:00:00Z', '[{"id":14,"name":"Vela Corta","subtype":"Blanca","quantity":100},{"id":15,"name":"Vela Corta","subtype":"Roja","quantity":50}]');
+                                ('2026-01-15T10:00:00Z', '[{"id":1,"name":"Sahumerios","subtype":"Palo Santo Natural","quantity":20},{"id":2,"name":"Sahumerios","subtype":"Rosa y Olibano","quantity":10}]'),
+                                ('2026-03-20T09:00:00Z', '[{"id":14,"name":"Vela Corta","subtype":"Blanca","quantity":100},{"id":15,"name":"Vela Corta","subtype":"Roja","quantity":50}]'),
+                                ('2026-05-10T11:00:00Z', '[{"id":25,"name":"Aceite Esencial","subtype":"Rosa","quantity":15},{"id":26,"name":"Aceite Esencial","subtype":"Jazmín","quantity":15}]'),
+                                ('2026-08-05T14:30:00Z', '[{"id":3,"name":"Sahumerios","subtype":"Copal","quantity":30}]'),
+                                ('2026-11-20T09:15:00Z', '[{"id":29,"name":"Estatuilla","subtype":"Buda Feliz 15cm","quantity":5},{"id":30,"name":"Estatuilla","subtype":"San Expedito 20cm","quantity":5}]');
                         `);
 
                         db.run(`
                             INSERT INTO "price_increases" ("date", "details", "products")
                             VALUES
-                                ('2025-06-01T08:00:00Z', '{"type":"percentage","value":10,"targets":{"purchase":true,"retail":true}}', '[{"id":11,"name":"Sahumerios","subtype":"Nag Champa (Azul)","oldPurchasePrice":"1360.00","newPurchasePrice":"1500.00","oldRetailPrice":"2900.00","newRetailPrice":"3200.00"}]');
+                                ('2026-02-01T08:00:00Z', '{"type":"percentage","value":10,"targets":{"purchase":true,"retail":true}}', '[{"id":11,"name":"Sahumerios","subtype":"Nag Champa (Azul)","oldPurchasePrice":"1360.00","newPurchasePrice":"1500.00","oldRetailPrice":"2900.00","newRetailPrice":"3200.00"}]'),
+                                ('2026-06-15T08:00:00Z', '{"type":"percentage","value":15,"targets":{"purchase":true,"retail":true}}', '[{"id":14,"name":"Vela Corta","subtype":"Blanca","oldPurchasePrice":"100.00","newPurchasePrice":"115.00","oldRetailPrice":"250.00","newRetailPrice":"287.50"}]'),
+                                ('2026-09-01T08:00:00Z', '{"type":"fixed","value":200,"targets":{"purchase":false,"retail":true}}', '[{"id":1,"name":"Sahumerios","subtype":"Palo Santo Natural","oldPurchasePrice":"1200.00","newPurchasePrice":"1200.00","oldRetailPrice":"2500.00","newRetailPrice":"2700.00"}]');
                         `);
                     }
                 });
