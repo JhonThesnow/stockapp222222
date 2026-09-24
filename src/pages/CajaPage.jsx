@@ -254,19 +254,19 @@ const CajaPage = () => {
             {saleToComplete && <CompleteSaleModal sale={saleToComplete} onClose={() => { setSaleToComplete(null); fetchAllSales(); }} />}
             {saleToEdit && <EditPendingSaleModal sale={saleToEdit} onClose={() => { setSaleToEdit(null); fetchAllSales(); }} />}
 
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-800">Caja Activa</h1>
-                    <div className="flex items-center gap-4 text-gray-500">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div className="w-full sm:w-auto">
+                    <h1 className="text-3xl font-bold text-gray-800 mb-2 sm:mb-0">Caja Activa</h1>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-gray-500 mt-1">
                         <p>Iniciada: {new Date(currentShift.startTime).toLocaleString('es-AR')}</p>
                         {currentShift.initialCash !== undefined && currentShift.initialCash > 0 && (
-                            <p className="font-semibold px-2 py-1 bg-green-100 text-green-800 rounded">Caja de inicio: ${formatNumber(currentShift.initialCash)}</p>
+                            <p className="font-semibold px-2 py-1 bg-green-100 text-green-800 rounded inline-block w-fit">Caja de inicio: ${formatNumber(currentShift.initialCash)}</p>
                         )}
                     </div>
                 </div>
                 <button
                     onClick={handleEndShift}
-                    className="py-2 px-6 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg flex items-center gap-2 transition-colors shadow"
+                    className="w-full sm:w-auto py-3 sm:py-2 px-6 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg flex items-center justify-center gap-2 transition-colors shadow"
                 >
                     <FiPower size={20} />
                     <span>Terminar Turno</span>
