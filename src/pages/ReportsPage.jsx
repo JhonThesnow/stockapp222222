@@ -26,6 +26,7 @@ const ReportsPage = () => {
     const [activePeriod, setActivePeriod] = useState('month'); // 'today', 'week', 'month', 'custom'
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [options, setOptions] = useState({ types: [], brands: [], lines: [] });
+    const [currentPage, setCurrentPage] = useState(1);
 
     useEffect(() => {
         // Fetch filter options
@@ -45,6 +46,7 @@ const ReportsPage = () => {
 
     const handlePeriodChange = (period) => {
         setActivePeriod(period);
+        setCurrentPage(1); // Reset page on period change
         const now = new Date();
         let startDate, endDate;
 
@@ -76,16 +78,37 @@ const ReportsPage = () => {
     };
 
     const applyFilters = () => {
+        setCurrentPage(1); // Reset page on filter apply
         fetchReportData();
         setIsFilterOpen(false);
     };
 
     const clearFilters = () => {
-        setReportFilters({ types: [], brands: [], lines: [] });
+        setCurrentPage(1); // Reset page on clear
+        setReportFilters({ types: [], brands: [], lines: [], sortOrder: 'desc' });
         fetchReportData();
     };
 
     const activeReport = reportData?.currentPeriod;
+
+    // Obtener los productos ordenados y paginados
+    const getPaginatedProducts = () => {
+        if (!activeReport || !activeReport.topProducts) return [];
+        let sortedProducts = [...activeReport.topProducts];
+
+        if (reportFilters.sortOrder === 'asc') {
+            sortedProducts.sort((a, b) => a.quantity - b.quantity);
+        } else {
+            // By default they are sorted desc from backend/store, but make sure
+            sortedProducts.sort((a, b) => b.quantity - a.quantity);
+        }
+
+        const startIndex = (currentPage - 1) * 10;
+        return sortedProducts.slice(startIndex, startIndex + 10);
+    };
+
+    const paginatedProducts = getPaginatedProducts();
+    const totalPages = activeReport?.topProducts ? Math.ceil(activeReport.topProducts.length / 10) : 0;
 
     // Prepara los datos para el gráfico de ventas
     const chartData = (report) => {
@@ -181,6 +204,21 @@ const ReportsPage = () => {
                                 placeholder="Todas..."
                             />
                         </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Orden de Productos</label>
+                            <Select
+                                options={[
+                                    { value: 'desc', label: 'Más Vendidos' },
+                                    { value: 'asc', label: 'Menos Vendidos' }
+                                ]}
+                                value={{
+                                    value: reportFilters.sortOrder || 'desc',
+                                    label: reportFilters.sortOrder === 'asc' ? 'Menos Vendidos' : 'Más Vendidos'
+                                }}
+                                onChange={(selected) => setReportFilters({ sortOrder: selected.value })}
+                                placeholder="Orden..."
+                            />
+                        </div>
                     </div>
                     <div className="mt-4 flex gap-2 justify-end">
                         <button onClick={clearFilters} className="px-4 py-2 text-gray-600 hover:text-gray-800 border rounded">Limpiar</button>
@@ -247,13 +285,15 @@ const ReportsPage = () => {
                 </div>
 
                 {/* Productos más vendidos */}
-                <div className="bg-white p-6 rounded-lg shadow">
-                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><FiAward /> Top Productos Vendidos</h2>
-                    <ul className="space-y-4">
-                        {activeReport && activeReport.topProducts.map((product, index) => (
+                <div className="bg-white p-6 rounded-lg shadow flex flex-col">
+                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                        <FiAward /> {reportFilters.sortOrder === 'asc' ? 'Menos Vendidos' : 'Más Vendidos'}
+                    </h2>
+                    <ul className="space-y-4 flex-grow">
+                        {activeReport && paginatedProducts.map((product, index) => (
                             <li key={index} className="flex justify-between items-start border-b pb-2 last:border-0">
                                 <div>
-                                    <span className="font-medium text-gray-800 block">{index + 1}. {product.name}</span>
+                                    <span className="font-medium text-gray-800 block">{(currentPage - 1) * 10 + index + 1}. {product.name}</span>
                                     <div className="flex flex-wrap gap-1 mt-1">
                                         {product.type && <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">{product.type}</span>}
                                         {product.brand && <span className="text-xs bg-purple-50 text-purple-600 px-2 py-0.5 rounded">{product.brand}</span>}
@@ -265,6 +305,25 @@ const ReportsPage = () => {
                         ))}
                         {(!activeReport || activeReport.topProducts.length === 0) && <p className="text-center text-gray-500 pt-10">No hay ventas registradas que coincidan con los filtros.</p>}
                     </ul>
+                    {totalPages > 1 && (
+                        <div className="flex justify-between items-center mt-6 pt-4 border-t">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                                className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50"
+                            >
+                                Anterior
+                            </button>
+                            <span className="text-sm text-gray-500">Página {currentPage} de {totalPages}</span>
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                                className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50"
+                            >
+                                Siguiente
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

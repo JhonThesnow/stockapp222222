@@ -809,7 +809,7 @@ app.post('/api/sales-report-data', async (req, res) => {
         const { startDate: startDateString, endDate: endDateString, names = [], brands = [], lines = [], types = [], compare } = req.body;
 
         const products = await new Promise((resolve, reject) => {
-            db.all('SELECT id, name, brand, subtype, code FROM products', [], (err, rows) => err ? reject(err) : resolve(rows));
+            db.all('SELECT id, name, brand, subtype, code, type FROM products', [], (err, rows) => err ? reject(err) : resolve(rows));
         });
         const productMap = new Map(products.map(p => [p.id, p]));
         const productMapByCode = new Map(products.filter(p => p.code).map(p => [p.code, p]));
