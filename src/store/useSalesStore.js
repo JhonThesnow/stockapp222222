@@ -21,6 +21,7 @@ const useSalesStore = create(persist((set, get) => ({
     reportFilters: {
         startDate: startOfMonth(new Date()),
         endDate: endOfMonth(new Date()),
+        types: [],
         names: [],
         brands: [],
         lines: [],
@@ -446,6 +447,7 @@ const useSalesStore = create(persist((set, get) => ({
             reportFilters: {
                 startDate: startOfMonth(new Date()),
                 endDate: endOfMonth(new Date()),
+                types: [],
                 names: [],
                 brands: [],
                 lines: [],
@@ -463,8 +465,9 @@ const useSalesStore = create(persist((set, get) => ({
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    startDate: format(reportFilters.startDate, "yyyy-MM-dd"),
-                    endDate: format(reportFilters.endDate, "yyyy-MM-dd"),
+                    startDate: reportFilters.startDate ? format(reportFilters.startDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+                    endDate: reportFilters.endDate ? format(reportFilters.endDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+                    types: reportFilters.types ? reportFilters.types.map(t => t.value) : [],
                     names: reportFilters.names ? reportFilters.names.map(n => n.value) : [],
                     brands: reportFilters.brands ? reportFilters.brands.map(b => b.value) : [],
                     lines: reportFilters.lines ? reportFilters.lines.map(l => l.value) : [],
