@@ -141,10 +141,10 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
-            <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-                <div className="flex justify-between items-center mb-6 border-b-2 pb-4">
-                    <h2 className="text-2xl font-bold text-gray-800">Editar Venta Pendiente</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-2 sm:p-4 backdrop-blur-sm">
+            <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] flex flex-col">
+                <div className="flex justify-between items-center mb-4 sm:mb-6 border-b-2 pb-3 sm:pb-4">
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Editar Venta Pendiente</h2>
                     <button onClick={onClose} className="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors">
                         <FiX size={24} />
                     </button>
@@ -178,11 +178,11 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
                 </div>
 
 
-                <div className="mt-4 flex gap-4">
-                    <button onClick={() => { setShowQuickSaleForm(false); setShowAddProduct(true); }} className="w-1/2 py-3 bg-blue-100 text-blue-700 font-bold rounded-xl hover:bg-blue-200 flex items-center justify-center gap-2 transition-colors">
+                <div className="mt-4 flex flex-col sm:flex-row gap-3 sm:gap-4">
+                    <button onClick={() => { setShowQuickSaleForm(false); setShowAddProduct(true); }} className="w-full sm:w-1/2 py-3 bg-blue-100 text-blue-700 font-bold rounded-xl hover:bg-blue-200 flex items-center justify-center gap-2 transition-colors">
                         <FiPlus size={20} /> Agregar Producto
                     </button>
-                    <button onClick={() => { setShowAddProduct(false); setShowQuickSaleForm(true); }} className="w-1/2 py-3 bg-purple-100 text-purple-700 font-bold rounded-xl hover:bg-purple-200 flex items-center justify-center gap-2 transition-colors">
+                    <button onClick={() => { setShowAddProduct(false); setShowQuickSaleForm(true); }} className="w-full sm:w-1/2 py-3 bg-purple-100 text-purple-700 font-bold rounded-xl hover:bg-purple-200 flex items-center justify-center gap-2 transition-colors">
                         <FiPlus size={20} /> Agregar Artículo Vario
                     </button>
                 </div>
@@ -256,11 +256,11 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
 
                 {error && <p className="text-red-600 bg-red-100 p-3 rounded-lg mt-4 text-center font-medium">{error}</p>}
 
-                <div className="flex justify-end gap-4 mt-6">
-                    <button onClick={onClose} disabled={loading} className="py-3 px-6 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300 transition-colors">
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4 mt-6">
+                    <button onClick={onClose} disabled={loading} className="w-full sm:w-auto py-3 px-6 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300 transition-colors">
                         Cancelar
                     </button>
-                    <button onClick={handleSave} disabled={loading || items.length === 0} className="py-3 px-8 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 flex items-center gap-2 shadow-md transition-colors disabled:bg-gray-400">
+                    <button onClick={handleSave} disabled={loading || items.length === 0} className="w-full sm:w-auto py-3 px-8 justify-center bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 flex items-center gap-2 shadow-md transition-colors disabled:bg-gray-400">
                         <FiSave size={20} />
                         {loading ? 'Guardando...' : 'Guardar Cambios'}
                     </button>
