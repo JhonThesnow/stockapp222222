@@ -42,11 +42,19 @@ const CostsPage = () => {
             });
         } else {
             setCurrentExpense(null);
+
+            // Si el mes/año seleccionado no es el actual, usamos el primer día de ese mes
+            let defaultDate = new Date();
+            const today = new Date();
+            if (selectedDate.getMonth() !== today.getMonth() || selectedDate.getFullYear() !== today.getFullYear()) {
+                defaultDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+            }
+
             setFormData({
                 description: '',
                 amount: '',
                 is_recurring: false,
-                date: new Date()
+                date: defaultDate
             });
         }
         setIsModalOpen(true);
