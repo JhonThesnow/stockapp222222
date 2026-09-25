@@ -30,6 +30,8 @@ const InventorySkeleton = () => (
 );
 
 const ProductDetailView = ({ product }) => {
+    const { incidenceRate } = useCostsStore();
+
     if (!product) return null;
     return (
         <div className="bg-blue-50 border-t border-blue-100 p-4 mt-2 rounded-b-lg animate-fade-in">
