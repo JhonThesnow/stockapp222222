@@ -7,6 +7,7 @@ import ReportsPage from './pages/ReportsPage';
 import AccountPage from './pages/AccountPage';
 import CajaPage from './pages/CajaPage';
 import EncargosPage from './pages/EncargosPage';
+import CostsPage from './pages/CostsPage';
 import { FiBox, FiBarChart2, FiShoppingCart, FiMenu, FiUser, FiHome, FiClipboard, FiDollarSign } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { useHotkeys } from 'react-hotkeys-hook';
@@ -16,6 +17,7 @@ import BottomNav from './components/BottomNav';
 import ScannerFAB from './components/ScannerFAB';
 import NativeScannerModal from './components/NativeScannerModal';
 import useSalesStore from './store/useSalesStore';
+import useCostsStore from './store/useCostsStore';
 
 const Navigation = ({ onLinkClick }) => {
   const activeLinkStyle = {
@@ -63,6 +65,12 @@ const Navigation = ({ onLinkClick }) => {
           </NavLink>
         </li>
         <li>
+          <NavLink to="/costos" style={({ isActive }) => isActive ? activeLinkStyle : undefined} onClick={onLinkClick} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors">
+            <FiDollarSign />
+            <span>Costos</span>
+          </NavLink>
+        </li>
+        <li>
           <NavLink to="/encargos" style={({ isActive }) => isActive ? activeLinkStyle : undefined} onClick={onLinkClick} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors">
             <FiClipboard />
             <span>Encargos</span>
@@ -80,6 +88,14 @@ const AppLayout = () => {
   const navigate = useNavigate();
 
   useGlobalScanner();
+
+  useEffect(() => {
+    // Initial fetch to calculate incidence rate and sync recurring expenses
+    useCostsStore.getState().syncRecurring().then(() => {
+        useCostsStore.getState().fetchIncidenceRate();
+    });
+  }, []);
+
 
   useHotkeys('f12', (e) => {
     e.preventDefault();
@@ -111,6 +127,7 @@ const AppLayout = () => {
             <Route path="/sales" element={<SalesPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/encargos" element={<EncargosPage />} />
+            <Route path="/costos" element={<CostsPage />} />
           </Routes>
         </main>
       </div>

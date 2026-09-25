@@ -4,6 +4,7 @@ import RestockModal from '../components/RestockModal.jsx';
 import ConfirmModal from '../components/ConfirmModal.jsx';
 import { FiPlusCircle, FiBox, FiEdit, FiTrash2, FiChevronDown, FiChevronUp, FiDollarSign, FiTrendingUp, FiSearch, FiPlus, FiCamera, FiFilter, FiLayers } from 'react-icons/fi';
 import useInventoryStore from '../store/useInventoryStore.js';
+import useCostsStore from '../store/useCostsStore.js';
 import { formatNumber } from '../utils/formatting.js';
 import StockIncome from '../components/StockIncome.jsx';
 import PriceIncreases from '../components/PriceIncreases.jsx';
@@ -38,15 +39,28 @@ const ProductDetailView = ({ product }) => {
                 <div className='space-y-2'>
                     {product.salePrices.map((salePrice, index) => {
                         const currentSalePrice = salePrice.price ?? 0;
-                        const profit = currentSalePrice - product.purchasePrice;
-                        const profitMargin = product.purchasePrice > 0 ? (profit / product.purchasePrice) * 100 : Infinity;
+                        const operatingCost = currentSalePrice * incidenceRate;
+                        const realProfit = currentSalePrice - product.purchasePrice - operatingCost;
+                        const profitMargin = product.purchasePrice > 0 ? (realProfit / product.purchasePrice) * 100 : Infinity;
+
                         return (
-                            <div key={index} className="bg-white p-3 rounded-md shadow-sm border border-gray-100">
+                            <div key={index} className="bg-white p-3 rounded-md shadow-sm border border-gray-100 flex flex-col gap-2">
                                 <p className="font-semibold text-gray-700">{salePrice.name}: <span className="font-bold text-blue-600">${formatNumber(currentSalePrice)}</span></p>
-                                <div className={`flex items-center text-sm ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    <FiTrendingUp className="mr-1" />
-                                    <span>Ganancia: ${formatNumber(profit)}</span>
-                                    <span className="ml-2 font-bold">({profitMargin === Infinity ? '∞' : profitMargin.toFixed(0)}%)</span>
+                                <div className="text-sm bg-gray-50 p-2 rounded border">
+                                    <div className="flex justify-between text-gray-600 mb-1">
+                                        <span>Precio Compra:</span>
+                                        <span className="font-medium">${formatNumber(product.purchasePrice)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-gray-600 mb-1">
+                                        <span>Costo Op. ({(incidenceRate * 100).toFixed(1)}%):</span>
+                                        <span className="font-medium text-orange-600">-${formatNumber(operatingCost)}</span>
+                                    </div>
+                                    <div className="flex justify-between border-t pt-1 mt-1">
+                                        <span className="font-bold text-gray-700">Rentabilidad Real:</span>
+                                        <span className={`font-bold ${realProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                            ${formatNumber(realProfit)}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         );

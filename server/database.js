@@ -80,6 +80,14 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                 }
             });
 
+                        db.run(`CREATE TABLE IF NOT EXISTS operating_expenses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                description TEXT NOT NULL,
+                amount REAL NOT NULL,
+                is_recurring INTEGER DEFAULT 0
+            )`);
+
             db.run(`CREATE TABLE IF NOT EXISTS expenses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 accountId INTEGER NOT NULL,
