@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = '/api';
 
 const useCostsStore = create((set, get) => ({
     expenses: [],
