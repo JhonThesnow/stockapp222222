@@ -269,55 +269,81 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
 
                                     const paymentMethods = ['Efectivo', 'Débito', 'Crédito', 'Cuenta DNI'];
 
-                                    // Bucle de fechas: Desde 1 de Enero 2026 hasta 31 de Diciembre 2026
-                                    const startDate = new Date('2026-01-01T00:00:00Z');
-                                    const endDate = new Date('2026-12-31T23:59:59Z');
-
                                     let totalSalesGenerated = 0;
 
-                                    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-                                        // Generar entre 10 y 30 ventas para el día actual "d"
-                                        const dailySalesCount = Math.floor(Math.random() * 21) + 10;
-                                        for (let i = 0; i < dailySalesCount; i++) {
-                                            // Asignar una hora aleatoria de apertura de local (entre 9 AM y 8 PM)
-                                            const saleDate = new Date(d);
-                                            saleDate.setHours(9 + Math.floor(Math.random() * 11), Math.floor(Math.random() * 60), 0);
+                                    for (let month = 0; month < 12; month++) {
+                                        // Generar objetivo mensual aleatorio entre 1.500.000 y 2.500.000
+                                        const monthlyTarget = Math.floor(Math.random() * (2500000 - 1500000 + 1)) + 1500000;
+                                        let remainingMonthlyTarget = monthlyTarget;
+                                        const daysInMonth = new Date(2026, month + 1, 0).getDate();
 
-                                            // Items aleatorios para la venta (entre 1 y 4 productos distintos)
-                                            const itemsCount = Math.floor(Math.random() * 4) + 1;
-                                            const items = [];
-                                            let subtotal = 0;
+                                        for (let day = 1; day <= daysInMonth; day++) {
+                                            // Crear la fecha del día correspondiente (año 2026, zona horaria local)
+                                            const d = new Date(2026, month, day);
 
-                                            for (let j = 0; j < itemsCount; j++) {
-                                                const randomProduct = allProducts[Math.floor(Math.random() * allProducts.length)];
-                                                // Cantidad comprada de ese producto (entre 1 y 3)
-                                                const quantity = Math.floor(Math.random() * 3) + 1;
-                                                const salePrices = JSON.parse(randomProduct.salePrices);
-                                                const unitPrice = salePrices[0]?.price || 0;
-
-                                                // Evitar duplicados en la misma venta buscando si ya se agregó
-                                                const existingItemIndex = items.findIndex(item => item.productId === randomProduct.id);
-                                                if (existingItemIndex >= 0) {
-                                                    items[existingItemIndex].quantity += quantity;
-                                                    subtotal += unitPrice * quantity;
-                                                } else {
-                                                    items.push({
-                                                        productId: randomProduct.id,
-                                                        fullName: `${randomProduct.name} - ${randomProduct.subtype}`,
-                                                        quantity: quantity,
-                                                        unitPrice: unitPrice,
-                                                        purchasePrice: randomProduct.purchasePrice,
-                                                    });
-                                                    subtotal += unitPrice * quantity;
-                                                }
+                                            let dailyTarget;
+                                            if (day === daysInMonth) {
+                                                // En el último día del mes, cubrimos todo el restante
+                                                dailyTarget = remainingMonthlyTarget;
+                                            } else {
+                                                // Distribuir el restante entre los días que quedan, con variación aleatoria (+/- 20%)
+                                                const averageNeeded = remainingMonthlyTarget / (daysInMonth - day + 1);
+                                                dailyTarget = averageNeeded * (0.8 + Math.random() * 0.4);
                                             }
 
-                                            const paymentMethod = paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
-                                            // Asignar 'Caja Principal' (ID 1) si es efectivo, sino cuentas digitales (ID 2+)
-                                            const accountId = (paymentMethod === 'Efectivo') ? 1 : (Math.floor(Math.random() * 3) + 2);
+                                            // Asegurarnos de que el dailyTarget no sea negativo (por si nos pasamos)
+                                            if (dailyTarget < 0) dailyTarget = 0;
 
-                                            stmt.run(accountId, saleDate.toISOString(), JSON.stringify(items), subtotal, 0, subtotal, paymentMethod, 0, subtotal, 0);
-                                            totalSalesGenerated++;
+                                            let currentDaySum = 0;
+
+                                            // Generar ventas hasta alcanzar el objetivo diario
+                                            while (currentDaySum < dailyTarget) {
+                                                // Asignar una hora aleatoria de apertura de local (entre 9 AM y 8 PM)
+                                                const saleDate = new Date(d);
+                                                saleDate.setHours(9 + Math.floor(Math.random() * 11), Math.floor(Math.random() * 60), 0);
+
+                                                // Items aleatorios para la venta (entre 1 y 4 productos distintos)
+                                                const itemsCount = Math.floor(Math.random() * 4) + 1;
+                                                const items = [];
+                                                let subtotal = 0;
+
+                                                for (let j = 0; j < itemsCount; j++) {
+                                                    const randomProduct = allProducts[Math.floor(Math.random() * allProducts.length)];
+                                                    // Cantidad comprada de ese producto (entre 1 y 3)
+                                                    const quantity = Math.floor(Math.random() * 3) + 1;
+                                                    const salePrices = JSON.parse(randomProduct.salePrices);
+                                                    const unitPrice = salePrices[0]?.price || 0;
+
+                                                    // Evitar duplicados en la misma venta buscando si ya se agregó
+                                                    const existingItemIndex = items.findIndex(item => item.productId === randomProduct.id);
+                                                    if (existingItemIndex >= 0) {
+                                                        items[existingItemIndex].quantity += quantity;
+                                                        subtotal += unitPrice * quantity;
+                                                    } else {
+                                                        items.push({
+                                                            productId: randomProduct.id,
+                                                            fullName: `${randomProduct.name} - ${randomProduct.subtype}`,
+                                                            quantity: quantity,
+                                                            unitPrice: unitPrice,
+                                                            purchasePrice: randomProduct.purchasePrice,
+                                                        });
+                                                        subtotal += unitPrice * quantity;
+                                                    }
+                                                }
+
+                                                // Por precaución si el subtotal es 0
+                                                if (subtotal === 0) break;
+
+                                                const paymentMethod = paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
+                                                // Asignar 'Caja Principal' (ID 1) si es efectivo, sino cuentas digitales (ID 2+)
+                                                const accountId = (paymentMethod === 'Efectivo') ? 1 : (Math.floor(Math.random() * 3) + 2);
+
+                                                stmt.run(accountId, saleDate.toISOString(), JSON.stringify(items), subtotal, 0, subtotal, paymentMethod, 0, subtotal, 0);
+                                                totalSalesGenerated++;
+                                                currentDaySum += subtotal;
+                                            }
+
+                                            remainingMonthlyTarget -= currentDaySum;
                                         }
                                     }
 
