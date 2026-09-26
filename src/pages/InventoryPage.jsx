@@ -43,7 +43,8 @@ const ProductDetailView = ({ product }) => {
                         const currentSalePrice = salePrice.price ?? 0;
                         const operatingCost = currentSalePrice * incidenceRate;
                         const realProfit = currentSalePrice - product.purchasePrice - operatingCost;
-                        const profitMargin = product.purchasePrice > 0 ? (realProfit / product.purchasePrice) * 100 : Infinity;
+                        const profitMargin = product.purchasePrice > 0 ? (realProfit / product.purchasePrice) * 100 : 0;
+                        const realMultiplier = product.purchasePrice > 0 ? ((product.purchasePrice + realProfit) / product.purchasePrice) : 0;
 
                         const grossProfit = currentSalePrice - product.purchasePrice;
                         const markupPercentage = product.purchasePrice > 0 ? (grossProfit / product.purchasePrice) * 100 : 0;
@@ -70,7 +71,7 @@ const ProductDetailView = ({ product }) => {
                                     <div className="flex justify-between border-t pt-1 mt-1">
                                         <span className="font-bold text-gray-700">Rentabilidad Real:</span>
                                         <span className={`font-bold ${realProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                            ${formatNumber(realProfit)}
+                                            ${formatNumber(realProfit)} <span className="text-xs text-gray-500 font-normal">({profitMargin.toFixed(0)}% | x{realMultiplier.toFixed(2)})</span>
                                         </span>
                                     </div>
                                 </div>
