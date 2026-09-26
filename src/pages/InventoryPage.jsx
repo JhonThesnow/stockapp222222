@@ -45,6 +45,10 @@ const ProductDetailView = ({ product }) => {
                         const realProfit = currentSalePrice - product.purchasePrice - operatingCost;
                         const profitMargin = product.purchasePrice > 0 ? (realProfit / product.purchasePrice) * 100 : Infinity;
 
+                        const grossProfit = currentSalePrice - product.purchasePrice;
+                        const markupPercentage = product.purchasePrice > 0 ? (grossProfit / product.purchasePrice) * 100 : 0;
+                        const multiplier = product.purchasePrice > 0 ? (currentSalePrice / product.purchasePrice) : 0;
+
                         return (
                             <div key={index} className="bg-white p-3 rounded-md shadow-sm border border-gray-100 flex flex-col gap-2">
                                 <p className="font-semibold text-gray-700">{salePrice.name}: <span className="font-bold text-blue-600">${formatNumber(currentSalePrice)}</span></p>
@@ -53,7 +57,13 @@ const ProductDetailView = ({ product }) => {
                                         <span>Precio Compra:</span>
                                         <span className="font-medium">${formatNumber(product.purchasePrice)}</span>
                                     </div>
-                                    <div className="flex justify-between text-gray-600 mb-1">
+                                    <div className="flex justify-between text-gray-600 mb-1 border-b pb-1">
+                                        <span className="font-semibold">Rentabilidad Bruta:</span>
+                                        <span className={`font-semibold ${grossProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                            ${formatNumber(grossProfit)} <span className="text-xs text-gray-500 font-normal">({markupPercentage.toFixed(0)}% | x{multiplier.toFixed(2)})</span>
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-gray-600 mb-1 mt-1">
                                         <span>Costo Op. ({(incidenceRate * 100).toFixed(1)}%):</span>
                                         <span className="font-medium text-orange-600">-${formatNumber(operatingCost)}</span>
                                     </div>
