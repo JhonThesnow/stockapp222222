@@ -265,13 +265,28 @@ const ProductForm = ({ productToEdit, onClose }) => {
 
                         <div>
                             <h3 className="font-semibold mb-2">Precios de Venta</h3>
-                            {editData.salePrices.map((p, index) => (
-                                <div key={index} className="flex items-center gap-2 mb-2">
-                                    <input name="name" value={p.name} onChange={(e) => handleEditPriceChange(index, e)} placeholder="Nombre (ej: Minorista)" className="p-2 border rounded w-1/3" />
-                                    <input type="number" step="0.01" name="price" value={p.price || ''} onChange={(e) => handleEditPriceChange(index, e)} placeholder="Precio" className="p-2 border rounded w-1/3" />
-                                    {editData.salePrices.length > 1 && <button type="button" onClick={() => removePriceFromEdit(index)} className="text-red-500 p-2 rounded hover:bg-red-100"><FiTrash /></button>}
+                            {editData.salePrices.map((p, index) => {
+                                const purchasePrice = parseFloat(editData.purchasePrice) || 0;
+                                const currentPrice = parseFloat(p.price) || 0;
+                                const grossProfit = currentPrice - purchasePrice;
+                                const markupPercentage = purchasePrice > 0 ? (grossProfit / purchasePrice) * 100 : 0;
+                                const multiplier = purchasePrice > 0 ? (currentPrice / purchasePrice) : 0;
+
+                                return (
+                                <div key={index} className="flex flex-col mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <input name="name" value={p.name} onChange={(e) => handleEditPriceChange(index, e)} placeholder="Nombre (ej: Minorista)" className="p-2 border rounded w-1/3" />
+                                        <input type="number" step="0.01" name="price" value={p.price || ''} onChange={(e) => handleEditPriceChange(index, e)} placeholder="Precio" className="p-2 border rounded w-1/3" />
+                                        {editData.salePrices.length > 1 && <button type="button" onClick={() => removePriceFromEdit(index)} className="text-red-500 p-2 rounded hover:bg-red-100"><FiTrash /></button>}
+                                    </div>
+                                    {currentPrice > 0 && purchasePrice > 0 && (
+                                        <div className="text-xs text-gray-500 mt-1 ml-1">
+                                            Rent. Bruta: <span className={grossProfit >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>${grossProfit.toFixed(2)} ({markupPercentage.toFixed(0)}% | x{multiplier.toFixed(2)})</span>
+                                        </div>
+                                    )}
                                 </div>
-                            ))}
+                                )
+                            })}
                             <button type="button" onClick={addPriceToEdit} className="flex items-center gap-2 text-sm text-blue-600 hover:underline"><FiPlus /> Agregar precio</button>
                         </div>
                         <div className="flex justify-end gap-3 mt-8 border-t pt-5 sticky bottom-0 bg-white pb-2">
@@ -376,27 +391,42 @@ const ProductForm = ({ productToEdit, onClose }) => {
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col md:flex-row gap-6 mt-2 pt-4 border-t border-gray-100">
+                                        <div className="flex flex-col md:flex-row gap-6 mt-2 pt-4 border-t border-gray-100 pb-4">
                                             {/* Precios de Venta Section */}
                                             <div className="flex-grow">
                                                 <div className="flex items-center justify-between mb-2">
                                                     <h4 className="text-sm font-semibold text-gray-700">Precios de Venta</h4>
                                                 </div>
                                                 <div className="space-y-2">
-                                                    {v.salePrices.map((p, pIndex) => (
-                                                        <div key={pIndex} className="flex items-center gap-2">
-                                                            <input name="name" value={p.name} onChange={e => handlePriceChange(vIndex, pIndex, e)} placeholder="Ej: Minorista" className="p-2 border border-gray-300 rounded-lg flex-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-                                                            <div className="relative flex-1">
-                                                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 text-sm">$</span>
-                                                                <input name="price" type="number" step="0.01" value={p.price} onChange={e => handlePriceChange(vIndex, pIndex, e)} placeholder="0.00" className="p-2 pl-7 border border-gray-300 rounded-lg w-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                                    {v.salePrices.map((p, pIndex) => {
+                                                        const purchasePrice = parseFloat(v.purchasePrice) || 0;
+                                                        const currentPrice = parseFloat(p.price) || 0;
+                                                        const grossProfit = currentPrice - purchasePrice;
+                                                        const markupPercentage = purchasePrice > 0 ? (grossProfit / purchasePrice) * 100 : 0;
+                                                        const multiplier = purchasePrice > 0 ? (currentPrice / purchasePrice) : 0;
+
+                                                        return (
+                                                        <div key={pIndex} className="flex flex-col mb-4">
+                                                            <div className="flex items-center gap-2">
+                                                                <input name="name" value={p.name} onChange={e => handlePriceChange(vIndex, pIndex, e)} placeholder="Ej: Minorista" className="p-2 border border-gray-300 rounded-lg flex-1 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                                                <div className="relative flex-1">
+                                                                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500 text-sm">$</span>
+                                                                    <input name="price" type="number" step="0.01" value={p.price} onChange={e => handlePriceChange(vIndex, pIndex, e)} placeholder="0.00" className="p-2 pl-7 border border-gray-300 rounded-lg w-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                                                                </div>
+                                                                {v.salePrices.length > 1 && (
+                                                                    <button type="button" onClick={() => removePriceFromVariation(vIndex, pIndex)} className="text-red-400 hover:text-red-600 p-2" title="Eliminar Precio">
+                                                                        <FiTrash size={16} />
+                                                                    </button>
+                                                                )}
                                                             </div>
-                                                            {v.salePrices.length > 1 && (
-                                                                <button type="button" onClick={() => removePriceFromVariation(vIndex, pIndex)} className="text-red-400 hover:text-red-600 p-2" title="Eliminar Precio">
-                                                                    <FiTrash size={16} />
-                                                                </button>
+                                                            {currentPrice > 0 && purchasePrice > 0 && (
+                                                                <div className="text-xs text-gray-500 mt-1 ml-1">
+                                                                    Rent. Bruta: <span className={grossProfit >= 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>${grossProfit.toFixed(2)} ({markupPercentage.toFixed(0)}% | x{multiplier.toFixed(2)})</span>
+                                                                </div>
                                                             )}
                                                         </div>
-                                                    ))}
+                                                    )})}
+
                                                     <button type="button" onClick={() => addPriceToVariation(vIndex)} className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors mt-1">
                                                         <FiPlus size={16} /> Agregar otro precio
                                                     </button>

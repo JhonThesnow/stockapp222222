@@ -101,7 +101,7 @@ const ModifyFundsModal = ({ onClose, accounts, selectedAccountId }) => {
 const AccountPage = () => {
     const {
         accounts, selectedAccountId, setSelectedAccountId,
-        accountSummary, movements, cashClosings, loading,
+        accountSummary, salesProfitSummary, movements, cashClosings, loading,
         setDateRange, deleteMovement, fetchInitialData,
         startDate, endDate
     } = useAccountStore();
@@ -252,6 +252,12 @@ const AccountPage = () => {
                         >
                             Historial de Cierres
                         </button>
+                        <button
+                            onClick={() => setActiveTab('sales-profit')}
+                            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'sales-profit' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                        >
+                            Ventas y Rentabilidad
+                        </button>
                     </nav>
                 </div>
 
@@ -305,6 +311,51 @@ const AccountPage = () => {
                             )}
                     </div>
                 )}
+
+                {activeTab === 'sales-profit' && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                        {loading ? <p className="text-center text-gray-500">Cargando datos...</p> :
+                            !salesProfitSummary ? (
+                                <p className="text-center text-gray-500">No hay datos de ventas disponibles para este período.</p>
+                            ) : (
+                                <div className="space-y-6">
+                                    <h3 className="text-lg font-bold text-gray-800 border-b pb-2">Resumen de Rentabilidad (Período Seleccionado)</h3>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                                            <p className="text-xs font-medium text-gray-500 uppercase mb-1">Total Vendido</p>
+                                            <p className="text-xl font-bold text-gray-900">${formatNumber(salesProfitSummary.totalRevenue)}</p>
+                                        </div>
+                                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                                            <p className="text-xs font-medium text-gray-500 uppercase mb-1">Costo de Mercadería</p>
+                                            <p className="text-xl font-bold text-orange-600">-${formatNumber(salesProfitSummary.totalCostOfGoods)}</p>
+                                        </div>
+                                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                                            <p className="text-xs font-medium text-gray-500 uppercase mb-1">Costo Operativo Asignado</p>
+                                            <p className="text-xl font-bold text-orange-600">-${formatNumber(salesProfitSummary.totalOperatingCosts)}</p>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                (Incidencia global del {(salesProfitSummary.incidenceRate * 100).toFixed(1)}%)
+                                            </p>
+                                        </div>
+                                        <div className={`p-4 rounded-lg border ${salesProfitSummary.realProfit >= 0 ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
+                                            <p className={`text-xs font-medium uppercase mb-1 ${salesProfitSummary.realProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                                Rentabilidad Real
+                                            </p>
+                                            <p className={`text-2xl font-bold ${salesProfitSummary.realProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                ${formatNumber(salesProfitSummary.realProfit)}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4 p-4 bg-blue-50 text-blue-800 rounded-lg text-sm">
+                                        <p><strong>Nota de cálculo:</strong> La incidencia global ({(salesProfitSummary.incidenceRate * 100).toFixed(1)}%) se calcula tomando todos los Gastos Operativos (${formatNumber(salesProfitSummary.totalExpenses)}) divididos por las Ventas Globales Totales (${formatNumber(salesProfitSummary.totalGlobalRevenue)}) del período seleccionado.</p>
+                                    </div>
+                                </div>
+                            )
+                        }
+                    </div>
+                )}
+
 
                 {activeTab === 'closings' && (
                     <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">

@@ -8,6 +8,7 @@ const useAccountStore = create((set, get) => ({
     accounts: [],
     categories: [],
     selectedAccountId: null,
+    salesProfitSummary: null,
     accountSummary: {
         totalIncome: 0,
         totalOutcome: 0,
@@ -69,11 +70,33 @@ const useAccountStore = create((set, get) => ({
     fetchDataForCurrentState: async () => {
         set({ loading: true, error: null });
         await Promise.all([
+            get().fetchSalesProfitSummary(),
             get().fetchAccountSummary(),
             get().fetchMovements(),
             get().fetchCashClosings()
         ]);
         set({ loading: false });
+    },
+
+
+    fetchSalesProfitSummary: async () => {
+        const { startDate, endDate, selectedAccountId } = get();
+        if (!startDate || !endDate) return;
+        try {
+            const params = new URLSearchParams({
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString(),
+            });
+            if (selectedAccountId) {
+                params.append('accountId', selectedAccountId);
+            }
+            const response = await fetch(`${API_URL}/account/sales-profit?${params.toString()}`);
+            if (!response.ok) throw new Error('No se pudo obtener el resumen de ventas y rentabilidad.');
+            const json = await response.json();
+            set({ salesProfitSummary: json.data });
+        } catch (e) {
+            set({ error: e.message, salesProfitSummary: null });
+        }
     },
 
     fetchAccountSummary: async () => {
