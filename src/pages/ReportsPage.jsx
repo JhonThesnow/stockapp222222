@@ -5,6 +5,7 @@ import { FiTrendingUp, FiDollarSign, FiAward, FiCalendar, FiFileText, FiFilter, 
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import DatePicker from 'react-datepicker';
+import { formatNumber } from '../utils/formatting';
 import "react-datepicker/dist/react-datepicker.css";
 import Select from 'react-select';
 
@@ -247,10 +248,10 @@ const ReportsPage = () => {
             {/* KPIs Principales */}
             {activeReport && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <StatCard title="Ventas Totales" value={`$${activeReport.summary.totalRevenue.toFixed(2)}`} icon={<FiDollarSign />} color="bg-green-100 text-green-600" />
-                    <StatCard title="Ganancia Neta" value={`$${activeReport.summary.grossProfit.toFixed(2)}`} icon={<FiTrendingUp />} color="bg-blue-100 text-blue-600" />
-                    <StatCard title="Nº de Ventas" value={activeReport.summary.totalSales} icon={<FiFileText />} color="bg-yellow-100 text-yellow-600" />
-                    <StatCard title="Ventas en Efectivo" value={`$${(activeReport.summary.cashRevenue || 0).toFixed(2)}`} icon={<FiDollarSign />} color="bg-indigo-100 text-indigo-600" />
+                    <StatCard title="Ventas Totales" value={`$${formatNumber(activeReport.summary.totalRevenue)}`} icon={<FiDollarSign />} color="bg-green-100 text-green-600" />
+                    <StatCard title="Ganancia Neta" value={`$${formatNumber(activeReport.summary.grossProfit)}`} icon={<FiTrendingUp />} color="bg-blue-100 text-blue-600" />
+                    <StatCard title="Nº de Ventas" value={formatNumber(activeReport.summary.totalSales)} icon={<FiFileText />} color="bg-yellow-100 text-yellow-600" />
+                    <StatCard title="Ventas en Efectivo" value={`$${formatNumber(activeReport.summary.cashRevenue || 0)}`} icon={<FiDollarSign />} color="bg-indigo-100 text-indigo-600" />
                 </div>
             )}
 
@@ -263,8 +264,8 @@ const ReportsPage = () => {
                             <BarChart data={salesChartData}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="name" />
-                                <YAxis />
-                                <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+                                <YAxis tickFormatter={(val) => formatNumber(val)} />
+                                <Tooltip formatter={(value) => `$${formatNumber(value)}`} />
                                 <Legend />
                                 <Bar dataKey="Ventas" fill="#3B82F6" />
                             </BarChart>
@@ -276,9 +277,9 @@ const ReportsPage = () => {
                         <div className="mt-8 border-t pt-6">
                             <h2 className="text-xl font-bold mb-4">Reporte de Caja - {format(new Date(), 'dd/MM/yyyy')}</h2>
                             <div className="space-y-2">
-                                <div className="flex justify-between p-2 bg-gray-50 rounded"><span>Ventas en Efectivo:</span> <span className="font-bold">${(activeReport.summary.cashRevenue || 0).toFixed(2)}</span></div>
-                                <div className="flex justify-between p-2 bg-gray-50 rounded"><span>Ventas con Tarjeta:</span> <span className="font-bold">${(activeReport.summary.cardRevenue || 0).toFixed(2)}</span></div>
-                                <div className="flex justify-between p-3 bg-blue-50 rounded text-blue-800 font-bold mt-2"><span>TOTAL CAJA:</span> <span>${(activeReport.summary.totalRevenue || 0).toFixed(2)}</span></div>
+                                <div className="flex justify-between p-2 bg-gray-50 rounded"><span>Ventas en Efectivo:</span> <span className="font-bold">${formatNumber(activeReport.summary.cashRevenue || 0)}</span></div>
+                                <div className="flex justify-between p-2 bg-gray-50 rounded"><span>Ventas con Tarjeta:</span> <span className="font-bold">${formatNumber(activeReport.summary.cardRevenue || 0)}</span></div>
+                                <div className="flex justify-between p-3 bg-blue-50 rounded text-blue-800 font-bold mt-2"><span>TOTAL CAJA:</span> <span>${formatNumber(activeReport.summary.totalRevenue || 0)}</span></div>
                             </div>
                         </div>
                     )}
@@ -300,7 +301,7 @@ const ReportsPage = () => {
                                         {product.subtype && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{product.subtype}</span>}
                                     </div>
                                 </div>
-                                <span className="font-bold bg-gray-200 text-gray-800 px-2 py-1 rounded-full text-sm mt-1">{product.quantity} uds.</span>
+                                <span className="font-bold bg-gray-200 text-gray-800 px-2 py-1 rounded-full text-sm mt-1">{formatNumber(product.quantity)} uds.</span>
                             </li>
                         ))}
                         {(!activeReport || activeReport.topProducts.length === 0) && <p className="text-center text-gray-500 pt-10">No hay ventas registradas que coincidan con los filtros.</p>}
