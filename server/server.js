@@ -875,6 +875,85 @@ app.get('/api/movement-categories', (req, res) => {
     });
 });
 
+
+app.get('/api/account/sales-profit', (req, res) => {
+    const { startDate, endDate, accountId } = req.query;
+    if (!startDate || !endDate) {
+        return res.status(400).json({ error: "Fechas de inicio y fin son requeridas." });
+    }
+
+    const baseParams = [startDate, endDate];
+    let accountFilter = '';
+    let queryParams = [...baseParams];
+
+    if (accountId) {
+        if (accountId === 'dni_efectivo') {
+            accountFilter = " AND accountId IN (SELECT id FROM accounts WHERE name IN ('Caja Principal', 'Cuenta DNI'))";
+        } else {
+            accountFilter = ' AND accountId = ?';
+            queryParams.push(accountId);
+        }
+    }
+
+    const salesSql = `SELECT finalAmount, items FROM sales WHERE status = 'completed' AND date >= ? AND date <= ? ${accountFilter}`;
+    const operatingExpensesSql = `SELECT amount FROM operating_expenses WHERE date >= ? AND date <= ?`; // Gastos operativos de todo el periodo, independientemente de la cuenta
+
+    Promise.all([
+        new Promise((resolve, reject) => db.all(salesSql, queryParams, (err, rows) => err ? reject(err) : resolve(rows))),
+        new Promise((resolve, reject) => db.all(operatingExpensesSql, baseParams, (err, rows) => err ? reject(err) : resolve(rows))),
+    ]).then(([sales, operatingExpenses]) => {
+        let totalRevenue = 0;
+        let totalCostOfGoods = 0;
+
+        sales.forEach(s => {
+            totalRevenue += s.finalAmount;
+            if (s.items) {
+                try {
+                    const items = JSON.parse(s.items);
+                    const costOfGoods = items.reduce((acc, i) => acc + (i.purchasePrice * i.quantity), 0);
+                    totalCostOfGoods += costOfGoods;
+                } catch (e) {
+                    console.error("Error parsing sales items in sales-profit endpoint", e);
+                }
+            }
+        });
+
+        const totalExpenses = operatingExpenses.reduce((sum, e) => sum + e.amount, 0);
+        let incidenceRate = 0;
+
+        // Calculate dynamic incidence rate for the selected period based on ALL sales vs ALL expenses for that period?
+        // Wait, the prompt says "vs las ventas de ese mismo período".
+        // We need to fetch ALL sales in the period to get the accurate incidence rate, because accountFilter might only select some sales.
+
+        const allSalesSql = `SELECT finalAmount FROM sales WHERE status = 'completed' AND date >= ? AND date <= ?`;
+        db.all(allSalesSql, baseParams, (err, allSales) => {
+             if (err) return res.status(500).json({ error: err.message });
+
+             const totalGlobalRevenue = allSales.reduce((sum, s) => sum + s.finalAmount, 0);
+             if (totalGlobalRevenue > 0) {
+                 incidenceRate = totalExpenses / totalGlobalRevenue;
+             }
+
+             const operatingCostForSelectedSales = totalRevenue * incidenceRate;
+             const realProfit = totalRevenue - totalCostOfGoods - operatingCostForSelectedSales;
+
+             res.json({
+                 data: {
+                     totalRevenue,
+                     totalCostOfGoods,
+                     totalOperatingCosts: operatingCostForSelectedSales,
+                     realProfit,
+                     incidenceRate,
+                     totalExpenses,
+                     totalGlobalRevenue
+                 }
+             });
+        });
+
+    }).catch(err => res.status(500).json({ error: err.message }));
+});
+
+
 app.get('/api/account/summary', (req, res) => {
     const { startDate, endDate, accountId } = req.query;
     if (!startDate || !endDate) {
