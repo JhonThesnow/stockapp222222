@@ -15,7 +15,8 @@ const StockAdjustmentModal = ({ onClose, products }) => {
 
     const filteredProducts = products.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.code && p.code.toLowerCase().includes(searchTerm.toLowerCase()))
+        (p.code && p.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (p.brand && p.brand.toLowerCase().includes(searchTerm.toLowerCase()))
     ).slice(0, 5);
 
     const handleSubmit = async (e) => {
@@ -68,7 +69,7 @@ const StockAdjustmentModal = ({ onClose, products }) => {
                                 <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                 <input
                                     type="text"
-                                    placeholder="Buscar producto por nombre o código..."
+                                    placeholder="Buscar producto por nombre, código o marca..."
                                     className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
