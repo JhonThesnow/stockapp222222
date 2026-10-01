@@ -1862,7 +1862,7 @@ app.post('/api/check-price', async (req, res) => {
 
         // 4. Extraer el precio
         const priceText = await page.evaluate(() => {
-            const el = document.querySelector('.price bdi') || document.querySelector('.price .amount') || document.querySelector('.woocommerce-Price-amount');
+            const el = document.querySelector('.price bdi') || document.querySelector('.price .amount') || document.querySelector('.woocommerce-Price-amount') || document.querySelector('.pp-price__amount');
             if (!el) return null;
             return el.textContent;
         });
