@@ -135,6 +135,23 @@ const ReportsPage = () => {
 
             </div>
 
+            {/* Selector de Periodo Rápido y Filtros */}
+            <div className="flex flex-wrap gap-2 mb-6 bg-white p-2 rounded-lg shadow-sm w-fit">
+                <button onClick={() => handlePeriodChange('today')} className={`px-4 py-2 rounded ${activePeriod === 'today' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}>Hoy</button>
+                <button onClick={() => handlePeriodChange('week')} className={`px-4 py-2 rounded ${activePeriod === 'week' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}>Esta Semana</button>
+                <button onClick={() => handlePeriodChange('month')} className={`px-4 py-2 rounded ${activePeriod === 'month' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}>Este Mes</button>
+
+                <div className="w-px bg-gray-300 mx-1"></div>
+
+                <button
+                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${isFilterOpen ? 'bg-gray-200 text-gray-800' : 'hover:bg-gray-100'}`}
+                >
+                    <FiFilter />
+                    Filtros Avanzados
+                </button>
+            </div>
+
             {/* Panel de Filtros (Collapsible) */}
             {isFilterOpen && (
                 <div className="bg-white p-6 rounded-lg shadow-md mb-6 relative">
@@ -227,23 +244,6 @@ const ReportsPage = () => {
                     </div>
                 </div>
             )}
-
-            {/* Selector de Periodo Rápido y Filtros */}
-            <div className="flex flex-wrap gap-2 mb-6 bg-white p-2 rounded-lg shadow-sm w-fit">
-                <button onClick={() => handlePeriodChange('today')} className={`px-4 py-2 rounded ${activePeriod === 'today' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}>Hoy</button>
-                <button onClick={() => handlePeriodChange('week')} className={`px-4 py-2 rounded ${activePeriod === 'week' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}>Esta Semana</button>
-                <button onClick={() => handlePeriodChange('month')} className={`px-4 py-2 rounded ${activePeriod === 'month' ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}>Este Mes</button>
-
-                <div className="w-px bg-gray-300 mx-1"></div>
-
-                <button
-                    onClick={() => setIsFilterOpen(!isFilterOpen)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${isFilterOpen ? 'bg-gray-200 text-gray-800' : 'hover:bg-gray-100'}`}
-                >
-                    <FiFilter />
-                    Filtros Avanzados
-                </button>
-            </div>
 
             {/* KPIs Principales */}
             {activeReport && (
