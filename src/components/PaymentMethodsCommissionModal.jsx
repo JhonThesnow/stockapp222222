@@ -5,9 +5,13 @@ const PaymentMethodsCommissionModal = ({ onClose }) => {
     const { paymentMethods, updatePaymentMethod, fetchPaymentMethods } = useSalesStore();
     const [methods, setMethods] = useState([]);
 
-    useEffect(() => {
-        setMethods(paymentMethods.map(m => ({ ...m })));
-    }, [paymentMethods]);
+useEffect(() => {
+        if (paymentMethods.length === 0) {
+            fetchPaymentMethods();
+        } else {
+            setMethods(paymentMethods.map(m => ({ ...m })));
+        }
+    }, [paymentMethods, fetchPaymentMethods]);
 
     const handleChange = (index, value) => {
         const updated = [...methods];
