@@ -159,12 +159,12 @@ app.post('/api/products/batch', (req, res) => {
 
     db.serialize(() => {
         db.run('BEGIN TRANSACTION');
-        const sql = `INSERT INTO products (code, name, type, brand, subtype, quantity, purchasePrice, salePrices, lowStockThreshold, is_combo, provider_url, provider_price, last_price_check) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const sql = `INSERT INTO products (code, name, type, brand, subtype, quantity, purchasePrice, salePrices, lowStockThreshold, is_combo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         const stmt = db.prepare(sql);
 
         const insertProduct = (product) => {
             return new Promise((resolve, reject) => {
-                const { code, name, type, brand, subtype, quantity, purchasePrice, salePrices, lowStockThreshold, is_combo, combo_items, provider_url, provider_price, last_price_check } = product;
+                const { code, name, type, brand, subtype, quantity, purchasePrice, salePrices, lowStockThreshold, is_combo, combo_items } = product;
                 stmt.run(
                     code || null,
                     name,
@@ -227,13 +227,13 @@ app.post('/api/products/:id/restock', (req, res) => {
 });
 app.put('/api/products/:id', (req, res) => {
     const { id } = req.params;
-    const { code, name, type, brand, subtype, quantity, purchasePrice, salePrices, lowStockThreshold, is_combo, combo_items, provider_url, provider_price, last_price_check } = req.body;
+    const { code, name, type, brand, subtype, quantity, purchasePrice, salePrices, lowStockThreshold, is_combo, combo_items } = req.body;
 
     db.serialize(() => {
         db.run('BEGIN TRANSACTION');
 
-        const sql = `UPDATE products SET code = ?, name = ?, type = ?, brand = ?, subtype = ?, quantity = ?, purchasePrice = ?, salePrices = ?, lowStockThreshold = ?, is_combo = ?, provider_url = ?, provider_price = ?, last_price_check = ? WHERE id = ?`;
-        const params = [code, name, type, brand, subtype, quantity, purchasePrice, JSON.stringify(salePrices), lowStockThreshold, is_combo ? 1 : 0, provider_url, provider_price, last_price_check, id];
+        const sql = `UPDATE products SET code = ?, name = ?, type = ?, brand = ?, subtype = ?, quantity = ?, purchasePrice = ?, salePrices = ?, lowStockThreshold = ?, is_combo = ? WHERE id = ?`;
+        const params = [code, name, type, brand, subtype, quantity, purchasePrice, JSON.stringify(salePrices), lowStockThreshold, is_combo ? 1 : 0, id];
 
         db.run(sql, params, function (err) {
             if (err) {
@@ -1828,83 +1828,6 @@ app.get('/api/metrics/incidence-rate', (req, res) => {
     );
 });
 
-
-
-// Endpoint de Web Scraping
-
-// Endpoint para actualizar solo el provider_price
-app.put('/api/products/:id/provider', (req, res) => {
-    const { id } = req.params;
-    const { provider_price, last_price_check } = req.body;
-
-    const sql = `UPDATE products SET provider_price = ?, last_price_check = ? WHERE id = ?`;
-    db.run(sql, [provider_price, last_price_check, id], function (err) {
-        if (err) return res.status(400).json({ error: err.message });
-        res.json({ message: 'Precio del proveedor actualizado correctamente', id });
-    });
-});
-
-app.post('/api/check-price', async (req, res) => {
-    const { url } = req.body;
-    if (!url) return res.status(400).json({ error: "URL es requerida" });
-
-    const puppeteer = require('puppeteer');
-    let browser = null;
-    try {
-        browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        });
-        const page = await browser.newPage();
-
-        // 1. Navegar a la página de login
-        await page.goto('https://www.santerialacatedral.com.ar/login', { waitUntil: 'networkidle2' });
-
-        // 2. Hacer login
-        const user = process.env.SCRAPER_USER;
-        const pass = process.env.SCRAPER_PASS;
-        if (!user || !pass) return res.status(500).json({ error: 'Credenciales del scraper no configuradas en entorno' });
-
-        await page.type('#lp-email', user);
-        await page.type('#lp-pwd', pass);
-        await page.click('button[type="submit"]');
-
-        // Wait for navigation after login
-        await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(e => console.log('Timeout waiting for navigation after login, continuing anyway...'));
-
-        // 3. Navegar a la URL del producto
-        await page.goto(url, { waitUntil: 'networkidle2' });
-
-        // 4. Extraer el precio
-        const priceText = await page.evaluate(() => {
-            const el = document.querySelector('.price bdi') || document.querySelector('.price .amount') || document.querySelector('.woocommerce-Price-amount');
-            if (!el) return null;
-            return el.textContent;
-        });
-
-        if (!priceText) {
-            return res.status(404).json({ error: "Precio no encontrado en la página." });
-        }
-
-        // Limpiar el precio (ej: "$ 3.200,50" -> 3200.50)
-        let cleanedPrice = priceText.replace(/[^0-9,-]+/g, '').replace(',', '.');
-        const priceFloat = parseFloat(cleanedPrice);
-
-        if (isNaN(priceFloat)) {
-            return res.status(500).json({ error: "No se pudo parsear el precio: " + priceText });
-        }
-
-        res.json({ provider_price: priceFloat });
-
-    } catch (err) {
-        console.error("Scraper Error:", err);
-        res.status(500).json({ error: err.message });
-    } finally {
-        if (browser) {
-            await browser.close();
-        }
-    }
-});
 
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);

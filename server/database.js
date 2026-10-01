@@ -46,10 +46,7 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                 code TEXT, name TEXT NOT NULL, type TEXT NOT NULL, brand TEXT, subtype TEXT,
                 quantity INTEGER NOT NULL, purchasePrice REAL NOT NULL, salePrices TEXT NOT NULL,
                 lowStockThreshold INTEGER DEFAULT 10,
-                is_combo BOOLEAN DEFAULT 0,
-                provider_url TEXT,
-                provider_price REAL,
-                last_price_check TEXT
+                is_combo BOOLEAN DEFAULT 0
             )`);
 
             db.run(`CREATE TABLE IF NOT EXISTS shifts (
@@ -63,30 +60,6 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
             db.run(`ALTER TABLE shifts ADD COLUMN initialCash REAL DEFAULT 0`, (err) => {
                 if (err && !err.message.includes("duplicate column")) {
                     console.log("Error adding initialCash to shifts:", err.message);
-                }
-            });
-
-            db.run(`ALTER TABLE products ADD COLUMN is_combo BOOLEAN DEFAULT 0`, (err) => {
-                if (err && !err.message.includes("duplicate column")) {
-                    console.log("Error adding is_combo to products:", err.message);
-                }
-            });
-
-            db.run(`ALTER TABLE products ADD COLUMN provider_url TEXT`, (err) => {
-                if (err && !err.message.includes("duplicate column")) {
-                    console.log("Error adding provider_url to products:", err.message);
-                }
-            });
-
-            db.run(`ALTER TABLE products ADD COLUMN provider_price REAL`, (err) => {
-                if (err && !err.message.includes("duplicate column")) {
-                    console.log("Error adding provider_price to products:", err.message);
-                }
-            });
-
-            db.run(`ALTER TABLE products ADD COLUMN last_price_check TEXT`, (err) => {
-                if (err && !err.message.includes("duplicate column")) {
-                    console.log("Error adding last_price_check to products:", err.message);
                 }
             });
 
