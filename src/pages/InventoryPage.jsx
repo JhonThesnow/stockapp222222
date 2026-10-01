@@ -9,6 +9,7 @@ import { formatNumber } from '../utils/formatting.js';
 import StockIncome from '../components/StockIncome.jsx';
 import PriceIncreases from '../components/PriceIncreases.jsx';
 import StockAdjustmentModal from '../components/StockAdjustmentModal.jsx';
+import StockAdjustmentsList from '../components/StockAdjustmentsList.jsx';
 
 const InventorySkeleton = () => (
     <div className="space-y-3">
@@ -343,6 +344,7 @@ const InventoryPage = () => {
                 <button onClick={() => setActiveTab('inventory')} className={`py-2 px-4 whitespace-nowrap ${activeTab === 'inventory' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Inventario</button>
                 <button onClick={() => setActiveTab('stockIncome')} className={`py-2 px-4 whitespace-nowrap ${activeTab === 'stockIncome' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Ingresos Stock</button>
                 <button onClick={() => setActiveTab('priceIncreases')} className={`py-2 px-4 whitespace-nowrap ${activeTab === 'priceIncreases' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Aumentos</button>
+                <button onClick={() => setActiveTab('stockAdjustments')} className={`py-2 px-4 whitespace-nowrap ${activeTab === 'stockAdjustments' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Bajas/Ajustes</button>
             </div>
 
             {activeTab === 'inventory' && (
@@ -476,6 +478,7 @@ const InventoryPage = () => {
 
             {activeTab === 'stockIncome' && <StockIncome />}
             {activeTab === 'priceIncreases' && <PriceIncreases />}
+            {activeTab === 'stockAdjustments' && <StockAdjustmentsList />}
         </div>
     );
 };
