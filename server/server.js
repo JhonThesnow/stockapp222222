@@ -1857,21 +1857,6 @@ app.post('/api/check-price', async (req, res) => {
         });
         const page = await browser.newPage();
 
-        // 1. Navegar a la página de login
-        await page.goto('https://www.santerialacatedral.com.ar/login', { waitUntil: 'networkidle2' });
-
-        // 2. Hacer login
-        const user = process.env.SCRAPER_USER;
-        const pass = process.env.SCRAPER_PASS;
-        if (!user || !pass) return res.status(500).json({ error: 'Credenciales del scraper no configuradas en entorno' });
-
-        await page.type('#lp-email', user);
-        await page.type('#lp-pwd', pass);
-        await page.click('button[type="submit"]');
-
-        // Wait for navigation after login
-        await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(e => console.log('Timeout waiting for navigation after login, continuing anyway...'));
-
         // 3. Navegar a la URL del producto
         await page.goto(url, { waitUntil: 'networkidle2' });
 
