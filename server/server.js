@@ -159,37 +159,57 @@ app.post('/api/products/batch', (req, res) => {
 
     db.serialize(() => {
         db.run('BEGIN TRANSACTION');
-        const sql = `INSERT INTO products (code, name, type, brand, subtype, quantity, purchasePrice, salePrices, lowStockThreshold) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const sql = `INSERT INTO products (code, name, type, brand, subtype, quantity, purchasePrice, salePrices, lowStockThreshold, is_combo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
         const stmt = db.prepare(sql);
 
-        for (const product of products) {
-            const { code, name, type, brand, subtype, quantity, purchasePrice, salePrices, lowStockThreshold } = product;
-            stmt.run(
-                code || null,
-                name,
-                type,
-                brand || null,
-                subtype || null,
-                quantity,
-                purchasePrice,
-                JSON.stringify(salePrices),
-                lowStockThreshold
-            );
-        }
+        const insertProduct = (product) => {
+            return new Promise((resolve, reject) => {
+                const { code, name, type, brand, subtype, quantity, purchasePrice, salePrices, lowStockThreshold, is_combo, combo_items } = product;
+                stmt.run(
+                    code || null,
+                    name,
+                    type,
+                    brand || null,
+                    subtype || null,
+                    quantity,
+                    purchasePrice,
+                    JSON.stringify(salePrices),
+                    lowStockThreshold,
+                    is_combo ? 1 : 0,
+                    function (err) {
+                        if (err) return reject(err);
+                        const lastID = this.lastID;
 
-        stmt.finalize(err => {
-            if (err) {
-                db.run('ROLLBACK');
-                return res.status(500).json({ error: 'Error al finalizar la carga de productos', details: err.message });
-            }
-            db.run('COMMIT', (commitErr) => {
-                if (commitErr) {
-                    db.run('ROLLBACK');
-                    return res.status(500).json({ error: 'Error al confirmar la transacción', details: commitErr.message });
-                }
-                res.status(201).json({ "message": "Productos agregados exitosamente", "inserted": products.length });
+                        if (is_combo && combo_items && combo_items.length > 0) {
+                            const comboStmt = db.prepare(`INSERT INTO combo_items (combo_id, product_id, quantity) VALUES (?, ?, ?)`);
+                            combo_items.forEach(ci => {
+                                comboStmt.run(lastID, ci.product_id, ci.quantity);
+                            });
+                            comboStmt.finalize(comboErr => {
+                                if (comboErr) return reject(comboErr);
+                                resolve();
+                            });
+                        } else {
+                            resolve();
+                        }
+                    }
+                );
             });
-        });
+        };
+
+        const promises = products.map(p => insertProduct(p));
+
+        Promise.all(promises)
+            .then(() => {
+                stmt.finalize();
+                db.run('COMMIT');
+                res.status(201).json({ "message": "Productos agregados exitosamente", "inserted": products.length });
+            })
+            .catch(err => {
+                stmt.finalize();
+                db.run('ROLLBACK');
+                res.status(500).json({ error: 'Error al finalizar la carga de productos', details: err.message });
+            });
     });
 });
 
@@ -207,12 +227,50 @@ app.post('/api/products/:id/restock', (req, res) => {
 });
 app.put('/api/products/:id', (req, res) => {
     const { id } = req.params;
-    const { code, name, type, brand, subtype, quantity, purchasePrice, salePrices, lowStockThreshold } = req.body;
-    const sql = `UPDATE products SET code = ?, name = ?, type = ?, brand = ?, subtype = ?, quantity = ?, purchasePrice = ?, salePrices = ?, lowStockThreshold = ? WHERE id = ?`;
-    const params = [code, name, type, brand, subtype, quantity, purchasePrice, JSON.stringify(salePrices), lowStockThreshold, id];
-    db.run(sql, params, function (err) {
-        if (err) return res.status(400).json({ "error": err.message });
-        res.json({ "message": "success", "changes": this.changes });
+    const { code, name, type, brand, subtype, quantity, purchasePrice, salePrices, lowStockThreshold, is_combo, combo_items } = req.body;
+
+    db.serialize(() => {
+        db.run('BEGIN TRANSACTION');
+
+        const sql = `UPDATE products SET code = ?, name = ?, type = ?, brand = ?, subtype = ?, quantity = ?, purchasePrice = ?, salePrices = ?, lowStockThreshold = ?, is_combo = ? WHERE id = ?`;
+        const params = [code, name, type, brand, subtype, quantity, purchasePrice, JSON.stringify(salePrices), lowStockThreshold, is_combo ? 1 : 0, id];
+
+        db.run(sql, params, function (err) {
+            if (err) {
+                db.run('ROLLBACK');
+                return res.status(400).json({ "error": err.message });
+            }
+
+            if (is_combo && combo_items) {
+                db.run(`DELETE FROM combo_items WHERE combo_id = ?`, [id], (delErr) => {
+                    if (delErr) {
+                        db.run('ROLLBACK');
+                        return res.status(500).json({ "error": delErr.message });
+                    }
+
+                    if (combo_items.length > 0) {
+                        const comboStmt = db.prepare(`INSERT INTO combo_items (combo_id, product_id, quantity) VALUES (?, ?, ?)`);
+                        combo_items.forEach(ci => {
+                            comboStmt.run(id, ci.product_id, ci.quantity);
+                        });
+                        comboStmt.finalize(comboErr => {
+                            if (comboErr) {
+                                db.run('ROLLBACK');
+                                return res.status(500).json({ "error": comboErr.message });
+                            }
+                            db.run('COMMIT');
+                            res.json({ "message": "success" });
+                        });
+                    } else {
+                        db.run('COMMIT');
+                        res.json({ "message": "success" });
+                    }
+                });
+            } else {
+                db.run('COMMIT');
+                res.json({ "message": "success" });
+            }
+        });
     });
 });
 app.delete('/api/products/:id', (req, res) => {
@@ -224,6 +282,106 @@ app.delete('/api/products/:id', (req, res) => {
 
 
 // --- Nuevos Endpoints de INVENTARIO ---
+
+
+app.post('/api/stock-adjustments', (req, res) => {
+    const { product_id, quantity, type, reason, unit_cost } = req.body;
+    if (!product_id || !quantity || !type || unit_cost === undefined) {
+        return res.status(400).json({ error: "Faltan campos requeridos." });
+    }
+
+    db.serialize(() => {
+        db.run('BEGIN TRANSACTION');
+
+        const adjustStockSql = `UPDATE products SET quantity = quantity - ? WHERE id = ? AND quantity >= ?`;
+        db.run(adjustStockSql, [quantity, product_id, quantity], function (err) {
+            if (err || this.changes === 0) {
+                db.run('ROLLBACK');
+                return res.status(400).json({ error: 'Stock insuficiente o error al actualizar stock', details: err ? err.message : null });
+            }
+
+            const insertAdjustmentSql = `INSERT INTO stock_adjustments (product_id, quantity, type, reason, unit_cost, created_at) VALUES (?, ?, ?, ?, ?, ?)`;
+            db.run(insertAdjustmentSql, [product_id, quantity, type, reason, unit_cost, new Date().toISOString()], function (err) {
+                if (err) {
+                    db.run('ROLLBACK');
+                    return res.status(500).json({ error: 'Error al registrar el ajuste de stock', details: err.message });
+                }
+
+                db.run('COMMIT');
+                res.status(201).json({ message: 'Ajuste de stock registrado exitosamente', id: this.lastID });
+            });
+        });
+    });
+});
+
+app.get('/api/stock-adjustments', (req, res) => {
+    const { startDate, endDate, productId, type } = req.query;
+
+    let sql = `SELECT sa.*, p.name as product_name, p.brand as product_brand, p.subtype as product_subtype
+               FROM stock_adjustments sa
+               JOIN products p ON sa.product_id = p.id
+               WHERE 1=1`;
+    const params = [];
+
+    if (startDate && endDate) {
+        sql += " AND sa.created_at BETWEEN ? AND ?";
+        params.push(startDate, endDate);
+    }
+    if (productId) {
+        sql += " AND sa.product_id = ?";
+        params.push(productId);
+    }
+    if (type) {
+        sql += " AND sa.type = ?";
+        params.push(type);
+    }
+
+    sql += " ORDER BY sa.created_at DESC";
+
+    db.all(sql, params, (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'success', data: rows });
+    });
+});
+
+
+app.get('/api/promotions', (req, res) => {
+    db.all("SELECT * FROM promotions ORDER BY id DESC", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'success', data: rows });
+    });
+});
+
+app.post('/api/promotions', (req, res) => {
+    const { name, type, category_id, brand_id, min_quantity, discount_type, discount_value, active } = req.body;
+    const sql = `INSERT INTO promotions (name, type, category_id, brand_id, min_quantity, discount_type, discount_value, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [name, type, category_id || null, brand_id || null, min_quantity, discount_type, discount_value, active !== undefined ? active : 1];
+
+    db.run(sql, params, function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.status(201).json({ message: 'Promoción creada', id: this.lastID });
+    });
+});
+
+app.put('/api/promotions/:id', (req, res) => {
+    const { id } = req.params;
+    const { name, type, category_id, brand_id, min_quantity, discount_type, discount_value, active } = req.body;
+    const sql = `UPDATE promotions SET name = ?, type = ?, category_id = ?, brand_id = ?, min_quantity = ?, discount_type = ?, discount_value = ?, active = ? WHERE id = ?`;
+    const params = [name, type, category_id || null, brand_id || null, min_quantity, discount_type, discount_value, active, id];
+
+    db.run(sql, params, function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Promoción actualizada' });
+    });
+});
+
+app.delete('/api/promotions/:id', (req, res) => {
+    const { id } = req.params;
+    db.run("DELETE FROM promotions WHERE id = ?", [id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Promoción eliminada' });
+    });
+});
 
 app.post('/api/products/batch-restock', (req, res) => {
     const { products } = req.body;
@@ -507,10 +665,32 @@ app.put('/api/sales/:id/complete', (req, res) => {
 
                 const updatePromises = items.map(item => new Promise((resolve, reject) => {
                     if (!item.productId) return resolve();
-                    const stockSql = `UPDATE products SET quantity = quantity - ? WHERE id = ? AND quantity >= ?`;
-                    db.run(stockSql, [item.quantity, item.productId, item.quantity], function (err) {
-                        if (err || this.changes === 0) return reject(new Error(`Stock insuficiente para el producto ID ${item.productId}`));
-                        resolve();
+
+                    db.get("SELECT is_combo FROM products WHERE id = ?", [item.productId], (err, product) => {
+                        if (err) return reject(err);
+
+                        if (product && product.is_combo) {
+                            db.all("SELECT product_id, quantity FROM combo_items WHERE combo_id = ?", [item.productId], (err, comboItems) => {
+                                if (err) return reject(err);
+
+                                const comboPromises = comboItems.map(ci => new Promise((resolveCombo, rejectCombo) => {
+                                    const requiredQty = ci.quantity * item.quantity;
+                                    const stockSql = `UPDATE products SET quantity = quantity - ? WHERE id = ? AND quantity >= ?`;
+                                    db.run(stockSql, [requiredQty, ci.product_id, requiredQty], function (err) {
+                                        if (err || this.changes === 0) return rejectCombo(new Error(`Stock insuficiente para el componente ID ${ci.product_id} del combo`));
+                                        resolveCombo();
+                                    });
+                                }));
+
+                                Promise.all(comboPromises).then(resolve).catch(reject);
+                            });
+                        } else {
+                            const stockSql = `UPDATE products SET quantity = quantity - ? WHERE id = ? AND quantity >= ?`;
+                            db.run(stockSql, [item.quantity, item.productId, item.quantity], function (err) {
+                                if (err || this.changes === 0) return reject(new Error(`Stock insuficiente para el producto ID ${item.productId}`));
+                                resolve();
+                            });
+                        }
                     });
                 }));
 

@@ -328,6 +328,13 @@ const InventoryPage = () => {
                     <FiPlusCircle />
                     <span>Agregar Producto</span>
                 </button>
+                <button
+                    onClick={() => setIsStockAdjustmentModalOpen(true)}
+                    className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors shadow-sm ml-2"
+                >
+                    <FiLayers />
+                    <span>Registrar baja/ajuste de stock</span>
+                </button>
             </div>
 
             <div className="flex border-b mb-6 overflow-x-auto">
