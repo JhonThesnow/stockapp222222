@@ -44,7 +44,7 @@ const TransferFundsModal = ({ onClose, accounts, selectedAccountId }) => {
                                 required
                             >
                                 <option value="">Selecciona origen...</option>
-                                {accounts.filter(a => a.id !== 'dni_efectivo').map(acc => (
+                                {accounts.filter(a => a.id !== 'mercado_pago').map(acc => (
                                     <option key={acc.id} value={acc.id}>{acc.name}</option>
                                 ))}
                             </select>
@@ -58,7 +58,7 @@ const TransferFundsModal = ({ onClose, accounts, selectedAccountId }) => {
                                 required
                             >
                                 <option value="">Selecciona destino...</option>
-                                {accounts.filter(a => a.id !== 'dni_efectivo' && String(a.id) !== String(fromAccountId)).map(acc => (
+                                {accounts.filter(a => a.id !== 'mercado_pago' && String(a.id) !== String(fromAccountId)).map(acc => (
                                     <option key={acc.id} value={acc.id}>{acc.name}</option>
                                 ))}
                             </select>

@@ -17,16 +17,16 @@ const ModifyFundsModal = ({ onClose, accounts, selectedAccountId }) => {
     const [reason, setReason] = useState('');
     const [categoryId, setCategoryId] = useState('');
 
-    // If selectedAccountId is 'dni_efectivo', we still need the user to choose an actual account
+    // If selectedAccountId is 'mercado_pago', we still need the user to choose an actual account
     // to record a single movement. Same for null (consolidated).
-    const initialModalAccountId = (selectedAccountId && selectedAccountId !== 'dni_efectivo') ? selectedAccountId : '';
+    const initialModalAccountId = (selectedAccountId && selectedAccountId !== 'mercado_pago') ? selectedAccountId : '';
     const [modalAccountId, setModalAccountId] = useState(initialModalAccountId);
 
     const filteredCategories = categories.filter(c => c.type === type);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const targetAccountId = (selectedAccountId && selectedAccountId !== 'dni_efectivo') ? selectedAccountId : modalAccountId;
+        const targetAccountId = (selectedAccountId && selectedAccountId !== 'mercado_pago') ? selectedAccountId : modalAccountId;
         if (!amount || !reason || !categoryId || !targetAccountId) {
             alert('Por favor, completa todos los campos, incluyendo la cuenta.');
             return;
@@ -51,7 +51,7 @@ const ModifyFundsModal = ({ onClose, accounts, selectedAccountId }) => {
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full"><FiX size={24} /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {(!selectedAccountId || selectedAccountId === 'dni_efectivo') && (
+                    {(!selectedAccountId || selectedAccountId === 'mercado_pago') && (
                         <div>
                             <label htmlFor="account" className="block text-sm font-medium text-gray-700">Cuenta</label>
                             <select id="account" value={modalAccountId} onChange={(e) => setModalAccountId(e.target.value)} className="mt-1 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm" required>
@@ -169,8 +169,8 @@ const AccountPage = () => {
                             const val = e.target.value;
                             if (!val) {
                                 setSelectedAccountId(null);
-                            } else if (val === 'dni_efectivo') {
-                                setSelectedAccountId('dni_efectivo');
+                            } else if (val === 'mercado_pago') {
+                                setSelectedAccountId('mercado_pago');
                             } else {
                                 setSelectedAccountId(parseInt(val, 10));
                             }
@@ -178,7 +178,7 @@ const AccountPage = () => {
                         className="p-2 border border-gray-300 rounded-md bg-white shadow-sm text-sm font-medium text-gray-700 w-full sm:w-64 cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     >
                         <option value="">Consolidado (Todas las cuentas)</option>
-                        <option value="dni_efectivo">Cuenta DNI + Efectivo</option>
+                        <option value="mercado_pago">Mercado Pago (Total Consolidado)</option>
                         {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name} - {acc.type}</option>)}
                     </select>
                 </div>
