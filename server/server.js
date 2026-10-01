@@ -663,6 +663,29 @@ app.put('/api/sales/:id/complete', (req, res) => {
                 db.run(updateSaleSql, [paymentMethod, (finalDiscountPercentage || 0), finalAmount, new Date().toISOString(), accountId, activeShiftId, id], function (err) {
                 if (err) { db.run('ROLLBACK'); return res.status(500).json({ error: 'Error al actualizar la venta', details: err.message }); }
 
+
+                // Handle commission
+                const handleCommission = new Promise((resolveComm, rejectComm) => {
+                    if (!paymentMethod) return resolveComm();
+                    db.get("SELECT commission_rate FROM payment_methods WHERE name = ?", [paymentMethod], (err, method) => {
+                        if (err) return rejectComm(err);
+                        if (method && method.commission_rate > 0) {
+                            const commissionAmount = finalAmount * (method.commission_rate / 100);
+                            const commissionReason = `Comisión Venta #${id} (${paymentMethod})`;
+                            db.run(
+                                "INSERT INTO account_movements (date, type, amount, reason, accountId) VALUES (?, 'withdrawal', ?, ?, ?)",
+                                [new Date().toISOString(), commissionAmount, commissionReason, accountId],
+                                (err) => {
+                                    if (err) rejectComm(err);
+                                    else resolveComm();
+                                }
+                            );
+                        } else {
+                            resolveComm();
+                        }
+                    });
+                });
+
                 const updatePromises = items.map(item => new Promise((resolve, reject) => {
                     if (!item.productId) return resolve();
 
@@ -694,7 +717,7 @@ app.put('/api/sales/:id/complete', (req, res) => {
                     });
                 }));
 
-                Promise.all(updatePromises).then(() => {
+                Promise.all([handleCommission, ...updatePromises]).then(() => {
                     db.run('COMMIT');
                     res.status(200).json({ message: 'Venta completada y stock actualizado' });
                 }).catch(error => {
@@ -1048,6 +1071,80 @@ app.get('/api/accounts', (req, res) => {
     });
 });
 
+app.get('/api/accounts/:id/pockets', (req, res) => {
+    db.all("SELECT * FROM account_pockets WHERE accountId = ?", [req.params.id], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ data: rows });
+    });
+});
+
+app.post('/api/accounts/:id/pockets', (req, res) => {
+    const { name, amount } = req.body;
+    db.run(
+        'INSERT INTO account_pockets (accountId, name, amount) VALUES (?, ?, ?)',
+        [req.params.id, name, amount || 0],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.status(201).json({ id: this.lastID, accountId: req.params.id, name, amount: amount || 0 });
+        }
+    );
+});
+
+app.put('/api/account_pockets/:id', (req, res) => {
+    const { amount } = req.body;
+    db.run(
+        'UPDATE account_pockets SET amount = ? WHERE id = ?',
+        [amount, req.params.id],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ updated: this.changes });
+        }
+    );
+});
+
+app.delete('/api/account_pockets/:id', (req, res) => {
+    db.run('DELETE FROM account_pockets WHERE id = ?', [req.params.id], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ deleted: this.changes });
+    });
+});
+
+app.post('/api/account/transfer', (req, res) => {
+    const { fromAccountId, toAccountId, amount, reason } = req.body;
+    if (!fromAccountId || !toAccountId || !amount || amount <= 0) {
+        return res.status(400).json({ error: 'Faltan datos para la transferencia o el monto es inválido.' });
+    }
+
+    db.serialize(() => {
+        db.run('BEGIN TRANSACTION');
+
+        const date = new Date().toISOString();
+        const transferReason = reason || 'Transferencia entre cuentas';
+
+        db.run("INSERT INTO account_movements (date, type, amount, reason, accountId) VALUES (?, 'withdrawal', ?, ?, ?)",
+            [date, amount, transferReason + ' (Envío)', fromAccountId],
+            (err) => {
+                if (err) {
+                    db.run('ROLLBACK');
+                    return res.status(500).json({ error: err.message });
+                }
+                db.run("INSERT INTO account_movements (date, type, amount, reason, accountId) VALUES (?, 'deposit', ?, ?, ?)",
+                    [date, amount, transferReason + ' (Recepción)', toAccountId],
+                    (err) => {
+                        if (err) {
+                            db.run('ROLLBACK');
+                            return res.status(500).json({ error: err.message });
+                        }
+                        db.run('COMMIT');
+                        res.json({ message: 'Transferencia completada' });
+                    }
+                );
+            }
+        );
+    });
+});
+
+
 app.get('/api/movement-categories', (req, res) => {
     db.all("SELECT * FROM movement_categories", [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -1181,6 +1278,25 @@ app.get('/api/account/summary', (req, res) => {
 });
 
 
+app.get('/api/accounts/:id/breakdown', (req, res) => {
+    const { id } = req.params;
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) return res.status(400).json({ error: "Fechas requeridas" });
+
+    const sql = `
+        SELECT paymentMethod, SUM(finalAmount) as total
+        FROM sales
+        WHERE accountId = ? AND status = 'completed' AND date >= ? AND date <= ?
+        GROUP BY paymentMethod
+    `;
+
+    db.all(sql, [id, startDate, endDate], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ data: rows });
+    });
+});
+
 app.get('/api/accounts/:id/cash-closing-data', (req, res) => {
     const { id } = req.params;
 
@@ -1304,6 +1420,18 @@ app.get('/api/payment-methods', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ data: rows });
     });
+});
+
+app.put('/api/payment-methods/:id', (req, res) => {
+    const { commission_rate } = req.body;
+    db.run(
+        'UPDATE payment_methods SET commission_rate = ? WHERE id = ?',
+        [commission_rate || 0, req.params.id],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ updated: this.changes });
+        }
+    );
 });
 
 app.post('/api/account/movements', (req, res) => {
@@ -1504,6 +1632,40 @@ app.post('/api/operating_expenses', (req, res) => {
             res.status(201).json({ id: this.lastID, date, description, amount, is_recurring });
         }
     );
+});
+
+app.post('/api/operating_expenses/:id/pay', (req, res) => {
+    const { accountId } = req.body;
+    if (!accountId) return res.status(400).json({ error: "Se requiere accountId" });
+
+    db.get('SELECT * FROM operating_expenses WHERE id = ?', [req.params.id], (err, expense) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!expense) return res.status(404).json({ error: "Gasto no encontrado" });
+        if (expense.status === 'paid') return res.status(400).json({ error: "El gasto ya fue pagado" });
+
+        db.serialize(() => {
+            db.run('BEGIN TRANSACTION');
+
+            db.run(
+                'UPDATE operating_expenses SET status = ?, paid_from_account_id = ? WHERE id = ?',
+                ['paid', accountId, req.params.id],
+                function (err) {
+                    if (err) { db.run('ROLLBACK'); return res.status(500).json({ error: err.message }); }
+
+                    const reason = `Pago de Gasto: ${expense.description}`;
+                    db.run(
+                        "INSERT INTO account_movements (date, type, amount, reason, accountId) VALUES (?, 'withdrawal', ?, ?, ?)",
+                        [new Date().toISOString(), expense.amount, reason, accountId],
+                        (err) => {
+                            if (err) { db.run('ROLLBACK'); return res.status(500).json({ error: err.message }); }
+                            db.run('COMMIT');
+                            res.json({ message: 'Gasto pagado exitosamente' });
+                        }
+                    );
+                }
+            );
+        });
+    });
 });
 
 app.put('/api/operating_expenses/:id', (req, res) => {

@@ -5,6 +5,9 @@ import { FiTrendingUp, FiTrendingDown, FiPlus, FiX, FiFileText, FiEdit, FiTrash,
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import EditMovementDrawer from '../components/EditMovementDrawer';
+import TransferFundsModal from '../components/TransferFundsModal';
+import PaymentMethodsCommissionModal from '../components/PaymentMethodsCommissionModal';
+import PocketsModal from '../components/PocketsModal';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 const ModifyFundsModal = ({ onClose, accounts, selectedAccountId }) => {
@@ -101,12 +104,15 @@ const ModifyFundsModal = ({ onClose, accounts, selectedAccountId }) => {
 const AccountPage = () => {
     const {
         accounts, selectedAccountId, setSelectedAccountId,
-        accountSummary, salesProfitSummary, movements, cashClosings, loading,
+        accountSummary, salesProfitSummary, movements, cashClosings, loading, pockets, breakdown,
         setDateRange, deleteMovement, fetchInitialData,
         startDate, endDate
     } = useAccountStore();
 
     const [showModifyFundsModal, setShowModifyFundsModal] = useState(false);
+    const [showTransferModal, setShowTransferModal] = useState(false);
+    const [showCommissionsModal, setShowCommissionsModal] = useState(false);
+    const [showPocketsModal, setShowPocketsModal] = useState(false);
     const [movementToEdit, setMovementToEdit] = useState(null);
     const [activeTab, setActiveTab] = useState('movements');
 
@@ -148,6 +154,9 @@ const AccountPage = () => {
     return (
         <div className="p-4 md:p-6 bg-gray-50 min-h-full">
             {showModifyFundsModal && <ModifyFundsModal onClose={() => setShowModifyFundsModal(false)} accounts={accounts} selectedAccountId={selectedAccountId} />}
+            {showTransferModal && <TransferFundsModal onClose={() => setShowTransferModal(false)} accounts={accounts} selectedAccountId={selectedAccountId} />}
+            {showCommissionsModal && <PaymentMethodsCommissionModal onClose={() => setShowCommissionsModal(false)} />}
+            {showPocketsModal && <PocketsModal onClose={() => setShowPocketsModal(false)} accountName={selectedAccount?.name} totalBalance={accountSummary.periodResult} />}
             {movementToEdit && <EditMovementDrawer movement={movementToEdit} onClose={() => setMovementToEdit(null)} />}
 
             {/* Cabecera Principal y Selección de Cuenta */}
@@ -173,7 +182,14 @@ const AccountPage = () => {
                         {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name} - {acc.type}</option>)}
                     </select>
                 </div>
-                <div className="flex">
+                <div className="flex flex-col sm:flex-row gap-2">
+                    <button onClick={() => setShowCommissionsModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-100 text-purple-700 border border-purple-200 py-2 px-4 rounded-md shadow-sm hover:bg-purple-200 transition-colors font-medium text-sm">
+                        <span>Comisiones</span>
+                    </button>
+                    <button onClick={() => setShowTransferModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-green-100 text-green-700 border border-green-200 py-2 px-4 rounded-md shadow-sm hover:bg-green-200 transition-colors font-medium text-sm">
+                        <FiTrendingUp size={18} />
+                        <span>Transferir</span>
+                    </button>
                     <button onClick={() => setShowModifyFundsModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-blue-700 transition-colors font-medium text-sm">
                         <FiPlus size={18} />
                         <span>Registrar Movimiento</span>

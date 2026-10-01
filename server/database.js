@@ -124,7 +124,9 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                 date TEXT NOT NULL,
                 description TEXT NOT NULL,
                 amount REAL NOT NULL,
-                is_recurring INTEGER DEFAULT 0
+                is_recurring INTEGER DEFAULT 0,
+                status TEXT DEFAULT 'pending',
+                paid_from_account_id INTEGER
             )`);
 
             db.run(`CREATE TABLE IF NOT EXISTS expenses (
@@ -136,10 +138,19 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                 FOREIGN KEY (categoryId) REFERENCES movement_categories (id) ON DELETE SET NULL
             )`);
 
+            db.run(`CREATE TABLE IF NOT EXISTS account_pockets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                accountId INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                amount REAL DEFAULT 0,
+                FOREIGN KEY (accountId) REFERENCES accounts (id) ON DELETE CASCADE
+            )`);
+
             db.run(`CREATE TABLE IF NOT EXISTS payment_methods (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
-                isFixed INTEGER NOT NULL DEFAULT 0
+                isFixed INTEGER NOT NULL DEFAULT 0,
+                commission_rate REAL DEFAULT 0
             )`);
 
             db.run(`CREATE TABLE IF NOT EXISTS account_movements (

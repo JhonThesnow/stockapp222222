@@ -30,6 +30,27 @@ const useCostsStore = create((set, get) => ({
         }
     },
 
+    payExpense: async (id, accountId) => {
+        try {
+            const response = await fetch(`${API_URL}/operating_expenses/${id}/pay`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountId })
+            });
+            const result = await response.json();
+            if (response.ok) {
+                toast.success('Gasto pagado exitosamente');
+                return true;
+            } else {
+                toast.error(result.error || 'Error al pagar gasto');
+                return false;
+            }
+        } catch (error) {
+            toast.error('Error de conexión al pagar gasto');
+            return false;
+        }
+    },
+
     addExpense: async (expenseData) => {
         try {
             const response = await fetch(`${API_URL}/operating_expenses`, {

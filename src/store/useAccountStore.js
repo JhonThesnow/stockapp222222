@@ -15,6 +15,8 @@ const useAccountStore = create((set, get) => ({
         periodResult: 0,
     },
     movements: [],
+    pockets: [],
+    breakdown: [],
     cashClosings: [],
     balanceHistory: [],
     cashClosingData: null,
@@ -73,7 +75,9 @@ const useAccountStore = create((set, get) => ({
             get().fetchSalesProfitSummary(),
             get().fetchAccountSummary(),
             get().fetchMovements(),
-            get().fetchCashClosings()
+            get().fetchCashClosings(),
+            get().fetchPockets(),
+            get().fetchBreakdown()
         ]);
         set({ loading: false });
     },
@@ -117,6 +121,85 @@ const useAccountStore = create((set, get) => ({
         } catch (e) {
             set({ error: e.message, accountSummary: { totalIncome: 0, totalOutcome: 0, periodResult: 0 } });
         }
+    },
+
+    fetchPockets: async () => {
+        const { selectedAccountId } = get();
+        if (!selectedAccountId || selectedAccountId === 'dni_efectivo') {
+            set({ pockets: [] });
+            return;
+        }
+        try {
+            const response = await fetch(`${API_URL}/accounts/${selectedAccountId}/pockets`);
+            const json = await response.json();
+            if (response.ok) set({ pockets: json.data });
+        } catch (e) {
+            console.error(e);
+        }
+    },
+
+    fetchBreakdown: async () => {
+        const { selectedAccountId, startDate, endDate } = get();
+        if (!selectedAccountId || selectedAccountId === 'dni_efectivo' || !startDate || !endDate) {
+            set({ breakdown: [] });
+            return;
+        }
+        try {
+            const params = new URLSearchParams({
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString(),
+            });
+            const response = await fetch(`${API_URL}/accounts/${selectedAccountId}/breakdown?${params.toString()}`);
+            const json = await response.json();
+            if (response.ok) set({ breakdown: json.data });
+        } catch (e) {
+            console.error(e);
+        }
+    },
+
+    createPocket: async (name, amount) => {
+        const { selectedAccountId } = get();
+        if (!selectedAccountId || selectedAccountId === 'dni_efectivo') return false;
+        try {
+            const response = await fetch(`${API_URL}/accounts/${selectedAccountId}/pockets`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, amount }),
+            });
+            if (response.ok) {
+                get().fetchPockets();
+                return true;
+            }
+        } catch (e) { console.error(e); }
+        return false;
+    },
+
+    updatePocket: async (id, amount) => {
+        try {
+            const response = await fetch(`${API_URL}/account_pockets/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount }),
+            });
+            if (response.ok) {
+                get().fetchPockets();
+                return true;
+            }
+        } catch (e) { console.error(e); }
+        return false;
+    },
+
+    deletePocket: async (id) => {
+        try {
+            const response = await fetch(`${API_URL}/account_pockets/${id}`, {
+                method: 'DELETE',
+            });
+            if (response.ok) {
+                get().fetchPockets();
+                return true;
+            }
+        } catch (e) { console.error(e); }
+        return false;
     },
 
     fetchMovements: async () => {
@@ -220,6 +303,25 @@ const useAccountStore = create((set, get) => ({
                 method: 'DELETE',
             });
             if (!response.ok) throw new Error('Falló al eliminar el movimiento.');
+            get().fetchDataForCurrentState();
+            return { success: true };
+        } catch (e) {
+            set({ error: e.message, loading: false });
+            return { success: false, error: e.message };
+        }
+    },
+
+    transferFunds: async (fromAccountId, toAccountId, amount, reason) => {
+        set({ loading: true, error: null });
+        try {
+            const response = await fetch(`${API_URL}/account/transfer`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fromAccountId, toAccountId, amount, reason }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Falló al transferir.');
+
             get().fetchDataForCurrentState();
             return { success: true };
         } catch (e) {
