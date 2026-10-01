@@ -13,6 +13,7 @@ const useAccountStore = create((set, get) => ({
         totalIncome: 0,
         totalOutcome: 0,
         periodResult: 0,
+        historicalBalance: 0,
     },
     movements: [],
     pockets: [],
@@ -119,7 +120,7 @@ const useAccountStore = create((set, get) => ({
             const json = await response.json();
             set({ accountSummary: json.data });
         } catch (e) {
-            set({ error: e.message, accountSummary: { totalIncome: 0, totalOutcome: 0, periodResult: 0 } });
+            set({ error: e.message, accountSummary: { totalIncome: 0, totalOutcome: 0, periodResult: 0, historicalBalance: 0 } });
         }
     },
 
