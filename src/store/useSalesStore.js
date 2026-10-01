@@ -390,6 +390,25 @@ const useSalesStore = create(persist((set, get) => ({
         }
     },
 
+    updatePaymentMethod: async (id, commission_rate) => {
+        try {
+            const response = await fetch(`${API_URL}/payment-methods/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ commission_rate }),
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error);
+            }
+            get().fetchPaymentMethods();
+            return { success: true };
+        } catch (e) {
+            console.error(e.message);
+            return { success: false };
+        }
+    },
+
     addPaymentMethod: async (name) => {
         try {
             const response = await fetch(`${API_URL}/payment-methods`, {

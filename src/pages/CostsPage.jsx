@@ -3,6 +3,8 @@ import useCostsStore from '../store/useCostsStore';
 import { FiPlus, FiEdit2, FiTrash2, FiRefreshCw, FiDollarSign } from 'react-icons/fi';
 import { formatNumber } from '../utils/formatting';
 import DatePicker from 'react-datepicker';
+import PayExpenseModal from '../components/PayExpenseModal';
+import { FiCheckCircle, FiClock } from 'react-icons/fi';
 import 'react-datepicker/dist/react-datepicker.css';
 
 const CostsPage = () => {
@@ -14,6 +16,7 @@ const CostsPage = () => {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentExpense, setCurrentExpense] = useState(null);
+    const [expenseToPay, setExpenseToPay] = useState(null);
     const [formData, setFormData] = useState({
         description: '',
         amount: '',
@@ -164,9 +167,19 @@ const CostsPage = () => {
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
                                             <h4 className="font-semibold text-gray-800">{expense.description}</h4>
+
                                             {expense.is_recurring === 1 && (
                                                 <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1" title="Se clona automáticamente cada mes">
                                                     <FiRefreshCw size={10} /> Recurrente
+                                                </span>
+                                            )}
+                                            {expense.status === 'paid' ? (
+                                                <span className="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                    <FiCheckCircle size={10} /> Pagado
+                                                </span>
+                                            ) : (
+                                                <span className="bg-orange-100 text-orange-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                    <FiClock size={10} /> Pendiente
                                                 </span>
                                             )}
                                         </div>
@@ -179,6 +192,11 @@ const CostsPage = () => {
                                             ${formatNumber(expense.amount)}
                                         </span>
                                         <div className="flex gap-2">
+                                            {expense.status !== 'paid' && (
+                                                <button onClick={() => setExpenseToPay(expense)} className="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow-sm transition-colors flex items-center gap-1">
+                                                    <FiDollarSign size={14} /> Pagar
+                                                </button>
+                                            )}
                                             <button onClick={() => handleOpenModal(expense)} className="p-2 text-gray-500 hover:text-blue-600 bg-white shadow-sm border rounded-md transition-colors">
                                                 <FiEdit2 size={16} />
                                             </button>
@@ -195,6 +213,18 @@ const CostsPage = () => {
             </div>
 
             {/* Modal */}
+            {expenseToPay && (
+                <PayExpenseModal
+                    expense={expenseToPay}
+                    onClose={() => setExpenseToPay(null)}
+                    onPaid={() => {
+                        const month = (selectedDate.getMonth() + 1).toString().padStart(2, '0');
+                        const year = selectedDate.getFullYear().toString();
+                        fetchExpenses(month, year);
+                    }}
+                />
+            )}
+
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleCloseModal}></div>
