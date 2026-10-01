@@ -55,7 +55,7 @@ const PayExpenseModal = ({ onClose, expense, onPaid }) => {
                                 required
                             >
                                 <option value="">Selecciona una cuenta...</option>
-                                {accounts.filter(a => a.id !== 'dni_efectivo').map(acc => (
+                                {accounts.filter(a => a.id !== 'mercado_pago').map(acc => (
                                     <option key={acc.id} value={acc.id}>{acc.name}</option>
                                 ))}
                             </select>

@@ -125,7 +125,7 @@ const useAccountStore = create((set, get) => ({
 
     fetchPockets: async () => {
         const { selectedAccountId } = get();
-        if (!selectedAccountId || selectedAccountId === 'dni_efectivo') {
+        if (!selectedAccountId || selectedAccountId === 'mercado_pago') {
             set({ pockets: [] });
             return;
         }
@@ -140,7 +140,7 @@ const useAccountStore = create((set, get) => ({
 
     fetchBreakdown: async () => {
         const { selectedAccountId, startDate, endDate } = get();
-        if (!selectedAccountId || selectedAccountId === 'dni_efectivo' || !startDate || !endDate) {
+        if (!selectedAccountId || selectedAccountId === 'mercado_pago' || !startDate || !endDate) {
             set({ breakdown: [] });
             return;
         }
@@ -159,7 +159,7 @@ const useAccountStore = create((set, get) => ({
 
     createPocket: async (name, amount) => {
         const { selectedAccountId } = get();
-        if (!selectedAccountId || selectedAccountId === 'dni_efectivo') return false;
+        if (!selectedAccountId || selectedAccountId === 'mercado_pago') return false;
         try {
             const response = await fetch(`${API_URL}/accounts/${selectedAccountId}/pockets`, {
                 method: 'POST',

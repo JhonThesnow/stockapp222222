@@ -1164,8 +1164,8 @@ app.get('/api/account/sales-profit', (req, res) => {
     let queryParams = [...baseParams];
 
     if (accountId) {
-        if (accountId === 'dni_efectivo') {
-            accountFilter = " AND accountId IN (SELECT id FROM accounts WHERE name IN ('Caja Principal', 'Cuenta DNI'))";
+        if (accountId === 'mercado_pago') {
+            accountFilter = " AND accountId IN (SELECT id FROM accounts WHERE name IN ('Débito', 'Crédito'))";
         } else {
             accountFilter = ' AND accountId = ?';
             queryParams.push(accountId);
@@ -1242,8 +1242,8 @@ app.get('/api/account/summary', (req, res) => {
     let queryParams = [...baseParams];
 
     if (accountId) {
-        if (accountId === 'dni_efectivo') {
-            accountFilter = " AND accountId IN (SELECT id FROM accounts WHERE name IN ('Caja Principal', 'Cuenta DNI'))";
+        if (accountId === 'mercado_pago') {
+            accountFilter = " AND accountId IN (SELECT id FROM accounts WHERE name IN ('Débito', 'Crédito'))";
         } else {
             accountFilter = ' AND accountId = ?';
             queryParams.push(accountId);
@@ -1356,8 +1356,8 @@ app.get('/api/cash-closings', (req, res) => {
     let params = [startDate, endDate];
 
     if (accountId) {
-        if (accountId === 'dni_efectivo') {
-            sql += " AND a.name IN ('Caja Principal', 'Cuenta DNI')";
+        if (accountId === 'mercado_pago') {
+            sql += " AND a.name IN ('Débito', 'Crédito')";
         } else {
             sql += " AND cc.accountId = ?";
             params.push(accountId);
@@ -1454,8 +1454,8 @@ app.get('/api/account/movements', (req, res) => {
     let params = [startDate, endDate];
     let accountFilter = '';
     if (accountId) {
-        if (accountId === 'dni_efectivo') {
-            accountFilter = " AND accountId IN (SELECT id FROM accounts WHERE name IN ('Caja Principal', 'Cuenta DNI'))";
+        if (accountId === 'mercado_pago') {
+            accountFilter = " AND accountId IN (SELECT id FROM accounts WHERE name IN ('Débito', 'Crédito'))";
         } else {
             accountFilter = "AND accountId = ?";
             params.push(accountId);
@@ -1475,7 +1475,7 @@ app.get('/api/account/movements', (req, res) => {
 
     // Add params for the second part of the UNION ALL
     params.push(startDate, endDate);
-    if (accountId && accountId !== 'dni_efectivo') {
+    if (accountId && accountId !== 'mercado_pago') {
         params.push(accountId);
     }
 
