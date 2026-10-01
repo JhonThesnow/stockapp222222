@@ -164,7 +164,7 @@ const AccountPage = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                     <h1 className="text-2xl font-bold text-gray-900">Estado de Cuenta</h1>
                     <select
-                        value={selectedAccountId || ''}
+                        value={selectedAccountId === 'mercado_pago' || accounts.find(a => a.id === selectedAccountId)?.name === 'Crédito' || accounts.find(a => a.id === selectedAccountId)?.name === 'Débito' ? 'mercado_pago' : (selectedAccountId || '')}
                         onChange={(e) => {
                             const val = e.target.value;
                             if (!val) {
@@ -179,8 +179,29 @@ const AccountPage = () => {
                     >
                         <option value="">Consolidado (Todas las cuentas)</option>
                         <option value="mercado_pago">Mercado Pago (Total Consolidado)</option>
-                        {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name} - {acc.type}</option>)}
+                        {accounts.filter(a => a.name !== 'Crédito' && a.name !== 'Débito').map(acc => <option key={acc.id} value={acc.id}>{acc.name} - {acc.type}</option>)}
                     </select>
+
+                    {/* Sub-dropdown for Mercado Pago */}
+                    {selectedAccountId === 'mercado_pago' || accounts.find(a => a.id === selectedAccountId)?.name === 'Crédito' || accounts.find(a => a.id === selectedAccountId)?.name === 'Débito' ? (
+                        <select
+                            value={selectedAccountId === 'mercado_pago' ? 'mercado_pago' : selectedAccountId}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === 'mercado_pago') {
+                                    setSelectedAccountId('mercado_pago');
+                                } else {
+                                    setSelectedAccountId(parseInt(val, 10));
+                                }
+                            }}
+                            className="p-2 border border-gray-300 rounded-md bg-purple-50 shadow-sm text-sm font-medium text-purple-700 w-full sm:w-48 cursor-pointer hover:border-purple-300 focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                        >
+                            <option value="mercado_pago">Ambos (Crédito y Débito)</option>
+                            {accounts.filter(a => a.name === 'Crédito' || a.name === 'Débito').map(acc => (
+                                <option key={acc.id} value={acc.id}>{acc.name}</option>
+                            ))}
+                        </select>
+                    ) : null}
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
                     <button onClick={() => setShowCommissionsModal(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-100 text-purple-700 border border-purple-200 py-2 px-4 rounded-md shadow-sm hover:bg-purple-200 transition-colors font-medium text-sm">
