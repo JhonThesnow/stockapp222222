@@ -85,8 +85,8 @@ const StockAdjustmentModal = ({ onClose, products }) => {
                                                 setFormData({ ...formData, unit_cost: p.purchasePrice });
                                             }}
                                         >
-                                            <div className="font-medium">{p.name} {p.subtype && \`- \${p.subtype}\`}</div>
-                                            <div className="text-sm text-gray-500">Stock: {p.quantity} | Costo: $\${formatNumber(p.purchasePrice)}</div>
+                                            <div className="font-medium">{p.name} {p.subtype && `- ${p.subtype}`}</div>
+                                            <div className="text-sm text-gray-500">Stock: {p.quantity} | Costo: ${formatNumber(p.purchasePrice)}</div>
                                         </li>
                                     ))}
                                 </ul>
