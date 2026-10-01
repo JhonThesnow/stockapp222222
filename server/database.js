@@ -45,7 +45,8 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 code TEXT, name TEXT NOT NULL, type TEXT NOT NULL, brand TEXT, subtype TEXT,
                 quantity INTEGER NOT NULL, purchasePrice REAL NOT NULL, salePrices TEXT NOT NULL,
-                lowStockThreshold INTEGER DEFAULT 10
+                lowStockThreshold INTEGER DEFAULT 10,
+                is_combo BOOLEAN DEFAULT 0
             )`);
 
             db.run(`CREATE TABLE IF NOT EXISTS shifts (
@@ -61,6 +62,44 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                     console.log("Error adding initialCash to shifts:", err.message);
                 }
             });
+
+            db.run(`ALTER TABLE products ADD COLUMN is_combo BOOLEAN DEFAULT 0`, (err) => {
+                if (err && !err.message.includes("duplicate column")) {
+                    console.log("Error adding is_combo to products:", err.message);
+                }
+            });
+
+            db.run(`CREATE TABLE IF NOT EXISTS combo_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                combo_id INTEGER NOT NULL,
+                product_id INTEGER NOT NULL,
+                quantity INTEGER NOT NULL,
+                FOREIGN KEY (combo_id) REFERENCES products(id) ON DELETE CASCADE,
+                FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+            )`);
+
+            db.run(`CREATE TABLE IF NOT EXISTS promotions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                type TEXT NOT NULL,
+                category_id TEXT,
+                brand_id TEXT,
+                min_quantity INTEGER NOT NULL,
+                discount_type TEXT NOT NULL,
+                discount_value REAL NOT NULL,
+                active BOOLEAN DEFAULT 1
+            )`);
+
+            db.run(`CREATE TABLE IF NOT EXISTS stock_adjustments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                product_id INTEGER NOT NULL,
+                quantity INTEGER NOT NULL,
+                type TEXT NOT NULL,
+                reason TEXT,
+                unit_cost REAL NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+            )`);
 
             db.run(`CREATE TABLE IF NOT EXISTS sales (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
