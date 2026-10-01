@@ -8,6 +8,7 @@ import useCostsStore from '../store/useCostsStore.js';
 import { formatNumber } from '../utils/formatting.js';
 import StockIncome from '../components/StockIncome.jsx';
 import PriceIncreases from '../components/PriceIncreases.jsx';
+import StockAdjustmentModal from '../components/StockAdjustmentModal.jsx';
 
 const InventorySkeleton = () => (
     <div className="space-y-3">
@@ -120,6 +121,7 @@ const InventoryPage = () => {
     const [expandedGroups, setExpandedGroups] = useState({});
 
     const [deleteModalConfig, setDeleteModalConfig] = useState({ isOpen: false, productId: null });
+    const [isStockAdjustmentModalOpen, setIsStockAdjustmentModalOpen] = useState(false);
 
     const { products, totalPages, loading, error, fetchProducts, deleteProduct, globalSearchTerm, setGlobalSearchTerm } = useInventoryStore();
     const [allProducts, setAllProducts] = useState([]);
@@ -400,6 +402,7 @@ const InventoryPage = () => {
 
                     {showForm && <ProductForm productToEdit={productToEdit} onClose={handleCloseForm} />}
                     {productToRestock && <RestockModal product={productToRestock} onClose={() => setProductToRestock(null)} />}
+                    {isStockAdjustmentModalOpen && <StockAdjustmentModal onClose={() => setIsStockAdjustmentModalOpen(false)} products={allProducts} />}
 
                     <ConfirmModal
                         isOpen={deleteModalConfig.isOpen}
