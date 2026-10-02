@@ -18,7 +18,6 @@ import { Toaster } from 'sonner';
 import BottomNav from './components/BottomNav';
 import ScannerFAB from './components/ScannerFAB';
 import NativeScannerModal from './components/NativeScannerModal';
-import GlobalNotification from './components/GlobalNotification';
 import useSalesStore from './store/useSalesStore';
 import useCostsStore from './store/useCostsStore';
 
@@ -167,7 +166,6 @@ const AppLayout = () => {
       )}
       <ScannerFAB onClick={() => setIsNativeScannerOpen(true)} />
       <BottomNav />
-      <GlobalNotification />
     </div>
   );
 };
