@@ -101,10 +101,10 @@ const PreciosPage = () => {
             </div>
 
             <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
+                <div className="block w-full overflow-x-auto">
+                    <table className="min-w-full block md:table divide-y divide-gray-200">
+                        <thead className="bg-gray-50 hidden md:table-header-group">
+                            <tr className="md:table-row block">
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Costo Local</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Costo Proveedor</th>
@@ -112,10 +112,10 @@ const PreciosPage = () => {
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white divide-y divide-gray-200 block md:table-row-group">
                             {filteredProducts.length === 0 ? (
-                                <tr>
-                                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                                <tr className="block md:table-row">
+                                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500 block md:table-cell w-full">
                                         <div className="flex flex-col items-center">
                                             <FiInfo className="w-12 h-12 text-gray-400 mb-2" />
                                             <p>No se encontraron productos con URL de proveedor configurada.</p>
@@ -129,42 +129,51 @@ const PreciosPage = () => {
                                     const hasDiff = Math.abs(diff) > 0.01;
 
                                     return (
-                                        <tr key={product.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap">
+                                        <tr key={product.id} className="hover:bg-gray-50 block md:table-row border-b border-gray-200 md:border-b-0 pb-4 md:pb-0">
+                                            <td className="px-4 py-2 md:px-6 md:py-4 block md:table-cell">
                                                 <div className="flex flex-col">
                                                     <span className="font-medium text-gray-900">{product.name} {product.subtype}</span>
                                                     <span className="text-xs text-gray-500">{product.brand} | {product.code}</span>
-                                                    <a href={product.provider_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline flex items-center mt-1">
+                                                    <a href={product.provider_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline flex items-center mt-1 w-fit">
                                                         Ver en web <FiExternalLink className="ml-1" />
                                                     </a>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right">
-                                                <span className="font-medium">${formatNumber(product.purchasePrice)}</span>
+                                            <td className="px-4 py-1 md:px-6 md:py-4 block md:table-cell md:text-right">
+                                                <div className="flex justify-between items-center md:block">
+                                                    <span className="text-xs font-bold text-gray-500 uppercase md:hidden">Costo Local:</span>
+                                                    <span className="font-medium">${formatNumber(product.purchasePrice)}</span>
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right">
-                                                {product.provider_price !== null && product.provider_price !== undefined ? (
-                                                    <div className="flex flex-col items-end">
-                                                        <span className={`font-medium ${hasDiff ? 'text-orange-600' : 'text-green-600'}`}>
-                                                            ${formatNumber(product.provider_price)}
-                                                        </span>
-                                                        {hasDiff && (
-                                                            <span className="text-xs text-gray-500">
-                                                                Diferencia: ${formatNumber(diff)}
+                                            <td className="px-4 py-1 md:px-6 md:py-4 block md:table-cell md:text-right">
+                                                <div className="flex justify-between items-center md:flex-col md:items-end">
+                                                    <span className="text-xs font-bold text-gray-500 uppercase md:hidden">Costo Proveedor:</span>
+                                                    {product.provider_price !== null && product.provider_price !== undefined ? (
+                                                        <div className="flex flex-col items-end">
+                                                            <span className={`font-medium ${hasDiff ? 'text-orange-600' : 'text-green-600'}`}>
+                                                                ${formatNumber(product.provider_price)}
                                                             </span>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-gray-400 italic">No comprobado</span>
-                                                )}
+                                                            {hasDiff && (
+                                                                <span className="text-xs text-gray-500">
+                                                                    Diferencia: ${formatNumber(diff)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-400 italic">No comprobado</span>
+                                                    )}
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
-                                                {product.last_price_check ? new Date(product.last_price_check).toLocaleDateString('es-AR', {
-                                                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit'
-                                                }) : '-'}
+                                            <td className="px-4 py-1 md:px-6 md:py-4 block md:table-cell md:text-center text-sm text-gray-500">
+                                                <div className="flex justify-between items-center md:block">
+                                                    <span className="text-xs font-bold text-gray-500 uppercase md:hidden">Última Comprobación:</span>
+                                                    <span>{product.last_price_check ? new Date(product.last_price_check).toLocaleDateString('es-AR', {
+                                                        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit'
+                                                    }) : '-'}</span>
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <div className="flex items-center justify-end gap-2">
+                                            <td className="px-4 py-3 md:px-6 md:py-4 block md:table-cell md:text-right text-sm font-medium">
+                                                <div className="flex flex-wrap items-center justify-start md:justify-end gap-2">
                                                     <button
                                                         onClick={() => handleCheckPrice(product)}
                                                         disabled={loadingCheck[product.id]}

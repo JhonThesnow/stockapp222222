@@ -340,11 +340,11 @@ const InventoryPage = () => {
                 </button>
             </div>
 
-            <div className="flex border-b mb-6 overflow-x-auto">
-                <button onClick={() => setActiveTab('inventory')} className={`py-2 px-4 whitespace-nowrap ${activeTab === 'inventory' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Inventario</button>
-                <button onClick={() => setActiveTab('stockIncome')} className={`py-2 px-4 whitespace-nowrap ${activeTab === 'stockIncome' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Ingresos Stock</button>
-                <button onClick={() => setActiveTab('priceIncreases')} className={`py-2 px-4 whitespace-nowrap ${activeTab === 'priceIncreases' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Aumentos</button>
-                <button onClick={() => setActiveTab('stockAdjustments')} className={`py-2 px-4 whitespace-nowrap ${activeTab === 'stockAdjustments' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500'}`}>Bajas/Ajustes</button>
+            <div className="flex border-b mb-6 flex-wrap">
+                <button onClick={() => setActiveTab('inventory')} className={`py-2 px-4 whitespace-nowrap ${activeTab === 'inventory' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Inventario</button>
+                <button onClick={() => setActiveTab('stockIncome')} className={`py-2 px-4 whitespace-nowrap ${activeTab === 'stockIncome' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Ingresos Stock</button>
+                <button onClick={() => setActiveTab('priceIncreases')} className={`py-2 px-4 whitespace-nowrap ${activeTab === 'priceIncreases' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Aumentos</button>
+                <button onClick={() => setActiveTab('stockAdjustments')} className={`py-2 px-4 whitespace-nowrap ${activeTab === 'stockAdjustments' ? 'border-b-2 border-blue-600 font-semibold text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>Bajas/Ajustes</button>
             </div>
 
             {activeTab === 'inventory' && (
