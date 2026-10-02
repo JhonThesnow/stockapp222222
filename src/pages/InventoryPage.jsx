@@ -320,24 +320,26 @@ const InventoryPage = () => {
         <div className="p-4 md:p-6 bg-gray-50 min-h-full">
             <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
                 <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Inventario</h1>
-                <button
-                    onClick={activeTab === 'inventory' ? handleAddNew : undefined}
-                    className={`w-full md:w-auto flex items-center justify-center gap-2 py-2 px-4 rounded-lg shadow transition-colors ${
-                        activeTab === 'inventory'
-                            ? 'bg-blue-600 text-white hover:bg-blue-700'
-                            : 'invisible' // Hace que el botón desaparezca visualmente pero mantenga el espacio ocupado
-                    }`}
-                >
-                    <FiPlusCircle />
-                    <span>Agregar Producto</span>
-                </button>
-                <button
-                    onClick={() => setIsStockAdjustmentModalOpen(true)}
-                    className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors shadow-sm ml-2"
-                >
-                    <FiLayers />
-                    <span>Registrar baja/ajuste de stock</span>
-                </button>
+                <div className="flex flex-col md:flex-row gap-2 md:gap-4 w-full md:w-auto">
+                    <button
+                        onClick={activeTab === 'inventory' ? handleAddNew : undefined}
+                        className={`w-full md:w-auto flex items-center justify-center gap-2 py-2 px-4 rounded-lg shadow transition-colors ${
+                            activeTab === 'inventory'
+                                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                : 'invisible' // Hace que el botón desaparezca visualmente pero mantenga el espacio ocupado
+                        }`}
+                    >
+                        <FiPlusCircle />
+                        <span>Agregar Producto</span>
+                    </button>
+                    <button
+                        onClick={() => setIsStockAdjustmentModalOpen(true)}
+                        className="w-full md:w-auto bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg flex justify-center items-center gap-2 transition-colors shadow-sm"
+                    >
+                        <FiLayers />
+                        <span>Registrar baja/ajuste de stock</span>
+                    </button>
+                </div>
             </div>
 
             <div className="flex border-b mb-6 flex-wrap">
