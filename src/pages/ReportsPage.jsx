@@ -11,13 +11,13 @@ import Select from 'react-select';
 
 // Componente para una tarjeta de estadística
 const StatCard = ({ title, value, icon, color }) => (
-    <div className="bg-white p-6 rounded-lg shadow flex items-center gap-4">
-        <div className={`text-3xl p-3 rounded-full ${color}`}>
+    <div className="bg-white p-3 sm:p-4 rounded-lg shadow flex items-center gap-3 overflow-hidden">
+        <div className={`text-xl sm:text-2xl p-3 rounded-full shrink-0 ${color}`}>
             {icon}
         </div>
-        <div>
-            <p className="text-gray-500 text-sm font-medium">{title}</p>
-            <p className="text-2xl font-bold text-gray-800">{value}</p>
+        <div className="min-w-0 flex-1">
+            <p className="text-gray-500 text-xs sm:text-sm font-medium truncate" title={title}>{title}</p>
+            <p className="text-base sm:text-lg lg:text-xl font-bold text-gray-800 truncate" title={value}>{value}</p>
         </div>
     </div>
 );
@@ -247,7 +247,7 @@ const ReportsPage = () => {
 
             {/* KPIs Principales */}
             {activeReport && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
                     <StatCard title="Ventas Totales" value={`$${formatNumber(activeReport.summary.totalRevenue)}`} icon={<FiDollarSign />} color="bg-green-100 text-green-600" />
                     <StatCard title="Ganancia Neta" value={`$${formatNumber(activeReport.summary.grossProfit)}`} icon={<FiTrendingUp />} color="bg-blue-100 text-blue-600" />
                     <StatCard title="Nº de Ventas" value={formatNumber(activeReport.summary.totalSales)} icon={<FiFileText />} color="bg-yellow-100 text-yellow-600" />
@@ -292,16 +292,13 @@ const ReportsPage = () => {
                     </h2>
                     <ul className="space-y-4 flex-grow">
                         {activeReport && paginatedProducts.map((product, index) => (
-                            <li key={index} className="flex justify-between items-start border-b pb-2 last:border-0">
-                                <div>
-                                    <span className="font-medium text-gray-800 block">{(currentPage - 1) * 10 + index + 1}. {product.name}</span>
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                        {product.type && <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded">{product.type}</span>}
-                                        {product.brand && <span className="text-xs bg-purple-50 text-purple-600 px-2 py-0.5 rounded">{product.brand}</span>}
-                                        {product.subtype && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{product.subtype}</span>}
-                                    </div>
-                                </div>
-                                <span className="font-bold bg-gray-200 text-gray-800 px-2 py-1 rounded-full text-sm mt-1">{formatNumber(product.quantity)} uds.</span>
+                            <li key={index} className="flex justify-between items-start gap-4 border-b pb-3 pt-1 last:border-0">
+                                <span className="font-medium text-gray-800 flex-1 break-words">
+                                    {(currentPage - 1) * 10 + index + 1}. {product.name}
+                                </span>
+                                <span className="font-bold bg-gray-200 text-gray-800 px-3 py-1 rounded-full text-sm shrink-0 whitespace-nowrap">
+                                    {formatNumber(product.quantity)} uds.
+                                </span>
                             </li>
                         ))}
                         {(!activeReport || activeReport.topProducts.length === 0) && <p className="text-center text-gray-500 pt-10">No hay ventas registradas que coincidan con los filtros.</p>}
