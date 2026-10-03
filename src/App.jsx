@@ -20,6 +20,7 @@ import ScannerFAB from './components/ScannerFAB';
 import NativeScannerModal from './components/NativeScannerModal';
 import useSalesStore from './store/useSalesStore';
 import useCostsStore from './store/useCostsStore';
+import PriceSyncWidget from './components/PriceSyncWidget';
 
 const Navigation = ({ onLinkClick }) => {
   const activeLinkStyle = {
@@ -166,6 +167,7 @@ const AppLayout = () => {
       )}
       <ScannerFAB onClick={() => setIsNativeScannerOpen(true)} />
       <BottomNav />
+      <PriceSyncWidget />
     </div>
   );
 };
