@@ -36,7 +36,7 @@ const EditSaleDrawer = ({ sale, onClose }) => {
         <div className="fixed inset-0 z-50 flex justify-end">
             {/* Overlay */}
             <div
-                className={`fixed inset-0 bg-black transition-opacity duration-300 ${isOpen ? 'opacity-20' : 'opacity-0'}`}
+                className={`fixed inset-0 bg-black/50 backdrop-blur-sm transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`}
                 onClick={handleClose}
             ></div>
 

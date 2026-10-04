@@ -44,7 +44,7 @@ const EditStockEntryModal = ({ entry, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold">Editar Ingreso de Stock</h2>

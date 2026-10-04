@@ -150,7 +150,7 @@ const AppLayout = () => {
       </div>
       {isMenuOpen && (
         <>
-          <div className="md:hidden fixed inset-0 bg-black z-20 animate-fade-in" onClick={() => setIsMenuOpen(false)}></div>
+          <div className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-20 animate-fade-in" onClick={() => setIsMenuOpen(false)}></div>
           <div className="md:hidden fixed top-0 left-0 h-full z-30 animate-slide-in-left">
             <Navigation onLinkClick={() => setIsMenuOpen(false)} />
           </div>

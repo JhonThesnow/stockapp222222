@@ -22,7 +22,7 @@ const BottomNav = () => {
             {isMenuOpen && (
                 <>
                     <div
-                        className="fixed inset-0 bg-black/50 z-30"
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30"
                         onClick={() => setIsMenuOpen(false)}
                     ></div>
                     <div className="fixed bottom-[60px] left-0 w-full bg-white border-t rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-40 p-4 pb-6 flex flex-col gap-2">
