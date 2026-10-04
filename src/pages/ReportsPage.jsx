@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import useSalesStore from '../store/useSalesStore';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { FiTrendingUp, FiDollarSign, FiAward, FiCalendar, FiFileText, FiFilter, FiX } from 'react-icons/fi';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -124,6 +124,8 @@ const ReportsPage = () => {
 
     const salesChartData = chartData(activeReport);
 
+    const paymentMethodsData = activeReport?.summary?.revenueByPaymentMethod || [];
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#ffc658'];
 
     if (loading && !activeReport) return <div className="p-6 text-center">Cargando reportes...</div>;
     if (!activeReport && !loading) return <div className="p-6 text-center">No hay datos para mostrar.</div>
@@ -152,143 +154,156 @@ const ReportsPage = () => {
                 </button>
             </div>
 
-            {/* Panel de Filtros (Collapsible) */}
-            {isFilterOpen && (
-                <div className="bg-white p-6 rounded-lg shadow-md mb-6 relative">
-                    <button
-                        onClick={() => setIsFilterOpen(false)}
-                        className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-                    >
-                        <FiX size={20} />
-                    </button>
-                    <h2 className="text-lg font-bold mb-4">Filtros Avanzados</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio de Venta</label>
-                            <DatePicker
-                                selected={reportFilters.startDate}
-                                onChange={handleStartDateChange}
-                                selectsStart
-                                startDate={reportFilters.startDate}
-                                endDate={reportFilters.endDate}
-                                className="w-full p-2 border rounded"
-                                dateFormat="dd/MM/yyyy"
-                                isClearable={true}
-                                placeholderText="Inicio"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Fin de Venta</label>
-                            <DatePicker
-                                selected={reportFilters.endDate}
-                                onChange={handleEndDateChange}
-                                selectsEnd
-                                startDate={reportFilters.startDate}
-                                endDate={reportFilters.endDate}
-                                minDate={reportFilters.startDate}
-                                className="w-full p-2 border rounded"
-                                dateFormat="dd/MM/yyyy"
-                                isClearable={true}
-                                placeholderText="Fin"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Producto</label>
-                            <Select
-                                isMulti
-                                options={options.types}
-                                value={reportFilters.types}
-                                onChange={(selected) => setReportFilters({ types: selected })}
-                                placeholder="Todos..."
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
-                            <Select
-                                isMulti
-                                options={options.brands}
-                                value={reportFilters.brands}
-                                onChange={(selected) => setReportFilters({ brands: selected })}
-                                placeholder="Todas..."
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Línea</label>
-                            <Select
-                                isMulti
-                                options={options.lines}
-                                value={reportFilters.lines}
-                                onChange={(selected) => setReportFilters({ lines: selected })}
-                                placeholder="Todas..."
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Orden de Productos</label>
-                            <Select
-                                options={[
-                                    { value: 'desc', label: 'Más Vendidos' },
-                                    { value: 'asc', label: 'Menos Vendidos' }
-                                ]}
-                                value={{
-                                    value: reportFilters.sortOrder || 'desc',
-                                    label: reportFilters.sortOrder === 'asc' ? 'Menos Vendidos' : 'Más Vendidos'
-                                }}
-                                onChange={(selected) => setReportFilters({ sortOrder: selected.value })}
-                                placeholder="Orden..."
-                            />
-                        </div>
-                    </div>
-
-                    <div className="border-t pt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Última Venta (Desde)</label>
-                            <DatePicker
-                                selected={reportFilters.lastSoldStartDate}
-                                onChange={(date) => setReportFilters({ lastSoldStartDate: date })}
-                                selectsStart
-                                startDate={reportFilters.lastSoldStartDate}
-                                endDate={reportFilters.lastSoldEndDate}
-                                className="w-full p-2 border rounded"
-                                dateFormat="dd/MM/yyyy"
-                                isClearable={true}
-                                placeholderText="Inicio"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Última Venta (Hasta)</label>
-                            <DatePicker
-                                selected={reportFilters.lastSoldEndDate}
-                                onChange={(date) => setReportFilters({ lastSoldEndDate: date })}
-                                selectsEnd
-                                startDate={reportFilters.lastSoldStartDate}
-                                endDate={reportFilters.lastSoldEndDate}
-                                minDate={reportFilters.lastSoldStartDate}
-                                className="w-full p-2 border rounded"
-                                dateFormat="dd/MM/yyyy"
-                                isClearable={true}
-                                placeholderText="Fin"
-                            />
-                        </div>
-                    </div>
-                    <div className="mt-4 flex gap-2 justify-end">
-                        <button onClick={clearFilters} className="px-4 py-2 text-gray-600 hover:text-gray-800 border rounded">Limpiar</button>
-                        <button onClick={applyFilters} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Aplicar Filtros</button>
-                    </div>
-                </div>
-            )}
-
             {/* KPIs Principales */}
             {activeReport && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
                     <StatCard title="Ventas Totales" value={`$${formatNumber(activeReport.summary.totalRevenue)}`} icon={<FiDollarSign />} color="bg-green-100 text-green-600" />
                     <StatCard title="Ganancia Neta" value={`$${formatNumber(activeReport.summary.grossProfit)}`} icon={<FiTrendingUp />} color="bg-blue-100 text-blue-600" />
                     <StatCard title="Nº de Ventas" value={formatNumber(activeReport.summary.totalSales)} icon={<FiFileText />} color="bg-yellow-100 text-yellow-600" />
                     <StatCard title="Ventas en Efectivo" value={`$${formatNumber(activeReport.summary.cashRevenue || 0)}`} icon={<FiDollarSign />} color="bg-indigo-100 text-indigo-600" />
+                    <StatCard title="Ticket Promedio" value={`$${formatNumber(activeReport.summary.totalSales > 0 ? activeReport.summary.totalRevenue / activeReport.summary.totalSales : 0)}`} icon={<FiAward />} color="bg-purple-100 text-purple-600" />
                 </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Gráfico de Ventas y Reporte de Caja */}
+            {/* Panel de Filtros (Drawer Lateral) */}
+            {isFilterOpen && (
+                <div className="fixed inset-0 z-20 flex">
+                    {/* Fondo oscuro desenfocado */}
+                    <div
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setIsFilterOpen(false)}
+                    ></div>
+
+                    {/* Contenido del Drawer */}
+                    <div className="relative ml-auto w-full max-w-md bg-white h-full shadow-xl flex flex-col transform transition-transform duration-300 ease-in-out">
+                        <div className="flex items-center justify-between p-4 border-b">
+                            <h2 className="text-lg font-bold">Filtros Avanzados</h2>
+                            <button
+                                onClick={() => setIsFilterOpen(false)}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                <FiX size={24} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio de Venta</label>
+                                <DatePicker
+                                    selected={reportFilters.startDate}
+                                    onChange={handleStartDateChange}
+                                    selectsStart
+                                    startDate={reportFilters.startDate}
+                                    endDate={reportFilters.endDate}
+                                    className="w-full p-2 border rounded"
+                                    dateFormat="dd/MM/yyyy"
+                                    isClearable={true}
+                                    placeholderText="Inicio"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Fin de Venta</label>
+                                <DatePicker
+                                    selected={reportFilters.endDate}
+                                    onChange={handleEndDateChange}
+                                    selectsEnd
+                                    startDate={reportFilters.startDate}
+                                    endDate={reportFilters.endDate}
+                                    minDate={reportFilters.startDate}
+                                    className="w-full p-2 border rounded"
+                                    dateFormat="dd/MM/yyyy"
+                                    isClearable={true}
+                                    placeholderText="Fin"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Producto</label>
+                                <Select
+                                    isMulti
+                                    options={options.types}
+                                    value={reportFilters.types}
+                                    onChange={(selected) => setReportFilters({ types: selected })}
+                                    placeholder="Todos..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
+                                <Select
+                                    isMulti
+                                    options={options.brands}
+                                    value={reportFilters.brands}
+                                    onChange={(selected) => setReportFilters({ brands: selected })}
+                                    placeholder="Todas..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Línea</label>
+                                <Select
+                                    isMulti
+                                    options={options.lines}
+                                    value={reportFilters.lines}
+                                    onChange={(selected) => setReportFilters({ lines: selected })}
+                                    placeholder="Todas..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Orden de Productos</label>
+                                <Select
+                                    options={[
+                                        { value: 'desc', label: 'Más Vendidos' },
+                                        { value: 'asc', label: 'Menos Vendidos' }
+                                    ]}
+                                    value={{
+                                        value: reportFilters.sortOrder || 'desc',
+                                        label: reportFilters.sortOrder === 'asc' ? 'Menos Vendidos' : 'Más Vendidos'
+                                    }}
+                                    onChange={(selected) => setReportFilters({ sortOrder: selected.value })}
+                                    placeholder="Orden..."
+                                />
+                            </div>
+
+                            <div className="border-t pt-4 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Última Venta (Desde)</label>
+                                    <DatePicker
+                                        selected={reportFilters.lastSoldStartDate}
+                                        onChange={(date) => setReportFilters({ lastSoldStartDate: date })}
+                                        selectsStart
+                                        startDate={reportFilters.lastSoldStartDate}
+                                        endDate={reportFilters.lastSoldEndDate}
+                                        className="w-full p-2 border rounded"
+                                        dateFormat="dd/MM/yyyy"
+                                        isClearable={true}
+                                        placeholderText="Inicio"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Última Venta (Hasta)</label>
+                                    <DatePicker
+                                        selected={reportFilters.lastSoldEndDate}
+                                        onChange={(date) => setReportFilters({ lastSoldEndDate: date })}
+                                        selectsEnd
+                                        startDate={reportFilters.lastSoldStartDate}
+                                        endDate={reportFilters.lastSoldEndDate}
+                                        minDate={reportFilters.lastSoldStartDate}
+                                        className="w-full p-2 border rounded"
+                                        dateFormat="dd/MM/yyyy"
+                                        isClearable={true}
+                                        placeholderText="Fin"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-4 border-t bg-gray-50 flex gap-2 justify-end shrink-0">
+                            <button onClick={clearFilters} className="px-4 py-2 text-gray-600 hover:text-gray-800 border bg-white rounded">Limpiar</button>
+                            <button onClick={applyFilters} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Aplicar Filtros</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                {/* Gráfico de Ventas */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow">
                     <h2 className="text-xl font-bold mb-4">Evolución de Ventas</h2>
                     {salesChartData.length > 0 ? (
@@ -303,24 +318,69 @@ const ReportsPage = () => {
                             </BarChart>
                         </ResponsiveContainer>
                     ) : <p className="text-center text-gray-500 py-12">No hay suficientes datos para el gráfico.</p>}
-
-                    {/* Reporte de Caja del día */}
-                    {activePeriod === 'today' && activeReport && (
-                        <div className="mt-8 border-t pt-6">
-                            <h2 className="text-xl font-bold mb-4">Reporte de Caja - {format(new Date(), 'dd/MM/yyyy')}</h2>
-                            <div className="space-y-2">
-                                <div className="flex justify-between p-2 bg-gray-50 rounded"><span>Ventas en Efectivo:</span> <span className="font-bold">${formatNumber(activeReport.summary.cashRevenue || 0)}</span></div>
-                                <div className="flex justify-between p-2 bg-gray-50 rounded"><span>Ventas con Tarjeta:</span> <span className="font-bold">${formatNumber(activeReport.summary.cardRevenue || 0)}</span></div>
-                                <div className="flex justify-between p-3 bg-blue-50 rounded text-blue-800 font-bold mt-2"><span>TOTAL CAJA:</span> <span>${formatNumber(activeReport.summary.totalRevenue || 0)}</span></div>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
-                {/* Productos más vendidos */}
+                {/* Gráfico de Métodos de Pago */}
+                <div className="bg-white p-6 rounded-lg shadow flex flex-col">
+                    <h2 className="text-xl font-bold mb-4">Métodos de Pago</h2>
+                    {paymentMethodsData.length > 0 ? (
+                        <div className="flex-grow">
+                            <ResponsiveContainer width="100%" height={250}>
+                                <PieChart>
+                                    <Pie
+                                        data={paymentMethodsData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {paymentMethodsData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(value) => `$${formatNumber(value)}`} />
+                                    <Legend />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : <p className="text-center text-gray-500 py-12">No hay datos de métodos de pago.</p>}
+                </div>
+            </div>
+
+            {/* Top 5 y Productos Completos */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Top 5 Widget */}
                 <div className="bg-white p-6 rounded-lg shadow flex flex-col">
                     <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                        <FiAward /> {reportFilters.sortOrder === 'asc' ? 'Menos Vendidos' : 'Más Vendidos'}
+                        <FiAward className="text-yellow-500" /> Top 5 Productos
+                    </h2>
+                    <ul className="space-y-4 flex-grow">
+                        {activeReport && activeReport.topProducts && activeReport.topProducts.slice(0, 5).map((product, index) => (
+                            <li key={`top-${index}`} className="flex justify-between items-center gap-3 border-b pb-3 pt-1 last:border-0">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <span className="font-bold text-gray-400 text-lg">{index + 1}</span>
+                                    <div className="min-w-0">
+                                        <p className="font-medium text-gray-800 truncate">{product.name}</p>
+                                        {product.brand && <p className="text-xs text-gray-500 truncate">{product.brand}</p>}
+                                    </div>
+                                </div>
+                                <span className="font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded text-sm shrink-0">
+                                    {formatNumber(product.quantity)} u.
+                                </span>
+                            </li>
+                        ))}
+                        {(!activeReport || !activeReport.topProducts || activeReport.topProducts.length === 0) && (
+                            <p className="text-center text-gray-500 pt-6">No hay ventas registradas.</p>
+                        )}
+                    </ul>
+                </div>
+
+                {/* Lista Completa Paginada */}
+                <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow flex flex-col">
+                    <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                        <FiAward /> {reportFilters.sortOrder === 'asc' ? 'Menos Vendidos (General)' : 'Más Vendidos (General)'}
                     </h2>
                     <ul className="space-y-4 flex-grow">
                         {activeReport && paginatedProducts.map((product, index) => (
