@@ -870,8 +870,8 @@ const getTopPieChartData = (data, key = 'value', topN = 6) => {
     return topItems;
 };
 
-const processReportData = (sales, productMap, productMapByCode, filters = {}) => {
-    const { names = [], brands = [], lines = [], types = [] } = filters;
+const processReportData = (sales, productMap, productMapByCode, filters = {}, productLastSoldMap = new Map()) => {
+    const { names = [], brands = [], lines = [], types = [], lastSoldStartDate, lastSoldEndDate } = filters;
     const hasTypeFilter = types.length > 0;
     const hasNameFilter = names.length > 0;
     const hasBrandFilter = brands.length > 0;
@@ -909,7 +909,19 @@ const processReportData = (sales, productMap, productMapByCode, filters = {}) =>
             const brandMatch = !hasBrandFilter || brands.includes(productInfo.brand);
             const lineMatch = !hasLineFilter || lines.some(line => productInfo.subtype && productInfo.subtype.startsWith(line));
 
-            if (typeMatch && nameMatch && brandMatch && lineMatch) {
+            let lastSoldMatch = true;
+            if (lastSoldStartDate || lastSoldEndDate) {
+                const lastSoldDateStr = productLastSoldMap.get(item.productId);
+                if (lastSoldDateStr) {
+                    if (lastSoldStartDate && lastSoldDateStr < lastSoldStartDate) lastSoldMatch = false;
+                    if (lastSoldEndDate && lastSoldDateStr >= lastSoldEndDate) lastSoldMatch = false;
+                } else {
+                    lastSoldMatch = false; // If no last sold date is found, it doesn't match the filter
+                }
+            }
+
+
+            if (typeMatch && nameMatch && brandMatch && lineMatch && lastSoldMatch) {
                 saleHasMatchingItems = true;
 
                 const itemRevenue = item.unitPrice * item.quantity;
@@ -1009,7 +1021,7 @@ app.get('/api/product-options', (req, res) => {
 
 app.post('/api/sales-report-data', async (req, res) => {
     try {
-        const { startDate: startDateString, endDate: endDateString, names = [], brands = [], lines = [], types = [], compare } = req.body;
+        const { startDate: startDateString, endDate: endDateString, names = [], brands = [], lines = [], types = [], compare, lastSoldStartDate, lastSoldEndDate } = req.body;
 
         const products = await new Promise((resolve, reject) => {
             db.all('SELECT id, name, brand, subtype, code, type FROM products', [], (err, rows) => err ? reject(err) : resolve(rows));
@@ -1034,11 +1046,38 @@ app.post('/api/sales-report-data', async (req, res) => {
             db.all(salesQuery, [startUtc, endUtc], (err, sales) => err ? reject(err) : resolve(sales));
         });
 
+        // --- Fetch last sold dates if the filter is used ---
+        const productLastSoldMap = new Map();
+        let formattedLastSoldStart = null;
+        let formattedLastSoldEnd = null;
+
+        if (lastSoldStartDate || lastSoldEndDate) {
+            if (lastSoldStartDate) formattedLastSoldStart = getUtcRangeFromArgentinaDate(lastSoldStartDate);
+            if (lastSoldEndDate) formattedLastSoldEnd = getUtcRangeFromArgentinaDate(lastSoldEndDate, true);
+
+            const lastSoldQuery = `
+                SELECT
+                    json_extract(value, '$.productId') as productId,
+                    MAX(date) as lastSoldDate
+                FROM sales, json_each(sales.items)
+                WHERE status = 'completed'
+                GROUP BY productId;
+            `;
+            const lastSoldRows = await new Promise((resolve, reject) => {
+                 db.all(lastSoldQuery, [], (err, rows) => err ? reject(err) : resolve(rows));
+            });
+            lastSoldRows.forEach(row => {
+                if (row.productId) {
+                    productLastSoldMap.set(row.productId, row.lastSoldDate);
+                }
+            });
+        }
+
         // --- Período Actual ---
         const currentRangeStart = getUtcRangeFromArgentinaDate(startDateString);
         const currentRangeEnd = getUtcRangeFromArgentinaDate(endDateString, true);
         const currentSales = await getSalesForPeriod(currentRangeStart, currentRangeEnd);
-        const currentPeriodData = processReportData(currentSales, productMap, productMapByCode, { names, brands, lines, types });
+        const currentPeriodData = processReportData(currentSales, productMap, productMapByCode, { names, brands, lines, types, lastSoldStartDate: formattedLastSoldStart, lastSoldEndDate: formattedLastSoldEnd }, productLastSoldMap);
 
         // --- Período de Comparación ---
         let previousPeriodData = null;
@@ -1051,7 +1090,7 @@ app.post('/api/sales-report-data', async (req, res) => {
             const previousRangeStart = new Date(startDate.getTime() - diffInMs).toISOString();
 
             const previousSales = await getSalesForPeriod(previousRangeStart, previousRangeEnd);
-            previousPeriodData = processReportData(previousSales, productMap, productMapByCode, { names, brands, lines, types });
+            previousPeriodData = processReportData(previousSales, productMap, productMapByCode, { names, brands, lines, types, lastSoldStartDate: formattedLastSoldStart, lastSoldEndDate: formattedLastSoldEnd }, productLastSoldMap);
         }
 
         res.json({ currentPeriod: currentPeriodData, previousPeriod: previousPeriodData });
