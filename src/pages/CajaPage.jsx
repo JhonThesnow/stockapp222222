@@ -21,6 +21,10 @@ const CajaPage = () => {
     const [showProfitMethod, setShowProfitMethod] = useState({});
     const [searchParams, setSearchParams] = useSearchParams();
 
+    // UI state for custom starting shift modal
+    const [isStartingShift, setIsStartingShift] = useState(false);
+    const [initialCashInput, setInitialCashInput] = useState('0');
+
     const toggleSaleExpansion = (saleId) => {
         setExpandedSales(prev => ({ ...prev, [saleId]: !prev[saleId] }));
     };
@@ -48,11 +52,8 @@ const CajaPage = () => {
         }
     }, [searchParams, pendingSales, setSearchParams]);
 
-    const handleStartShift = async () => {
-        const input = window.prompt("Ingresa la cantidad de dinero con la que arranca la caja:", "0");
-        if (input === null) return; // User cancelled
-
-        const initialCash = parseFloat(input);
+    const handleConfirmStartShift = async () => {
+        const initialCash = parseFloat(initialCashInput);
         if (isNaN(initialCash) || initialCash < 0) {
             alert("Por favor, ingresa un monto válido mayor o igual a cero.");
             return;
@@ -61,6 +62,9 @@ const CajaPage = () => {
         const res = await startShift(initialCash);
         if (!res.success) {
             alert('Error al iniciar turno: ' + res.error);
+        } else {
+            setIsStartingShift(false);
+            setInitialCashInput('0');
         }
     };
 
@@ -233,17 +237,58 @@ const CajaPage = () => {
     if (!currentShift) {
         return (
             <div className="flex flex-col items-center justify-center h-full p-6 bg-gray-50">
-                <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center">
+                <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center transition-all duration-300">
                     <FiDollarSign className="w-16 h-16 mx-auto text-gray-400 mb-4" />
                     <h2 className="text-2xl font-bold text-gray-800 mb-2">Caja Cerrada</h2>
                     <p className="text-gray-600 mb-6">Iniciá un turno de trabajo para comenzar a operar la caja y registrar ventas.</p>
-                    <button
-                        onClick={handleStartShift}
-                        className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg flex items-center justify-center gap-2 transition-colors"
-                    >
-                        <FiPlay size={20} />
-                        <span>Comenzar Turno</span>
-                    </button>
+
+                    {!isStartingShift ? (
+                        <button
+                            onClick={() => setIsStartingShift(true)}
+                            className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg flex items-center justify-center gap-2 transition-colors"
+                        >
+                            <FiPlay size={20} />
+                            <span>Comenzar Turno</span>
+                        </button>
+                    ) : (
+                        <div className="animate-in fade-in slide-in-from-top-4 duration-300">
+                            <label className="block text-sm font-medium text-gray-700 mb-2 text-left">
+                                Ingresa la cantidad de dinero con la que arranca la caja:
+                            </label>
+                            <input
+                                type="number"
+                                autoFocus
+                                value={initialCashInput}
+                                onChange={(e) => setInitialCashInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleConfirmStartShift();
+                                    if (e.key === 'Escape') {
+                                        setIsStartingShift(false);
+                                        setInitialCashInput('0');
+                                    }
+                                }}
+                                className="w-full p-3 border border-gray-300 rounded-lg mb-4 text-center text-lg font-semibold focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-shadow"
+                                min="0"
+                            />
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => {
+                                        setIsStartingShift(false);
+                                        setInitialCashInput('0');
+                                    }}
+                                    className="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold rounded-lg transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleConfirmStartShift}
+                                    className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg transition-colors"
+                                >
+                                    Aceptar
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         );
