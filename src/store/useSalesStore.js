@@ -27,6 +27,8 @@ const useSalesStore = create(persist((set, get) => ({
         lines: [],
         compare: false,
         sortOrder: 'desc',
+        lastSoldStartDate: null,
+        lastSoldEndDate: null,
     },
     reportData: null,
     loading: false,
@@ -473,6 +475,8 @@ const useSalesStore = create(persist((set, get) => ({
                 lines: [],
                 compare: false,
                 sortOrder: 'desc',
+                lastSoldStartDate: null,
+                lastSoldEndDate: null,
             }
         });
         get().fetchReportData();
@@ -493,6 +497,8 @@ const useSalesStore = create(persist((set, get) => ({
                     brands: reportFilters.brands ? reportFilters.brands.map(b => b.value) : [],
                     lines: reportFilters.lines ? reportFilters.lines.map(l => l.value) : [],
                     compare: reportFilters.compare,
+                    lastSoldStartDate: reportFilters.lastSoldStartDate ? format(reportFilters.lastSoldStartDate, "yyyy-MM-dd") : null,
+                    lastSoldEndDate: reportFilters.lastSoldEndDate ? format(reportFilters.lastSoldEndDate, "yyyy-MM-dd") : null,
                 }),
             });
             if (!response.ok) {

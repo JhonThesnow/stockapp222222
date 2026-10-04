@@ -86,7 +86,7 @@ const ReportsPage = () => {
 
     const clearFilters = () => {
         setCurrentPage(1); // Reset page on clear
-        setReportFilters({ types: [], brands: [], lines: [], sortOrder: 'desc' });
+        setReportFilters({ types: [], brands: [], lines: [], sortOrder: 'desc', lastSoldStartDate: null, lastSoldEndDate: null });
         fetchReportData();
     };
 
@@ -162,9 +162,9 @@ const ReportsPage = () => {
                         <FiX size={20} />
                     </button>
                     <h2 className="text-lg font-bold mb-4">Filtros Avanzados</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Inicio de Venta</label>
                             <DatePicker
                                 selected={reportFilters.startDate}
                                 onChange={handleStartDateChange}
@@ -178,7 +178,7 @@ const ReportsPage = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Fin</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Fin de Venta</label>
                             <DatePicker
                                 selected={reportFilters.endDate}
                                 onChange={handleEndDateChange}
@@ -235,6 +235,38 @@ const ReportsPage = () => {
                                 }}
                                 onChange={(selected) => setReportFilters({ sortOrder: selected.value })}
                                 placeholder="Orden..."
+                            />
+                        </div>
+                    </div>
+
+                    <div className="border-t pt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Última Venta (Desde)</label>
+                            <DatePicker
+                                selected={reportFilters.lastSoldStartDate}
+                                onChange={(date) => setReportFilters({ lastSoldStartDate: date })}
+                                selectsStart
+                                startDate={reportFilters.lastSoldStartDate}
+                                endDate={reportFilters.lastSoldEndDate}
+                                className="w-full p-2 border rounded"
+                                dateFormat="dd/MM/yyyy"
+                                isClearable={true}
+                                placeholderText="Inicio"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Última Venta (Hasta)</label>
+                            <DatePicker
+                                selected={reportFilters.lastSoldEndDate}
+                                onChange={(date) => setReportFilters({ lastSoldEndDate: date })}
+                                selectsEnd
+                                startDate={reportFilters.lastSoldStartDate}
+                                endDate={reportFilters.lastSoldEndDate}
+                                minDate={reportFilters.lastSoldStartDate}
+                                className="w-full p-2 border rounded"
+                                dateFormat="dd/MM/yyyy"
+                                isClearable={true}
+                                placeholderText="Fin"
                             />
                         </div>
                     </div>
