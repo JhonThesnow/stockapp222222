@@ -1,74 +1,48 @@
 const fs = require('fs');
-const content = fs.readFileSync('server/server.js', 'utf8');
 
-const targetStr = `    Promise.all([
-        new Promise((resolve, reject) => db.all(salesSql, queryParams, (err, rows) => err ? reject(err) : resolve(rows))),
-        new Promise((resolve, reject) => db.all(expensesSql, queryParams, (err, rows) => err ? reject(err) : resolve(rows))),
-        new Promise((resolve, reject) => db.all(movementsSql, queryParams, (err, rows) => err ? reject(err) : resolve(rows))),
-    ]).then(([sales, expenses, movements]) => {
-        const totalSales = sales.reduce((sum, s) => sum + s.finalAmount, 0);
-        const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-        const totalDeposits = movements.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0);
-        const totalWithdrawals = movements.filter(m => m.type === 'withdrawal').reduce((sum, m) => sum + m.amount, 0);
+const file = 'server/server.js';
+let data = fs.readFileSync(file, 'utf8');
 
-        const totalIncome = totalSales + totalDeposits;
-        const totalOutcome = totalExpenses + totalWithdrawals;
+const oldCode1 = `    const uniqueSales = new Set();
 
-        res.json({
-            data: {
-                totalIncome,
-                totalOutcome,
-                periodResult: totalIncome - totalOutcome,
-            }
-        });
-    }).catch(err => res.status(500).json({ error: err.message }));`;
+    sales.forEach(sale => {`;
 
-const replacement = `    // Queries for historical balance (without date limits, up to endDate)
-    const histSalesSql = \`SELECT finalAmount FROM sales WHERE status = 'completed' AND date <= ? \${accountFilter}\`;
-    const histExpensesSql = \`SELECT amount FROM expenses WHERE date <= ? \${accountFilter}\`;
-    const histMovementsSql = \`SELECT type, amount FROM account_movements WHERE date <= ? \${accountFilter}\`;
-    const histQueryParams = [endDate];
-    if (accountId && accountId !== 'mercado_pago') {
-        histQueryParams.push(accountId);
-    }
+const newCode1 = `    const uniqueSales = new Set();
+    const salesDetails = [];
 
-    Promise.all([
-        new Promise((resolve, reject) => db.all(salesSql, queryParams, (err, rows) => err ? reject(err) : resolve(rows))),
-        new Promise((resolve, reject) => db.all(expensesSql, queryParams, (err, rows) => err ? reject(err) : resolve(rows))),
-        new Promise((resolve, reject) => db.all(movementsSql, queryParams, (err, rows) => err ? reject(err) : resolve(rows))),
-        new Promise((resolve, reject) => db.all(histSalesSql, histQueryParams, (err, rows) => err ? reject(err) : resolve(rows))),
-        new Promise((resolve, reject) => db.all(histExpensesSql, histQueryParams, (err, rows) => err ? reject(err) : resolve(rows))),
-        new Promise((resolve, reject) => db.all(histMovementsSql, histQueryParams, (err, rows) => err ? reject(err) : resolve(rows))),
-    ]).then(([sales, expenses, movements, histSales, histExpenses, histMovements]) => {
-        const totalSales = sales.reduce((sum, s) => sum + s.finalAmount, 0);
-        const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-        const totalDeposits = movements.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0);
-        const totalWithdrawals = movements.filter(m => m.type === 'withdrawal').reduce((sum, m) => sum + m.amount, 0);
+    sales.forEach(sale => {`;
 
-        const totalIncome = totalSales + totalDeposits;
-        const totalOutcome = totalExpenses + totalWithdrawals;
+data = data.replace(oldCode1, newCode1);
 
-        // Calculate historical balance
-        const totalHistSales = histSales.reduce((sum, s) => sum + s.finalAmount, 0);
-        const totalHistExpenses = histExpenses.reduce((sum, e) => sum + e.amount, 0);
-        const totalHistDeposits = histMovements.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0);
-        const totalHistWithdrawals = histMovements.filter(m => m.type === 'withdrawal').reduce((sum, m) => sum + m.amount, 0);
+const oldCode2 = `        if (saleHasMatchingItems) {
+            uniqueSales.add(sale.id);
+        }
+    });`;
 
-        const historicalBalance = (totalHistSales + totalHistDeposits) - (totalHistExpenses + totalHistWithdrawals);
+const newCode2 = `        if (saleHasMatchingItems) {
+            uniqueSales.add(sale.id);
+            salesDetails.push({
+                ...sale,
+                items: items
+            });
+        }
+    });`;
 
-        res.json({
-            data: {
-                totalIncome,
-                totalOutcome,
-                periodResult: totalIncome - totalOutcome,
-                historicalBalance
-            }
-        });
-    }).catch(err => res.status(500).json({ error: err.message }));`;
+data = data.replace(oldCode2, newCode2);
 
-if (content.includes(targetStr)) {
-    fs.writeFileSync('server/server.js', content.replace(targetStr, replacement));
-    console.log('File patched successfully.');
-} else {
-    console.log('Target string not found.');
-}
+
+const oldCode3 = `        revenueByBrand: getTopPieChartData(revenueByBrandData),
+        revenueByName: getTopPieChartData(revenueByNameData),
+    };
+};`;
+
+const newCode3 = `        revenueByBrand: getTopPieChartData(revenueByBrandData),
+        revenueByName: getTopPieChartData(revenueByNameData),
+        salesDetails: salesDetails.sort((a, b) => new Date(b.date) - new Date(a.date)) // Sort newest first
+    };
+};`;
+
+data = data.replace(oldCode3, newCode3);
+
+fs.writeFileSync(file, data);
+console.log("Server patched successfully");

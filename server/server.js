@@ -890,6 +890,7 @@ const processReportData = (sales, productMap, productMapByCode, filters = {}, pr
     const revenueByBrand = {};
     const revenueByName = {};
     const uniqueSales = new Set();
+    const salesDetails = [];
 
     sales.forEach(sale => {
         const saleUtcDate = new Date(sale.date);
@@ -968,6 +969,10 @@ const processReportData = (sales, productMap, productMapByCode, filters = {}, pr
 
         if (saleHasMatchingItems) {
             uniqueSales.add(sale.id);
+            salesDetails.push({
+                ...sale,
+                items: items
+            });
         }
     });
 
@@ -993,6 +998,7 @@ const processReportData = (sales, productMap, productMapByCode, filters = {}, pr
         topProducts,
         revenueByBrand: getTopPieChartData(revenueByBrandData),
         revenueByName: getTopPieChartData(revenueByNameData),
+        salesDetails: salesDetails.sort((a, b) => new Date(b.date) - new Date(a.date)) // Sort newest first
     };
 };
 
