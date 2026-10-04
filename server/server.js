@@ -883,6 +883,7 @@ const processReportData = (sales, productMap, productMapByCode, filters = {}, pr
 
     let cashRevenue = 0;
     let cardRevenue = 0;
+    const revenueByPaymentMethod = {};
 
     const salesByDay = {};
     const productData = {};
@@ -932,6 +933,12 @@ const processReportData = (sales, productMap, productMapByCode, filters = {}, pr
                 grossProfit += itemProfit;
                 totalProductsSold += item.quantity;
 
+                const pMethod = sale.paymentMethod || 'Otros';
+                if (!revenueByPaymentMethod[pMethod]) {
+                    revenueByPaymentMethod[pMethod] = 0;
+                }
+                revenueByPaymentMethod[pMethod] += itemRevenue;
+
                 if (sale.paymentMethod && sale.paymentMethod.toLowerCase() === "efectivo") {
                     cashRevenue += itemRevenue;
                 } else {
@@ -969,6 +976,8 @@ const processReportData = (sales, productMap, productMapByCode, filters = {}, pr
     const revenueByBrandData = Object.entries(revenueByBrand).map(([name, value]) => ({ name, value }));
     const revenueByNameData = Object.entries(revenueByName).map(([name, value]) => ({ name, value }));
 
+    const revenueByPaymentMethodData = Object.entries(revenueByPaymentMethod).map(([name, value]) => ({ name, value }));
+
     return {
         summary: {
             totalRevenue,
@@ -977,7 +986,8 @@ const processReportData = (sales, productMap, productMapByCode, filters = {}, pr
             grossProfit,
             profitMargin: totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0,
             cashRevenue,
-            cardRevenue
+            cardRevenue,
+            revenueByPaymentMethod: revenueByPaymentMethodData
         },
         salesByDay,
         topProducts,
