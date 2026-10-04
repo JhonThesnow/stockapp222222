@@ -18,8 +18,9 @@ const RestockModal = ({ product, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-4">
-            <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
+            <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm z-10">
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl font-bold flex items-center gap-2"><FiPackage /> Agregar Stock</h2>
                     <button type="button" onClick={onClose}><FiX size={24} /></button>
