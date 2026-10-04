@@ -199,7 +199,7 @@ const ProductForm = ({ productToEdit, onClose }) => {
         if (!editData) return null;
         return (
             <>
-            <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-[60] p-4">
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-[60] p-4">
                 <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                     <div className="flex justify-between items-center mb-4 border-b pb-4">
                         <h2 className="text-2xl font-bold">Editar Producto</h2>
@@ -328,7 +328,7 @@ const ProductForm = ({ productToEdit, onClose }) => {
     }
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-[60] p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-[60] p-4">
             <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col">
                 <div className="flex justify-between items-center mb-6 border-b pb-4">
                     <div className="flex items-center gap-4">

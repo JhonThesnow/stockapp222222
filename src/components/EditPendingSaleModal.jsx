@@ -141,7 +141,7 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50 p-2 sm:p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-2 sm:p-4 backdrop-blur-sm">
             <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] flex flex-col">
                 <div className="flex justify-between items-center mb-4 sm:mb-6 border-b-2 pb-3 sm:pb-4">
                     <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Editar Venta Pendiente</h2>
