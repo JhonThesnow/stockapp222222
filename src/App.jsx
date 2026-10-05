@@ -10,7 +10,8 @@ import EncargosPage from './pages/EncargosPage';
 import CostsPage from './pages/CostsPage';
 import PromotionsPage from './pages/PromotionsPage';
 import PreciosPage from './pages/PreciosPage';
-import { FiBox, FiBarChart2, FiShoppingCart, FiMenu, FiUser, FiHome, FiClipboard, FiDollarSign, FiStar, FiRefreshCw } from 'react-icons/fi';
+import PedidosPage from './pages/PedidosPage';
+import { FiBox, FiBarChart2, FiShoppingCart, FiMenu, FiUser, FiHome, FiClipboard, FiDollarSign, FiStar, FiRefreshCw, FiTruck } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useGlobalScanner, handleGlobalScan } from './hooks/useGlobalScanner';
@@ -91,6 +92,12 @@ const Navigation = ({ onLinkClick }) => {
             <span>Encargos</span>
           </NavLink>
         </li>
+        <li>
+          <NavLink to="/pedidos" style={({ isActive }) => isActive ? activeLinkStyle : undefined} onClick={onLinkClick} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors">
+            <FiTruck />
+            <span>Pedidos</span>
+          </NavLink>
+        </li>
       </ul>
     </nav>
   );
@@ -143,6 +150,7 @@ const AppLayout = () => {
             <Route path="/sales" element={<SalesPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/encargos" element={<EncargosPage />} />
+            <Route path="/pedidos" element={<PedidosPage />} />
             <Route path="/costos" element={<CostsPage />} />
             <Route path="/promociones" element={<PromotionsPage />} />
           </Routes>
