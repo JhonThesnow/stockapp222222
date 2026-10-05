@@ -16,15 +16,24 @@ const PedidosPage = () => {
     const [editingOrder, setEditingOrder] = useState(null);
 
     // Form States
-    const [orderDate, setOrderDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [notes, setNotes] = useState('');
     const [items, setItems] = useState([]);
+
+    // Persist draft to local storage
+    useEffect(() => {
+        if (isFormOpen && !editingOrder) { // Only save draft if it's a new order
+            const draft = { notes, items };
+            localStorage.setItem('nuevo_pedido_borrador', JSON.stringify(draft));
+        }
+    }, [notes, items, isFormOpen, editingOrder]);
 
     // Product Search / Suggestion States
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [lowStockSuggestions, setLowStockSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+
+    const [isNewProductFormOpen, setIsNewProductFormOpen] = useState(false);
 
     // New Product form fields (quick inline)
     const [newProductName, setNewProductName] = useState('');
@@ -86,6 +95,7 @@ const PedidosPage = () => {
                 productId: product.id,
                 name: product.name,
                 estimated_price: product.purchasePrice || 0,
+                current_stock: product.quantity, // added to display stock
                 quantity: 1,
                 provider: '',
                 brand: product.brand,
@@ -131,7 +141,7 @@ const PedidosPage = () => {
         if (items.length === 0) return toast.error("El pedido debe tener al menos un producto");
 
         const payload = {
-            date: orderDate,
+            date: new Date().toISOString(), // Use current date for the draft
             status: editingOrder && editingOrder.status === 'completed' ? 'completed' : 'in_progress',
             groups: items,
             notes: notes
@@ -144,6 +154,7 @@ const PedidosPage = () => {
             } else {
                 await createOrder(payload);
                 toast.success("Pedido creado");
+                localStorage.removeItem('nuevo_pedido_borrador');
             }
             closeForm();
         } catch (e) {
@@ -174,30 +185,47 @@ const PedidosPage = () => {
     const openForm = (order = null) => {
         if (order) {
             setEditingOrder(order);
-            setOrderDate(order.date.split('T')[0]);
             setNotes(order.notes || '');
             setItems(order.groups || []);
         } else {
             setEditingOrder(null);
-            setOrderDate(format(new Date(), 'yyyy-MM-dd'));
-            setNotes('');
-            setItems([]);
+            // Load draft if exists
+            const savedDraft = localStorage.getItem('nuevo_pedido_borrador');
+            if (savedDraft) {
+                try {
+                    const parsed = JSON.parse(savedDraft);
+                    setNotes(parsed.notes || '');
+                    setItems(parsed.items || []);
+                } catch (e) {
+                    setNotes('');
+                    setItems([]);
+                }
+            } else {
+                setNotes('');
+                setItems([]);
+            }
         }
         setIsFormOpen(true);
     };
 
     const closeForm = () => {
+        if (!editingOrder) {
+            localStorage.removeItem('nuevo_pedido_borrador');
+        }
         setIsFormOpen(false);
         setEditingOrder(null);
         setItems([]);
     };
 
-    const filteredOrders = orders.filter(o => activeTab === 'activos' ? o.status === 'in_progress' : o.status === 'completed');
+    const filteredOrders = orders.filter(o => {
+        if (activeTab === 'activos') return o.status === 'in_progress';
+        if (activeTab === 'pendientes') return o.status === 'pending';
+        return o.status === 'completed';
+    });
 
     const renderPrintView = () => (
         <div ref={componentRef} className="p-8 hidden print:block bg-white text-black">
             <h1 className="text-2xl font-bold mb-4">Pedido de Mercadería</h1>
-            <p><strong>Fecha:</strong> {orderDate}</p>
             <p><strong>Estado:</strong> {editingOrder ? (editingOrder.status === 'completed' ? 'Completado' : 'Pendiente') : 'Nuevo'}</p>
             {notes && <p><strong>Notas:</strong> {notes}</p>}
 
@@ -254,8 +282,17 @@ const PedidosPage = () => {
                     En Curso / Activos
                 </button>
                 <button
+                    onClick={() => setActiveTab('pendientes')}
+                    className={`pb-2 px-4 font-medium transition-colors relative ${activeTab === 'pendientes' ? 'border-b-2 border-yellow-500 text-yellow-600' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                    Pendientes
+                    {orders.some(o => o.status === 'pending') && (
+                        <span className="absolute top-1 -right-1 w-2.5 h-2.5 bg-yellow-400 rounded-full animate-pulse border border-white"></span>
+                    )}
+                </button>
+                <button
                     onClick={() => setActiveTab('historial')}
-                    className={`pb-2 px-4 font-medium transition-colors ${activeTab === 'historial' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`pb-2 px-4 font-medium transition-colors ${activeTab === 'historial' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                     Historial Completados
                 </button>
@@ -272,7 +309,9 @@ const PedidosPage = () => {
                             <div key={order.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col">
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex items-center gap-2">
-                                        {order.status === 'completed' ? <FiCheckCircle className="text-green-500" /> : <FiClock className="text-yellow-500" />}
+                                        {order.status === 'completed' ? <FiCheckCircle className="text-green-500" /> :
+                                         order.status === 'pending' ? <span className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse mr-1"></span> :
+                                         <FiClock className="text-blue-500" />}
                                         <span className="font-semibold text-gray-800">
                                             {format(new Date(order.date), "dd/MM/yyyy", { locale: es })}
                                         </span>
@@ -283,7 +322,7 @@ const PedidosPage = () => {
                                     {order.groups?.length || 0} productos. {order.notes && <><br /><span className="italic text-xs">"{order.notes}"</span></>}
                                 </p>
                                 <div className="flex gap-2 mt-auto">
-                                    <button onClick={() => openForm(order)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-1">
+                                    <button onClick={() => openForm(order)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-1 text-sm font-medium">
                                         {order.status === 'completed' ? <><FiSearch /> Ver Detalle</> : <><FiEdit /> Editar</>}
                                     </button>
                                     <button onClick={() => {
@@ -302,9 +341,10 @@ const PedidosPage = () => {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
                     {renderPrintView()}
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-xl font-bold text-gray-800">
+                        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                             {editingOrder ? 'Editar Pedido' : 'Nuevo Pedido'}
-                            {editingOrder && editingOrder.status === 'completed' && <span className="ml-2 text-sm bg-green-100 text-green-700 px-2 py-1 rounded-full">Completado</span>}
+                            {editingOrder && editingOrder.status === 'completed' && <span className="text-sm bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">Completado</span>}
+                            {editingOrder && editingOrder.status === 'pending' && <span className="text-sm bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-medium flex items-center gap-1"><span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span> Pendiente</span>}
                         </h2>
                         <div className="flex gap-2">
                             <button onClick={handlePrint} className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2">
@@ -317,15 +357,9 @@ const PedidosPage = () => {
                     </div>
 
                     {/* Order Meta */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha del Pedido</label>
-                            <input type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2" disabled={editingOrder?.status === 'completed'} />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Notas / Lugares a visitar</label>
-                            <input type="text" value={notes} onChange={e => setNotes(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2" placeholder="Ej: Once, Mayorista X..." disabled={editingOrder?.status === 'completed'} />
-                        </div>
+                    <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Notas / Lugares a visitar</label>
+                        <input type="text" value={notes} onChange={e => setNotes(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2" placeholder="Ej: Once, Mayorista X..." disabled={editingOrder?.status === 'completed'} />
                     </div>
 
                     {editingOrder?.status !== 'completed' && (
@@ -341,7 +375,10 @@ const PedidosPage = () => {
                                             {searchResults.map(p => (
                                                 <button key={p.id} onClick={() => addItem(p)} className="w-full text-left p-2 hover:bg-gray-50 flex justify-between items-center border-b last:border-b-0">
                                                     <span>{p.name}</span>
-                                                    <span className="text-sm text-gray-500">Stock: {p.quantity}</span>
+                                                    <div className="text-right flex flex-col items-end">
+                                                        <span className="text-xs text-gray-500">Stock: {p.quantity}</span>
+                                                        <span className="text-xs text-blue-600 font-medium">Costo: ${formatNumber(p.purchasePrice)}</span>
+                                                    </div>
                                                 </button>
                                             ))}
                                         </div>
@@ -353,8 +390,9 @@ const PedidosPage = () => {
                                         <h4 className="text-sm font-medium text-red-600 flex items-center gap-1 mb-2"><FiAlertTriangle /> Sugeridos (Bajo Stock)</h4>
                                         <div className="flex flex-wrap gap-2">
                                             {lowStockSuggestions.slice(0, 5).map(p => (
-                                                <button key={p.id} onClick={() => addItem(p)} className="bg-red-50 text-red-700 text-xs px-2 py-1 rounded-full border border-red-100 hover:bg-red-100 transition-colors">
-                                                    + {p.name} ({p.quantity})
+                                                <button key={p.id} onClick={() => addItem(p)} className="bg-red-50 text-red-700 text-xs px-2 py-1 rounded-full border border-red-100 hover:bg-red-100 transition-colors flex items-center gap-1">
+                                                    <span>+ {p.name} ({p.quantity})</span>
+                                                    <span className="opacity-75">| ${formatNumber(p.purchasePrice)}</span>
                                                 </button>
                                             ))}
                                         </div>
@@ -364,18 +402,29 @@ const PedidosPage = () => {
 
                             {/* Agregar producto nuevo manual */}
                             <div>
-                                <h3 className="font-semibold text-gray-800 mb-3">Agregar Nuevo Producto</h3>
-                                <div className="grid grid-cols-2 gap-2 mb-2">
-                                    <input type="text" placeholder="Nombre de Producto" value={newProductName} onChange={e => setNewProductName(e.target.value)} className="col-span-2 border border-gray-300 rounded-lg p-2 text-sm" />
-                                    <input type="text" placeholder="Proveedor / Lugar" value={newProductProvider} onChange={e => setNewProductProvider(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm" />
-                                    <input type="number" placeholder="Precio Est." value={newProductEstPrice} onChange={e => setNewProductEstPrice(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm" />
-                                    <input type="text" placeholder="Marca (Opcional)" value={newProductBrand} onChange={e => setNewProductBrand(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm" />
-                                    <input type="text" placeholder="Categoría (Opcional)" value={newProductType} onChange={e => setNewProductType(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm" />
-                                </div>
-                                <div className="flex gap-2">
-                                    <input type="number" min="1" value={newProductQty} onChange={e => setNewProductQty(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm w-20" placeholder="Cant." />
-                                    <button onClick={addNewCustomItem} className="flex-1 bg-green-600 text-white rounded-lg p-2 text-sm hover:bg-green-700 transition-colors">Agregar Nuevo</button>
-                                </div>
+                                {!isNewProductFormOpen ? (
+                                    <button onClick={() => setIsNewProductFormOpen(true)} className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-100 transition-colors w-full justify-center border border-blue-200">
+                                        <FiPlus /> Crear Nuevo Producto Manualmente
+                                    </button>
+                                ) : (
+                                    <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm relative">
+                                        <button onClick={() => setIsNewProductFormOpen(false)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-600">
+                                            <FiX />
+                                        </button>
+                                        <h3 className="font-semibold text-gray-800 mb-3 text-sm pr-6">Agregar Nuevo Producto</h3>
+                                        <div className="grid grid-cols-2 gap-2 mb-2">
+                                            <input type="text" placeholder="Nombre de Producto" value={newProductName} onChange={e => setNewProductName(e.target.value)} className="col-span-2 border border-gray-300 rounded-lg p-2 text-sm" />
+                                            <input type="text" placeholder="Proveedor / Lugar" value={newProductProvider} onChange={e => setNewProductProvider(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm" />
+                                            <input type="number" placeholder="Precio Est." value={newProductEstPrice} onChange={e => setNewProductEstPrice(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm" />
+                                            <input type="text" placeholder="Marca (Opcional)" value={newProductBrand} onChange={e => setNewProductBrand(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm" />
+                                            <input type="text" placeholder="Categoría (Opcional)" value={newProductType} onChange={e => setNewProductType(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm" />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <input type="number" min="1" value={newProductQty} onChange={e => setNewProductQty(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm w-20" placeholder="Cant." />
+                                            <button onClick={() => { addNewCustomItem(); setIsNewProductFormOpen(false); }} className="flex-1 bg-green-600 text-white rounded-lg p-2 text-sm hover:bg-green-700 transition-colors">Agregar Nuevo</button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -386,8 +435,9 @@ const PedidosPage = () => {
                             <thead className="bg-gray-50 border-b border-gray-200">
                                 <tr>
                                     <th className="p-3 font-medium text-gray-600">Producto</th>
+                                    <th className="p-3 font-medium text-gray-600">Stock Actual</th>
                                     <th className="p-3 font-medium text-gray-600">Proveedor</th>
-                                    <th className="p-3 font-medium text-gray-600">Cant.</th>
+                                    <th className="p-3 font-medium text-gray-600">Cant. a Pedir</th>
                                     <th className="p-3 font-medium text-gray-600">Costo Est.</th>
                                     <th className="p-3 font-medium text-gray-600">Subtotal</th>
                                     {editingOrder?.status !== 'completed' && <th className="p-3"></th>}
@@ -395,18 +445,25 @@ const PedidosPage = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {items.length === 0 ? (
-                                    <tr><td colSpan="6" className="p-4 text-center text-gray-500">No hay productos en el pedido</td></tr>
+                                    <tr><td colSpan="7" className="p-4 text-center text-gray-500">No hay productos en el pedido</td></tr>
                                 ) : (
                                     items.map((item, idx) => (
                                         <tr key={idx} className={!item.productId ? 'bg-blue-50/50' : ''}>
-                                            <td className="p-3 flex items-center gap-2">
-                                                <span className="font-medium text-gray-800">{item.name}</span>
-                                                {!item.productId && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">NUEVO</span>}
+                                            <td className="p-3">
+                                                <div className="flex flex-col">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-medium text-gray-800">{item.name}</span>
+                                                        {!item.productId && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">NUEVO</span>}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-3 text-center text-gray-600 font-medium">
+                                                {item.productId ? item.current_stock ?? '-' : '-'}
                                             </td>
                                             <td className="p-3">
                                                 <input type="text" value={item.provider || ''} onChange={(e) => updateItem(idx, 'provider', e.target.value)} className="border border-gray-300 rounded p-1 text-sm w-full bg-transparent" disabled={editingOrder?.status === 'completed'} placeholder="Lugar" />
                                             </td>
-                                            <td className="p-3 w-24">
+                                            <td className="p-3 w-28">
                                                 <input type="number" min="1" value={item.quantity} onChange={(e) => updateItem(idx, 'quantity', parseInt(e.target.value) || 0)} className="border border-gray-300 rounded p-1 text-sm w-full bg-transparent" disabled={editingOrder?.status === 'completed'} />
                                             </td>
                                             <td className="p-3 w-32">
@@ -438,12 +495,42 @@ const PedidosPage = () => {
                         <div className="flex gap-3 w-full sm:w-auto">
                             {editingOrder?.status !== 'completed' && (
                                 <>
-                                    <button onClick={handleSaveOrder} className="flex-1 sm:flex-none bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-200 transition-colors flex items-center justify-center gap-2">
-                                        <FiSave /> Guardar Borrador
-                                    </button>
-                                    <button onClick={handleCompleteOrder} disabled={!editingOrder} title={!editingOrder ? "Primero guardá el pedido para poder confirmarlo" : ""} className="flex-1 sm:flex-none bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-                                        <FiCheckCircle /> Confirmar y Cargar Stock
-                                    </button>
+                                    {editingOrder?.status !== 'pending' && (
+                                        <>
+                                            <button onClick={handleSaveOrder} className="flex-1 sm:flex-none bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-200 transition-colors flex items-center justify-center gap-2">
+                                                <FiSave /> Guardar Borrador
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    // Pass to pending state
+                                                    if (!editingOrder) {
+                                                        const payload = { date: new Date().toISOString(), status: 'pending', groups: items, notes: notes };
+                                                        await createOrder(payload);
+                                                        localStorage.removeItem('nuevo_pedido_borrador');
+                                                    } else {
+                                                        await updateOrder(editingOrder.id, { date: editingOrder.date, status: 'pending', groups: items, notes: notes });
+                                                    }
+                                                    toast.success("Pedido confirmado (Pasado a Pendientes)");
+                                                    closeForm();
+                                                    setActiveTab('pendientes');
+                                                }}
+                                                disabled={items.length === 0}
+                                                className="flex-1 sm:flex-none bg-yellow-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-yellow-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                                            >
+                                                Confirmar
+                                            </button>
+                                        </>
+                                    )}
+                                    {editingOrder?.status === 'pending' && (
+                                        <>
+                                            <button onClick={handleSaveOrder} className="flex-1 sm:flex-none bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-200 transition-colors flex items-center justify-center gap-2">
+                                                <FiSave /> Guardar Cambios
+                                            </button>
+                                            <button onClick={handleCompleteOrder} className="flex-1 sm:flex-none bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2">
+                                                <FiCheckCircle /> Recibir y Cargar Stock
+                                            </button>
+                                        </>
+                                    )}
                                 </>
                             )}
                         </div>
