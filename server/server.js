@@ -1644,7 +1644,9 @@ app.post('/api/purchase_orders/:id/complete', (req, res) => {
         let errors = [];
         let processedItems = [];
 
-        const finalizeTransaction = () => {\n            insertProductStmt.finalize();\n            stockUpdateStmt.finalize();
+        const finalizeTransaction = () => {
+            insertProductStmt.finalize();
+            stockUpdateStmt.finalize();
             if (errors.length > 0) {
                 db.run('ROLLBACK');
                 return res.status(500).json({ error: 'Errores al procesar productos', details: errors });
