@@ -36,6 +36,26 @@ const useOrderStore = create((set, get) => ({
         }
     },
 
+
+    completeOrder: async (id, finalOrderData) => {
+        set({ loading: true, error: null });
+        try {
+            const response = await fetch(`${API_URL}/purchase_orders/${id}/complete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(finalOrderData), // { items, date, notes }
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Falló al completar el pedido.');
+            }
+            get().fetchOrders(get().currentPage);
+        } catch (e) {
+            set({ loading: false, error: e.message });
+            throw e; // re-throw so the UI can catch it
+        }
+    },
+
     updateOrder: async (id, updatedData) => {
         set({ loading: true, error: null });
         try {

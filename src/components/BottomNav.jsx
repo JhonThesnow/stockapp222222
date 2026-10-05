@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
+import { FiTruck } from 'react-icons/fi';
 
 const BottomNav = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -48,6 +49,14 @@ const BottomNav = () => {
                                 <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
                             </svg>
                             <span className="font-medium">Encargos</span>
+                        </Link>
+                        <Link
+                            to="/pedidos"
+                            onClick={() => setIsMenuOpen(false)}
+                            className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${location.pathname === '/pedidos' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'}`}
+                        >
+                            <FiTruck className="text-xl" />
+                            <span className="font-medium">Pedidos (Compras)</span>
                         </Link>
 
                         <Link
