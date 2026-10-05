@@ -1627,11 +1627,11 @@ app.put('/api/purchase_orders/:id', (req, res) => {
 
 
 app.post('/api/purchase_orders/:id/complete', (req, res) => {
-    const { items, date, notes } = req.body; // items: [{ productId (optional), name, estimated_price, quantity, place, brand, type, ... }]
+    const { groups, date, notes } = req.body;
     const orderId = req.params.id;
 
-    if (!Array.isArray(items) || items.length === 0) {
-        return res.status(400).json({ error: "Se requiere un array de items." });
+    if (!Array.isArray(groups)) {
+        return res.status(400).json({ error: "Se requiere un array de groups." });
     }
 
     db.serialize(() => {
@@ -1640,9 +1640,12 @@ app.post('/api/purchase_orders/:id/complete', (req, res) => {
         const insertProductStmt = db.prepare('INSERT INTO products (name, type, brand, subtype, quantity, purchasePrice, salePrices, code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
         const stockUpdateStmt = db.prepare('UPDATE products SET quantity = quantity + ?, purchasePrice = ? WHERE id = ?');
 
-        let pendingOperations = items.length;
+        let totalItems = 0;
+        groups.forEach(g => totalItems += (g.items ? g.items.length : 0));
+
+        let pendingOperations = totalItems;
         let errors = [];
-        let processedItems = [];
+        let processedGroups = JSON.parse(JSON.stringify(groups)); // deep copy
 
         const finalizeTransaction = () => {
             insertProductStmt.finalize();
@@ -1652,18 +1655,25 @@ app.post('/api/purchase_orders/:id/complete', (req, res) => {
                 return res.status(500).json({ error: 'Errores al procesar productos', details: errors });
             }
 
-            // Update order status and groups (items)
             db.run(
                 'UPDATE purchase_orders SET status = ?, groups = ?, notes = ? WHERE id = ?',
-                ['completed', JSON.stringify(processedItems), notes || '', orderId],
+                ['completed', JSON.stringify(processedGroups), notes || '', orderId],
                 function (err) {
                     if (err) {
                         db.run('ROLLBACK');
                         return res.status(500).json({ error: 'Error al actualizar el estado del pedido', details: err.message });
                     }
 
-                    // Register stock entry
-                    const historyProducts = processedItems.map(p => ({ id: p.productId, name: p.name, quantity: p.quantity }));
+                    // Register stock entry (flatten items for history)
+                    let historyProducts = [];
+                    processedGroups.forEach(g => {
+                        if (g.items) {
+                            g.items.forEach(p => {
+                                historyProducts.push({ id: p.productId, name: p.name, quantity: p.quantity });
+                            });
+                        }
+                    });
+
                     const historySql = `INSERT INTO stock_entries (date, products) VALUES (?, ?)`;
                     db.run(historySql, [date || new Date().toISOString(), JSON.stringify(historyProducts)], function (err) {
                         if (err) {
@@ -1675,50 +1685,56 @@ app.post('/api/purchase_orders/:id/complete', (req, res) => {
                             if (commitErr) {
                                 return res.status(500).json({ error: 'Error al hacer commit', details: commitErr.message });
                             }
-                            res.json({ message: 'Pedido completado exitosamente', data: processedItems });
+                            res.json({ message: 'Pedido completado exitosamente', data: processedGroups });
                         });
                     });
                 }
             );
         };
 
-        items.forEach(item => {
-            if (item.productId) {
-                // Existing product
-                stockUpdateStmt.run(item.quantity, item.estimated_price, item.productId, function(err) {
-                    if (err) errors.push(err.message);
-                    else {
-                        processedItems.push({...item});
-                    }
-                    pendingOperations--;
-                    if (pendingOperations === 0) finalizeTransaction();
-                });
-            } else {
-                // New product
-                const defaultSalePrices = JSON.stringify([
-                    { method: "Efectivo", price: item.estimated_price * 1.5, profitMargin: 50 },
-                    { method: "Mercado Pago", price: item.estimated_price * 1.6, profitMargin: 60 }
-                ]);
+        if (totalItems === 0) {
+            finalizeTransaction();
+            return;
+        }
 
-                insertProductStmt.run(
-                    item.name,
-                    item.type || 'Sin Categoría',
-                    item.brand || 'Varias',
-                    item.subtype || '',
-                    item.quantity,
-                    item.estimated_price,
-                    defaultSalePrices,
-                    item.code || '',
-                    function(err) {
+        processedGroups.forEach((group, groupIndex) => {
+            if (!group.items) return;
+            group.items.forEach((item, itemIndex) => {
+                if (item.productId) {
+                    // Existing product
+                    stockUpdateStmt.run(item.quantity, item.estimated_price || 0, item.productId, function(err) {
                         if (err) errors.push(err.message);
-                        else {
-                            processedItems.push({...item, productId: this.lastID});
-                        }
                         pendingOperations--;
                         if (pendingOperations === 0) finalizeTransaction();
-                    }
-                );
-            }
+                    });
+                } else {
+                    // New product
+                    const defaultSalePrices = JSON.stringify([
+                        { method: "Efectivo", price: (item.estimated_price || 0) * 1.5, profitMargin: 50 },
+                        { method: "Mercado Pago", price: (item.estimated_price || 0) * 1.6, profitMargin: 60 }
+                    ]);
+
+                    insertProductStmt.run(
+                        item.name,
+                        item.type || 'Sin Categoría',
+                        item.brand || 'Varias',
+                        item.subtype || '',
+                        item.quantity,
+                        item.estimated_price || 0,
+                        defaultSalePrices,
+                        item.code || '',
+                        function(err) {
+                            if (err) {
+                                errors.push(err.message);
+                            } else {
+                                processedGroups[groupIndex].items[itemIndex].productId = this.lastID;
+                            }
+                            pendingOperations--;
+                            if (pendingOperations === 0) finalizeTransaction();
+                        }
+                    );
+                }
+            });
         });
     });
 });

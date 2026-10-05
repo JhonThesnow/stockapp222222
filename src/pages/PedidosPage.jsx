@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import useOrderStore from '../store/useOrderStore';
+import useInventoryStore from '../store/useInventoryStore';
 import { FiPlus, FiTrash2, FiSave, FiEdit, FiCheckCircle, FiClock, FiX, FiPrinter, FiSearch, FiAlertTriangle } from 'react-icons/fi';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -8,36 +9,23 @@ import { formatNumber } from '../utils/formatting';
 import { useReactToPrint } from 'react-to-print';
 
 const PedidosPage = () => {
-    const { orders, fetchOrders, createOrder, updateOrder, deleteOrder, completeOrder, loading } = useOrderStore();
-    const [activeTab, setActiveTab] = useState('activos');
+    const { orders, fetchOrders, createOrder, updateOrder, deleteOrder, completeOrder, loading: ordersLoading, totalPages, currentPage } = useOrderStore();
+    const { products, fetchProducts, loading: productsLoading } = useInventoryStore();
+    const [activeTab, setActiveTab] = useState('nuevo');
 
-    // UI States
-    const [isFormOpen, setIsFormOpen] = useState(false);
+    // Order Builder State
+    const [orderDate, setOrderDate] = useState(new Date().toISOString().slice(0, 10));
+    const [orderGroups, setOrderGroups] = useState([{ id: Date.now(), location: '', items: [] }]);
+    const [orderNotes, setOrderNotes] = useState('');
     const [editingOrder, setEditingOrder] = useState(null);
 
-    // Form States
-    const [notes, setNotes] = useState('');
-    const [items, setItems] = useState([]);
-
-    // Persist draft to local storage
-    useEffect(() => {
-        if (isFormOpen && !editingOrder) { // Only save draft if it's a new order
-            const draft = { notes, items };
-            localStorage.setItem('nuevo_pedido_borrador', JSON.stringify(draft));
-        }
-    }, [notes, items, isFormOpen, editingOrder]);
-
-    // Product Search / Suggestion States
+    // Product Filter State
     const [searchTerm, setSearchTerm] = useState('');
-    const [searchResults, setSearchResults] = useState([]);
-    const [lowStockSuggestions, setLowStockSuggestions] = useState([]);
-    const [showSuggestions, setShowSuggestions] = useState(false);
-
-    const [isNewProductFormOpen, setIsNewProductFormOpen] = useState(false);
+    const [filterType, setFilterType] = useState('all'); // all, low_stock
 
     // New Product form fields (quick inline)
+    const [isNewProductFormOpen, setIsNewProductFormOpen] = useState(false);
     const [newProductName, setNewProductName] = useState('');
-    const [newProductProvider, setNewProductProvider] = useState('');
     const [newProductEstPrice, setNewProductEstPrice] = useState('');
     const [newProductQty, setNewProductQty] = useState('1');
     const [newProductBrand, setNewProductBrand] = useState('');
@@ -49,492 +37,652 @@ const PedidosPage = () => {
         documentTitle: 'Pedido_Mercaderia',
     });
 
-
     useEffect(() => {
-        fetchOrders(1, 100); // Fetch a bunch for now
-        fetchLowStock();
-    }, [activeTab]);
+        if (activeTab === 'historial') {
+            fetchOrders(1, 100);
+        } else if (activeTab === 'nuevo') {
+            fetchProducts(1, 1000); // Fetch all for easy filtering client-side
+        }
+    }, [activeTab, fetchOrders, fetchProducts]);
 
-    const fetchLowStock = async () => {
-        try {
-            const res = await fetch('/api/products/suggestions');
-            if (res.ok) {
-                const json = await res.json();
-                setLowStockSuggestions(json.data);
+    // Persist draft to local storage
+    useEffect(() => {
+        if (activeTab === 'nuevo' && !editingOrder) {
+            const draft = { notes: orderNotes, groups: orderGroups, date: orderDate };
+            localStorage.setItem('nuevo_pedido_borrador', JSON.stringify(draft));
+        }
+    }, [orderNotes, orderGroups, orderDate, activeTab, editingOrder]);
+
+    // Load draft on mount
+    useEffect(() => {
+        if (!editingOrder && activeTab === 'nuevo') {
+            const saved = localStorage.getItem('nuevo_pedido_borrador');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.groups && parsed.groups.length > 0) setOrderGroups(parsed.groups);
+                    if (parsed.notes) setOrderNotes(parsed.notes);
+                    if (parsed.date) setOrderDate(parsed.date);
+                } catch (e) {}
             }
-        } catch (e) {
-            console.error("Failed to fetch suggestions");
         }
+    }, [activeTab, editingOrder]);
+
+
+    const handleAddGroup = () => {
+        setOrderGroups([...orderGroups, { id: Date.now(), location: '', items: [] }]);
     };
 
-    const handleSearch = async (e) => {
-        const term = e.target.value;
-        setSearchTerm(term);
-        if (term.length > 2) {
-            try {
-                const res = await fetch(`/api/products?searchTerm=${term}&limit=10`);
-                if (res.ok) {
-                    const json = await res.json();
-                    setSearchResults(json.data);
+    const handleRemoveGroup = (groupId) => {
+        setOrderGroups(orderGroups.filter(g => g.id !== groupId));
+    };
+
+    const handleUpdateGroupLocation = (groupId, location) => {
+        setOrderGroups(orderGroups.map(g => g.id === groupId ? { ...g, location } : g));
+    };
+
+    const handleAddProductToGroup = (groupId, product) => {
+        setOrderGroups(orderGroups.map(g => {
+            if (g.id === groupId) {
+                const existing = g.items.find(i => i.productId === product.id);
+                if (existing) {
+                    return { ...g, items: g.items.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i) };
                 }
-            } catch (err) {}
-            setShowSuggestions(true);
-        } else {
-            setSearchResults([]);
-            setShowSuggestions(false);
-        }
+                return {
+                    ...g,
+                    items: [...g.items, {
+                        productId: product.id,
+                        name: product.name,
+                        subtype: product.subtype,
+                        quantity: 1,
+                        estimated_price: product.purchasePrice || 0,
+                        current_stock: product.quantity,
+                        brand: product.brand,
+                        type: product.type
+                    }]
+                };
+            }
+            return g;
+        }));
     };
 
-    const addItem = (product) => {
-        // product could be from DB
-        const existing = items.find(i => i.productId === product.id);
-        if (existing) {
-            setItems(items.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i));
-        } else {
-            setItems([...items, {
-                productId: product.id,
-                name: product.name,
-                estimated_price: product.purchasePrice || 0,
-                current_stock: product.quantity, // added to display stock
-                quantity: 1,
-                provider: '',
-                brand: product.brand,
-                type: product.type
-            }]);
-        }
-        setSearchTerm('');
-        setShowSuggestions(false);
-        toast.success("Producto agregado");
+    const handleUpdateProductQuantity = (groupId, productId, quantity) => {
+        setOrderGroups(orderGroups.map(g => {
+            if (g.id === groupId) {
+                return { ...g, items: g.items.map(i => i.productId === productId ? { ...i, quantity: parseInt(quantity) || 1 } : i) };
+            }
+            return g;
+        }));
     };
 
-    const addNewCustomItem = () => {
-        if (!newProductName) return toast.error("El nombre es requerido");
-        setItems([...items, {
-            productId: null, // Indicates it's new
-            name: newProductName,
-            estimated_price: parseFloat(newProductEstPrice) || 0,
-            quantity: parseInt(newProductQty) || 1,
-            provider: newProductProvider,
-            brand: newProductBrand || 'Varias',
-            type: newProductType || 'Sin Categoría'
-        }]);
-        setNewProductName('');
-        setNewProductProvider('');
-        setNewProductEstPrice('');
-        setNewProductQty('1');
-        setNewProductBrand('');
-        setNewProductType('');
-        toast.success("Producto nuevo agregado al pedido");
+    const handleUpdateProductPrice = (groupId, productId, estimated_price) => {
+        setOrderGroups(orderGroups.map(g => {
+            if (g.id === groupId) {
+                return { ...g, items: g.items.map(i => i.productId === productId ? { ...i, estimated_price: parseFloat(estimated_price) || 0 } : i) };
+            }
+            return g;
+        }));
     };
 
-    const updateItem = (index, field, value) => {
-        const newItems = [...items];
-        newItems[index][field] = value;
-        setItems(newItems);
+    const handleRemoveProductFromGroup = (groupId, productId) => {
+        setOrderGroups(orderGroups.map(g => {
+            if (g.id === groupId) {
+                return { ...g, items: g.items.filter(i => i.productId !== productId) };
+            }
+            return g;
+        }));
     };
 
-    const removeItem = (index) => {
-        setItems(items.filter((_, i) => i !== index));
+    // For items that don't have a productId (Custom New Items)
+    const handleUpdateCustomProductQuantity = (groupId, index, quantity) => {
+        setOrderGroups(orderGroups.map(g => {
+            if (g.id === groupId) {
+                return { ...g, items: g.items.map((i, idx) => idx === index ? { ...i, quantity: parseInt(quantity) || 1 } : i) };
+            }
+            return g;
+        }));
     };
 
-    const handleSaveOrder = async () => {
-        if (items.length === 0) return toast.error("El pedido debe tener al menos un producto");
+    const handleUpdateCustomProductPrice = (groupId, index, estimated_price) => {
+        setOrderGroups(orderGroups.map(g => {
+            if (g.id === groupId) {
+                return { ...g, items: g.items.map((i, idx) => idx === index ? { ...i, estimated_price: parseFloat(estimated_price) || 0 } : i) };
+            }
+            return g;
+        }));
+    };
 
+    const handleRemoveCustomProductFromGroup = (groupId, index) => {
+        setOrderGroups(orderGroups.map(g => {
+            if (g.id === groupId) {
+                return { ...g, items: g.items.filter((_, idx) => idx !== index) };
+            }
+            return g;
+        }));
+    };
+
+
+    const handleSaveDraft = async () => {
         const payload = {
-            date: new Date().toISOString(), // Use current date for the draft
-            status: editingOrder && editingOrder.status === 'completed' ? 'completed' : 'in_progress',
-            groups: items,
-            notes: notes
+            date: new Date(orderDate).toISOString(),
+            status: editingOrder ? editingOrder.status : 'in_progress',
+            groups: orderGroups,
+            notes: orderNotes
         };
 
         try {
             if (editingOrder) {
                 await updateOrder(editingOrder.id, payload);
-                toast.success("Pedido actualizado");
+                toast.success("Borrador actualizado");
             } else {
                 await createOrder(payload);
-                toast.success("Pedido creado");
+                toast.success("Borrador guardado");
                 localStorage.removeItem('nuevo_pedido_borrador');
             }
-            closeForm();
+            resetForm();
+            setActiveTab('historial');
         } catch (e) {
-            toast.error("Error al guardar");
+            toast.error("Error al guardar borrador");
         }
     };
 
-    const handleCompleteOrder = async () => {
+    const handleConfirmOrder = async () => {
+        const payload = {
+            date: new Date(orderDate).toISOString(),
+            status: 'pending',
+            groups: orderGroups,
+            notes: orderNotes
+        };
+
+        try {
+            if (editingOrder) {
+                await updateOrder(editingOrder.id, payload);
+            } else {
+                await createOrder(payload);
+                localStorage.removeItem('nuevo_pedido_borrador');
+            }
+            toast.success("Pedido confirmado (Pendiente)");
+            resetForm();
+            setActiveTab('historial');
+        } catch (e) {
+            toast.error("Error al confirmar pedido");
+        }
+    };
+
+    const handleCompleteOrderAction = async () => {
         if (!editingOrder) return;
-        if (items.length === 0) return toast.error("El pedido está vacío");
+        const totalItemsCount = orderGroups.reduce((acc, g) => acc + g.items.length, 0);
+        if (totalItemsCount === 0) return toast.error("El pedido está vacío");
 
         if (window.confirm("¿Seguro que deseas marcar como completado? Esto creará los productos nuevos y sumará el stock al inventario.")) {
             try {
                 await completeOrder(editingOrder.id, {
-                    items: items,
+                    groups: orderGroups,
                     date: new Date().toISOString(),
-                    notes: notes
+                    notes: orderNotes
                 });
-                toast.success("Pedido completado y stock actualizado");
-                closeForm();
+                toast.success("Pedido completado y stock actualizado.");
+                resetForm();
                 setActiveTab('historial');
             } catch (e) {
-                toast.error("Error: " + e.message);
+                toast.error("Error al completar el pedido");
             }
         }
     };
 
-    const openForm = (order = null) => {
-        if (order) {
-            setEditingOrder(order);
-            setNotes(order.notes || '');
-            setItems(order.groups || []);
-        } else {
-            setEditingOrder(null);
-            // Load draft if exists
-            const savedDraft = localStorage.getItem('nuevo_pedido_borrador');
-            if (savedDraft) {
-                try {
-                    const parsed = JSON.parse(savedDraft);
-                    setNotes(parsed.notes || '');
-                    setItems(parsed.items || []);
-                } catch (e) {
-                    setNotes('');
-                    setItems([]);
-                }
-            } else {
-                setNotes('');
-                setItems([]);
-            }
-        }
-        setIsFormOpen(true);
-    };
-
-    const closeForm = () => {
-        if (!editingOrder) {
-            localStorage.removeItem('nuevo_pedido_borrador');
-        }
-        setIsFormOpen(false);
+    const resetForm = () => {
+        setOrderDate(new Date().toISOString().slice(0, 10));
+        setOrderGroups([{ id: Date.now(), location: '', items: [] }]);
+        setOrderNotes('');
         setEditingOrder(null);
-        setItems([]);
     };
 
-    const filteredOrders = orders.filter(o => {
-        if (activeTab === 'activos') return o.status === 'in_progress';
-        if (activeTab === 'pendientes') return o.status === 'pending';
-        return o.status === 'completed';
+    const handleEditOrder = (order) => {
+        setOrderDate(order.date.slice(0, 10));
+        // Add random IDs to groups to be safe if they don't have them
+        setOrderGroups(order.groups.map(g => ({ ...g, id: g.id || Date.now() + Math.random() })));
+        setOrderNotes(order.notes);
+        setEditingOrder(order);
+        setActiveTab('nuevo');
+    };
+
+    const addNewCustomItem = (groupId) => {
+        if (!newProductName.trim()) return toast.error("Nombre requerido");
+
+        const newItem = {
+            productId: null, // Indicates new product
+            name: newProductName,
+            estimated_price: parseFloat(newProductEstPrice) || 0,
+            quantity: parseInt(newProductQty) || 1,
+            brand: newProductBrand,
+            type: newProductType
+        };
+
+        setOrderGroups(orderGroups.map(g => {
+            if (g.id === groupId) {
+                return { ...g, items: [...g.items, newItem] };
+            }
+            return g;
+        }));
+
+        setNewProductName('');
+        setNewProductEstPrice('');
+        setNewProductQty('1');
+        setNewProductBrand('');
+        setNewProductType('');
+        setIsNewProductFormOpen(false);
+    };
+
+    const filteredProducts = products.filter(p => {
+        if (filterType === 'low_stock' && p.quantity > (p.lowStockThreshold || 10)) return false;
+        if (searchTerm && !p.name.toLowerCase().includes(searchTerm.toLowerCase()) && !p.subtype?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+        return true;
     });
 
-    const renderPrintView = () => (
-        <div ref={componentRef} className="p-8 hidden print:block bg-white text-black">
-            <h1 className="text-2xl font-bold mb-4">Pedido de Mercadería</h1>
-            <p><strong>Estado:</strong> {editingOrder ? (editingOrder.status === 'completed' ? 'Completado' : 'Pendiente') : 'Nuevo'}</p>
-            {notes && <p><strong>Notas:</strong> {notes}</p>}
+    const calculateTotal = () => {
+        let total = 0;
+        orderGroups.forEach(g => {
+            g.items.forEach(i => {
+                total += (i.quantity * (i.estimated_price || 0));
+            });
+        });
+        return total;
+    };
 
-            <table className="w-full mt-6 border-collapse border border-gray-300">
-                <thead>
-                    <tr className="bg-gray-100">
-                        <th className="border border-gray-300 p-2 text-left">Producto</th>
-                        <th className="border border-gray-300 p-2 text-left">Proveedor</th>
-                        <th className="border border-gray-300 p-2 text-right">Cant.</th>
-                        <th className="border border-gray-300 p-2 text-right">Precio Est.</th>
-                        <th className="border border-gray-300 p-2 text-right">Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {items.map((item, idx) => (
-                        <tr key={idx}>
-                            <td className="border border-gray-300 p-2">{item.name} {item.productId ? '' : '(NUEVO)'}</td>
-                            <td className="border border-gray-300 p-2">{item.provider}</td>
-                            <td className="border border-gray-300 p-2 text-right">{item.quantity}</td>
-                            <td className="border border-gray-300 p-2 text-right">${formatNumber(item.estimated_price)}</td>
-                            <td className="border border-gray-300 p-2 text-right">${formatNumber(item.quantity * item.estimated_price)}</td>
-                        </tr>
-                    ))}
-                </tbody>
-                <tfoot>
-                    <tr className="font-bold bg-gray-50">
-                        <td colSpan="4" className="border border-gray-300 p-2 text-right">Total Estimado</td>
-                        <td className="border border-gray-300 p-2 text-right">${formatNumber(items.reduce((acc, i) => acc + (i.quantity * i.estimated_price), 0))}</td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-    );
 
     return (
-        <div className="p-4 sm:p-6 pb-32 w-full max-w-7xl mx-auto">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                    Pedidos de Compra
-                </h1>
-                <button
-                    onClick={() => openForm()}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors w-full sm:w-auto justify-center"
-                >
-                    <FiPlus /> Nuevo Pedido
-                </button>
-            </div>
+        <div className="p-4 sm:p-6 pb-32">
+            <h1 className="text-3xl font-bold mb-6 text-gray-800">Pedidos de Compra</h1>
 
-            <div className="flex gap-4 mb-6 border-b border-gray-200">
+            <div className="flex space-x-4 mb-6">
                 <button
-                    onClick={() => setActiveTab('activos')}
-                    className={`pb-2 px-4 font-medium transition-colors ${activeTab === 'activos' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                    onClick={() => setActiveTab('nuevo')}
+                    className={`px-4 py-2 rounded-md font-medium transition-colors ${activeTab === 'nuevo' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
                 >
-                    En Curso / Activos
-                </button>
-                <button
-                    onClick={() => setActiveTab('pendientes')}
-                    className={`pb-2 px-4 font-medium transition-colors relative ${activeTab === 'pendientes' ? 'border-b-2 border-yellow-500 text-yellow-600' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                    Pendientes
-                    {orders.some(o => o.status === 'pending') && (
-                        <span className="absolute top-1 -right-1 w-2.5 h-2.5 bg-yellow-400 rounded-full animate-pulse border border-white"></span>
-                    )}
+                    {editingOrder ? 'Editar Pedido' : 'Nuevo Pedido'}
                 </button>
                 <button
                     onClick={() => setActiveTab('historial')}
-                    className={`pb-2 px-4 font-medium transition-colors ${activeTab === 'historial' ? 'border-b-2 border-green-600 text-green-600' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`px-4 py-2 rounded-md font-medium transition-colors ${activeTab === 'historial' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
                 >
-                    Historial Completados
+                    Historial de Pedidos
                 </button>
             </div>
 
-            {loading && !isFormOpen && <p className="text-gray-500">Cargando...</p>}
-
-            {!isFormOpen && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredOrders.length === 0 && <p className="text-gray-500 col-span-full">No hay pedidos en esta categoría.</p>}
-                    {filteredOrders.map(order => {
-                        const total = (order.groups || []).reduce((acc, item) => acc + (item.quantity * item.estimated_price), 0);
-                        return (
-                            <div key={order.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col">
-                                <div className="flex justify-between items-start mb-3">
-                                    <div className="flex items-center gap-2">
-                                        {order.status === 'completed' ? <FiCheckCircle className="text-green-500" /> :
-                                         order.status === 'pending' ? <span className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse mr-1"></span> :
-                                         <FiClock className="text-blue-500" />}
-                                        <span className="font-semibold text-gray-800">
-                                            {format(new Date(order.date), "dd/MM/yyyy", { locale: es })}
-                                        </span>
-                                    </div>
-                                    <span className="font-bold text-lg text-blue-600">${formatNumber(total)}</span>
-                                </div>
-                                <p className="text-sm text-gray-600 mb-4 flex-1">
-                                    {order.groups?.length || 0} productos. {order.notes && <><br /><span className="italic text-xs">"{order.notes}"</span></>}
-                                </p>
-                                <div className="flex gap-2 mt-auto">
-                                    <button onClick={() => openForm(order)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-1 text-sm font-medium">
-                                        {order.status === 'completed' ? <><FiSearch /> Ver Detalle</> : <><FiEdit /> Editar</>}
-                                    </button>
-                                    <button onClick={() => {
-                                        if(window.confirm('¿Eliminar pedido?')) deleteOrder(order.id);
-                                    }} className="bg-red-50 text-red-600 p-2 rounded-lg hover:bg-red-100 transition-colors">
-                                        <FiTrash2 />
-                                    </button>
-                                </div>
+            {activeTab === 'nuevo' && (
+                <div className="flex flex-col lg:flex-row gap-6" ref={componentRef}>
+                    {/* Left: Product Selection */}
+                    <div className="lg:w-1/3 bg-white rounded-lg shadow-sm p-4 border flex flex-col h-[calc(100vh-220px)] print:hidden">
+                        <h2 className="text-xl font-semibold mb-4">Productos</h2>
+                        <div className="mb-4">
+                            <div className="relative mb-2">
+                                <input
+                                    type="text"
+                                    placeholder="Buscar producto..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <FiSearch className="absolute left-3 top-3 text-gray-400" />
                             </div>
-                        );
-                    })}
-                </div>
-            )}
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setFilterType('all')}
+                                    className={`px-3 py-1 text-sm rounded-full ${filterType === 'all' ? 'bg-blue-100 text-blue-700 font-medium' : 'bg-gray-100 text-gray-600'}`}
+                                >
+                                    Todos
+                                </button>
+                                <button
+                                    onClick={() => setFilterType('low_stock')}
+                                    className={`px-3 py-1 text-sm rounded-full ${filterType === 'low_stock' ? 'bg-red-100 text-red-700 font-medium' : 'bg-gray-100 text-gray-600'}`}
+                                >
+                                    Stock Bajo
+                                </button>
+                            </div>
+                        </div>
 
-            {isFormOpen && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-                    {renderPrintView()}
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                            {editingOrder ? 'Editar Pedido' : 'Nuevo Pedido'}
-                            {editingOrder && editingOrder.status === 'completed' && <span className="text-sm bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">Completado</span>}
-                            {editingOrder && editingOrder.status === 'pending' && <span className="text-sm bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-medium flex items-center gap-1"><span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span> Pendiente</span>}
-                        </h2>
-                        <div className="flex gap-2">
-                            <button onClick={handlePrint} className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2">
-                                        <FiPrinter /> <span className="hidden sm:inline">Imprimir</span>
-                                    </button>
-                            <button onClick={closeForm} className="text-gray-500 hover:text-gray-800 p-2">
-                                <FiX className="text-2xl" />
+                        {/* Inline New Product Form */}
+                        <div className="mb-4 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                            <button
+                                onClick={() => setIsNewProductFormOpen(!isNewProductFormOpen)}
+                                className="w-full flex items-center justify-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800"
+                            >
+                                {isNewProductFormOpen ? <FiX /> : <FiPlus />} {isNewProductFormOpen ? 'Cancelar Nuevo Producto' : 'Crear Producto Nuevo'}
                             </button>
-                        </div>
-                    </div>
 
-                    {/* Order Meta */}
-                    <div className="mb-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Notas / Lugares a visitar</label>
-                        <input type="text" value={notes} onChange={e => setNotes(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2" placeholder="Ej: Once, Mayorista X..." disabled={editingOrder?.status === 'completed'} />
-                    </div>
-
-                    {editingOrder?.status !== 'completed' && (
-                        <div className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-6 bg-gray-50 p-4 rounded-xl">
-                            {/* Buscar o agregar desde inventario */}
-                            <div>
-                                <h3 className="font-semibold text-gray-800 mb-3">Buscar en Inventario</h3>
-                                <div className="relative">
-                                    <input type="text" value={searchTerm} onChange={handleSearch} placeholder="Buscar por nombre, código..." className="w-full border border-gray-300 rounded-lg p-2 pl-10" />
-                                    <FiSearch className="absolute left-3 top-3 text-gray-400" />
-                                    {showSuggestions && searchResults.length > 0 && (
-                                        <div className="absolute z-10 w-full bg-white border border-gray-200 mt-1 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                                            {searchResults.map(p => (
-                                                <button key={p.id} onClick={() => addItem(p)} className="w-full text-left p-2 hover:bg-gray-50 flex justify-between items-center border-b last:border-b-0">
-                                                    <span>{p.name}</span>
-                                                    <div className="text-right flex flex-col items-end">
-                                                        <span className="text-xs text-gray-500">Stock: {p.quantity}</span>
-                                                        <span className="text-xs text-blue-600 font-medium">Costo: ${formatNumber(p.purchasePrice)}</span>
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {lowStockSuggestions.length > 0 && (
-                                    <div className="mt-4">
-                                        <h4 className="text-sm font-medium text-red-600 flex items-center gap-1 mb-2"><FiAlertTriangle /> Sugeridos (Bajo Stock)</h4>
-                                        <div className="flex flex-wrap gap-2">
-                                            {lowStockSuggestions.slice(0, 5).map(p => (
-                                                <button key={p.id} onClick={() => addItem(p)} className="bg-red-50 text-red-700 text-xs px-2 py-1 rounded-full border border-red-100 hover:bg-red-100 transition-colors flex items-center gap-1">
-                                                    <span>+ {p.name} ({p.quantity})</span>
-                                                    <span className="opacity-75">| ${formatNumber(p.purchasePrice)}</span>
-                                                </button>
-                                            ))}
-                                        </div>
+                            {isNewProductFormOpen && (
+                                <div className="mt-3 space-y-2">
+                                    <input type="text" placeholder="Nombre" value={newProductName} onChange={e => setNewProductName(e.target.value)} className="w-full border border-gray-300 rounded-lg p-2 text-sm" />
+                                    <div className="flex gap-2">
+                                        <input type="text" placeholder="Marca (opcional)" value={newProductBrand} onChange={e => setNewProductBrand(e.target.value)} className="w-1/2 border border-gray-300 rounded-lg p-2 text-sm" />
+                                        <input type="text" placeholder="Tipo (opcional)" value={newProductType} onChange={e => setNewProductType(e.target.value)} className="w-1/2 border border-gray-300 rounded-lg p-2 text-sm" />
                                     </div>
-                                )}
-                            </div>
-
-                            {/* Agregar producto nuevo manual */}
-                            <div>
-                                {!isNewProductFormOpen ? (
-                                    <button onClick={() => setIsNewProductFormOpen(true)} className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-100 transition-colors w-full justify-center border border-blue-200">
-                                        <FiPlus /> Crear Nuevo Producto Manualmente
-                                    </button>
-                                ) : (
-                                    <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm relative">
-                                        <button onClick={() => setIsNewProductFormOpen(false)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-600">
-                                            <FiX />
+                                    <div className="flex gap-2">
+                                        <input type="number" placeholder="Costo Est." value={newProductEstPrice} onChange={e => setNewProductEstPrice(e.target.value)} className="w-1/2 border border-gray-300 rounded-lg p-2 text-sm" />
+                                        <input type="number" min="1" placeholder="Cant." value={newProductQty} onChange={e => setNewProductQty(e.target.value)} className="w-1/4 border border-gray-300 rounded-lg p-2 text-sm" />
+                                        <button
+                                            onClick={() => addNewCustomItem(orderGroups[0].id)}
+                                            className="w-1/4 bg-green-600 text-white rounded-lg p-2 text-sm hover:bg-green-700 transition-colors"
+                                            title="Agrega al primer grupo"
+                                        >
+                                            <FiPlus className="mx-auto" />
                                         </button>
-                                        <h3 className="font-semibold text-gray-800 mb-3 text-sm pr-6">Agregar Nuevo Producto</h3>
-                                        <div className="grid grid-cols-2 gap-2 mb-2">
-                                            <input type="text" placeholder="Nombre de Producto" value={newProductName} onChange={e => setNewProductName(e.target.value)} className="col-span-2 border border-gray-300 rounded-lg p-2 text-sm" />
-                                            <input type="text" placeholder="Proveedor / Lugar" value={newProductProvider} onChange={e => setNewProductProvider(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm" />
-                                            <input type="number" placeholder="Precio Est." value={newProductEstPrice} onChange={e => setNewProductEstPrice(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm" />
-                                            <input type="text" placeholder="Marca (Opcional)" value={newProductBrand} onChange={e => setNewProductBrand(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm" />
-                                            <input type="text" placeholder="Categoría (Opcional)" value={newProductType} onChange={e => setNewProductType(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm" />
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <input type="number" min="1" value={newProductQty} onChange={e => setNewProductQty(e.target.value)} className="border border-gray-300 rounded-lg p-2 text-sm w-20" placeholder="Cant." />
-                                            <button onClick={() => { addNewCustomItem(); setIsNewProductFormOpen(false); }} className="flex-1 bg-green-600 text-white rounded-lg p-2 text-sm hover:bg-green-700 transition-colors">Agregar Nuevo</button>
-                                        </div>
                                     </div>
-                                )}
-                            </div>
+                                    <p className="text-xs text-gray-500 text-center">Se añadirá al primer grupo por defecto.</p>
+                                </div>
+                            )}
                         </div>
-                    )}
 
-                    {/* Items Table */}
-                    <div className="overflow-x-auto mb-6 border border-gray-200 rounded-xl">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th className="p-3 font-medium text-gray-600">Producto</th>
-                                    <th className="p-3 font-medium text-gray-600">Stock Actual</th>
-                                    <th className="p-3 font-medium text-gray-600">Proveedor</th>
-                                    <th className="p-3 font-medium text-gray-600">Cant. a Pedir</th>
-                                    <th className="p-3 font-medium text-gray-600">Costo Est.</th>
-                                    <th className="p-3 font-medium text-gray-600">Subtotal</th>
-                                    {editingOrder?.status !== 'completed' && <th className="p-3"></th>}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {items.length === 0 ? (
-                                    <tr><td colSpan="7" className="p-4 text-center text-gray-500">No hay productos en el pedido</td></tr>
-                                ) : (
-                                    items.map((item, idx) => (
-                                        <tr key={idx} className={!item.productId ? 'bg-blue-50/50' : ''}>
-                                            <td className="p-3">
-                                                <div className="flex flex-col">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-medium text-gray-800">{item.name}</span>
-                                                        {!item.productId && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">NUEVO</span>}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="p-3 text-center text-gray-600 font-medium">
-                                                {item.productId ? item.current_stock ?? '-' : '-'}
-                                            </td>
-                                            <td className="p-3">
-                                                <input type="text" value={item.provider || ''} onChange={(e) => updateItem(idx, 'provider', e.target.value)} className="border border-gray-300 rounded p-1 text-sm w-full bg-transparent" disabled={editingOrder?.status === 'completed'} placeholder="Lugar" />
-                                            </td>
-                                            <td className="p-3 w-28">
-                                                <input type="number" min="1" value={item.quantity} onChange={(e) => updateItem(idx, 'quantity', parseInt(e.target.value) || 0)} className="border border-gray-300 rounded p-1 text-sm w-full bg-transparent" disabled={editingOrder?.status === 'completed'} />
-                                            </td>
-                                            <td className="p-3 w-32">
-                                                <div className="relative">
-                                                    <span className="absolute left-2 top-1.5 text-gray-500 text-sm">$</span>
-                                                    <input type="number" min="0" value={item.estimated_price} onChange={(e) => updateItem(idx, 'estimated_price', parseFloat(e.target.value) || 0)} className="border border-gray-300 rounded p-1 pl-5 text-sm w-full bg-transparent" disabled={editingOrder?.status === 'completed'} />
-                                                </div>
-                                            </td>
-                                            <td className="p-3 font-semibold text-gray-700">
-                                                ${formatNumber(item.quantity * item.estimated_price)}
-                                            </td>
-                                            {editingOrder?.status !== 'completed' && (
-                                                <td className="p-3 text-right">
-                                                    <button onClick={() => removeItem(idx)} className="text-red-500 hover:bg-red-50 p-1.5 rounded"><FiTrash2 /></button>
-                                                </td>
-                                            )}
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Total & Actions */}
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                        <div className="text-xl font-bold text-gray-800">
-                            Total Estimado: <span className="text-blue-600">${formatNumber(items.reduce((acc, i) => acc + (i.quantity * i.estimated_price), 0))}</span>
-                        </div>
-                        <div className="flex gap-3 w-full sm:w-auto">
-                            {editingOrder?.status !== 'completed' && (
-                                <>
-                                    {editingOrder?.status !== 'pending' && (
-                                        <>
-                                            <button onClick={handleSaveOrder} className="flex-1 sm:flex-none bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-200 transition-colors flex items-center justify-center gap-2">
-                                                <FiSave /> Guardar Borrador
-                                            </button>
-                                            <button
-                                                onClick={async () => {
-                                                    // Pass to pending state
-                                                    if (!editingOrder) {
-                                                        const payload = { date: new Date().toISOString(), status: 'pending', groups: items, notes: notes };
-                                                        await createOrder(payload);
-                                                        localStorage.removeItem('nuevo_pedido_borrador');
-                                                    } else {
-                                                        await updateOrder(editingOrder.id, { date: editingOrder.date, status: 'pending', groups: items, notes: notes });
-                                                    }
-                                                    toast.success("Pedido confirmado (Pasado a Pendientes)");
-                                                    closeForm();
-                                                    setActiveTab('pendientes');
-                                                }}
-                                                disabled={items.length === 0}
-                                                className="flex-1 sm:flex-none bg-yellow-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-yellow-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                                            >
-                                                Confirmar
-                                            </button>
-                                        </>
-                                    )}
-                                    {editingOrder?.status === 'pending' && (
-                                        <>
-                                            <button onClick={handleSaveOrder} className="flex-1 sm:flex-none bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-200 transition-colors flex items-center justify-center gap-2">
-                                                <FiSave /> Guardar Cambios
-                                            </button>
-                                            <button onClick={handleCompleteOrder} className="flex-1 sm:flex-none bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2">
-                                                <FiCheckCircle /> Recibir y Cargar Stock
-                                            </button>
-                                        </>
-                                    )}
-                                </>
+                        <div className="flex-1 overflow-y-auto">
+                            {productsLoading ? (
+                                <div className="text-center text-gray-500 py-4">Cargando...</div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {filteredProducts.map(p => (
+                                        <div key={p.id} className="p-3 border rounded-md hover:bg-gray-50 flex justify-between items-center group">
+                                            <div>
+                                                <p className="font-medium text-gray-800">{p.name} {p.subtype}</p>
+                                                <p className={`text-xs ${p.quantity <= (p.lowStockThreshold || 10) ? 'text-red-500 font-semibold' : 'text-gray-500'}`}>Stock: {p.quantity}</p>
+                                            </div>
+                                            <div className="hidden group-hover:flex gap-1 flex-wrap justify-end max-w-[120px]">
+                                                {orderGroups.map((g, idx) => (
+                                                    <button
+                                                        key={g.id}
+                                                        onClick={() => handleAddProductToGroup(g.id, p)}
+                                                        className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 mb-1"
+                                                        title={`Agregar a ${g.location || 'Nuevo Grupo'}`}
+                                                    >
+                                                        + {g.location || `G${idx + 1}`}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {filteredProducts.length === 0 && <div className="text-center text-gray-500 py-4">No se encontraron productos.</div>}
+                                </div>
                             )}
                         </div>
                     </div>
+
+                    {/* Right: Order Builder */}
+                    <div className="lg:w-2/3 bg-white rounded-lg shadow-sm p-4 border h-[calc(100vh-220px)] flex flex-col">
+                        <div className="flex justify-between items-center mb-4 pb-2 border-b">
+                            <div>
+                                <h2 className="text-xl font-semibold">Detalle del Pedido</h2>
+                                {editingOrder && (
+                                    <span className="text-sm font-medium text-gray-500 flex items-center gap-1 mt-1">
+                                        Estado:
+                                        {editingOrder.status === 'completed' && <span className="text-green-600"><FiCheckCircle className="inline" /> Completado</span>}
+                                        {editingOrder.status === 'pending' && <span className="text-yellow-600"><FiClock className="inline" /> Pendiente</span>}
+                                        {editingOrder.status === 'in_progress' && <span className="text-blue-600"><FiEdit className="inline" /> Borrador</span>}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex gap-3 items-center">
+                                <button onClick={handlePrint} className="p-2 text-gray-600 hover:bg-gray-100 rounded-md print:hidden" title="Imprimir Pedido">
+                                    <FiPrinter size={20} />
+                                </button>
+                                <input
+                                    type="date"
+                                    value={orderDate}
+                                    onChange={(e) => setOrderDate(e.target.value)}
+                                    disabled={editingOrder?.status === 'completed'}
+                                    className="border rounded-md px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+                            {orderGroups.map((group, index) => (
+                                <div key={group.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Nombre de Locación / Proveedor"
+                                            value={group.location}
+                                            onChange={(e) => handleUpdateGroupLocation(group.id, e.target.value)}
+                                            disabled={editingOrder?.status === 'completed'}
+                                            className="font-bold text-lg bg-transparent border-b border-dashed border-gray-400 focus:border-blue-500 focus:outline-none w-2/3"
+                                        />
+                                        {editingOrder?.status !== 'completed' && (
+                                            <button onClick={() => handleRemoveGroup(group.id)} className="text-red-500 hover:bg-red-100 p-1.5 rounded-full print:hidden">
+                                                <FiTrash2 />
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {group.items.length === 0 ? (
+                                        <div className="text-center text-gray-400 py-4 text-sm border-2 border-dashed border-gray-200 rounded-md">
+                                            Agrega productos desde la lista izquierda a este grupo.
+                                        </div>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="text-gray-500 border-b">
+                                                    <tr>
+                                                        <th className="pb-2 font-medium">Producto</th>
+                                                        <th className="pb-2 font-medium w-24">Costo Est.</th>
+                                                        <th className="pb-2 font-medium w-24 text-center">Cant.</th>
+                                                        <th className="pb-2 font-medium w-24 text-right">Subtotal</th>
+                                                        {editingOrder?.status !== 'completed' && <th className="pb-2 font-medium w-10 print:hidden"></th>}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {group.items.map((item, idx) => (
+                                                        <tr key={item.productId || `custom-${idx}`} className={`border-b last:border-0 ${!item.productId ? 'bg-blue-50/30' : ''}`}>
+                                                            <td className="py-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-medium text-gray-800">{item.name} {item.subtype}</span>
+                                                                    {!item.productId && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">NUEVO</span>}
+                                                                </div>
+                                                                {item.current_stock !== undefined && <span className="text-xs text-gray-500 block">Stock act: {item.current_stock}</span>}
+                                                            </td>
+                                                            <td className="py-2">
+                                                                <div className="relative">
+                                                                    <span className="absolute left-2 top-1.5 text-gray-500 text-sm">$</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        min="0"
+                                                                        value={item.estimated_price}
+                                                                        onChange={(e) => item.productId ? handleUpdateProductPrice(group.id, item.productId, e.target.value) : handleUpdateCustomProductPrice(group.id, idx, e.target.value)}
+                                                                        disabled={editingOrder?.status === 'completed'}
+                                                                        className="w-full border rounded px-2 py-1 pl-5 bg-white disabled:bg-transparent"
+                                                                    />
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-2">
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    value={item.quantity}
+                                                                    onChange={(e) => item.productId ? handleUpdateProductQuantity(group.id, item.productId, e.target.value) : handleUpdateCustomProductQuantity(group.id, idx, e.target.value)}
+                                                                    disabled={editingOrder?.status === 'completed'}
+                                                                    className="w-full border rounded px-2 py-1 text-center bg-white disabled:bg-transparent"
+                                                                />
+                                                            </td>
+                                                            <td className="py-2 text-right font-medium text-gray-700">
+                                                                ${formatNumber((item.quantity || 0) * (item.estimated_price || 0))}
+                                                            </td>
+                                                            {editingOrder?.status !== 'completed' && (
+                                                                <td className="py-2 text-right print:hidden">
+                                                                    <button onClick={() => item.productId ? handleRemoveProductFromGroup(group.id, item.productId) : handleRemoveCustomProductFromGroup(group.id, idx)} className="text-red-500 hover:text-red-700 p-1">
+                                                                        <FiTrash2 size={16} />
+                                                                    </button>
+                                                                </td>
+                                                            )}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+
+                            {editingOrder?.status !== 'completed' && (
+                                <button
+                                    onClick={handleAddGroup}
+                                    className="w-full py-3 border-2 border-dashed border-gray-300 text-gray-500 rounded-lg hover:border-blue-500 hover:text-blue-500 flex items-center justify-center gap-2 font-medium transition-colors print:hidden"
+                                >
+                                    <FiPlus /> Añadir Grupo / Locación
+                                </button>
+                            )}
+
+                            <div className="mt-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Notas del Pedido</label>
+                                <textarea
+                                    value={orderNotes}
+                                    onChange={(e) => setOrderNotes(e.target.value)}
+                                    disabled={editingOrder?.status === 'completed'}
+                                    className="w-full border rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    rows="2"
+                                ></textarea>
+                            </div>
+                        </div>
+
+                        {/* Actions Footer */}
+                        <div className="pt-4 border-t mt-4 flex flex-col sm:flex-row justify-between items-center gap-4 print:hidden">
+                            <div className="text-xl font-bold text-gray-800">
+                                Total Estimado: <span className="text-blue-600">${formatNumber(calculateTotal())}</span>
+                            </div>
+
+                            <div className="flex flex-wrap justify-end gap-3 w-full sm:w-auto">
+                                {editingOrder && (
+                                    <button
+                                        onClick={resetForm}
+                                        className="px-4 py-2 border rounded-md text-gray-600 hover:bg-gray-100 font-medium"
+                                    >
+                                        Cancelar Edición
+                                    </button>
+                                )}
+
+                                {editingOrder?.status !== 'completed' && (
+                                    <>
+                                        {(!editingOrder || editingOrder.status === 'in_progress') && (
+                                            <>
+                                                <button
+                                                    onClick={handleSaveDraft}
+                                                    disabled={orderGroups.every(g => g.items.length === 0)}
+                                                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 font-medium flex items-center gap-2 disabled:opacity-50"
+                                                >
+                                                    <FiSave /> Guardar Borrador
+                                                </button>
+                                                <button
+                                                    onClick={handleConfirmOrder}
+                                                    disabled={orderGroups.every(g => g.items.length === 0)}
+                                                    className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 font-medium flex items-center gap-2 disabled:opacity-50"
+                                                >
+                                                    <FiClock /> Confirmar (Pendiente)
+                                                </button>
+                                            </>
+                                        )}
+
+                                        {editingOrder?.status === 'pending' && (
+                                            <>
+                                                <button
+                                                    onClick={handleSaveDraft}
+                                                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 font-medium flex items-center gap-2"
+                                                >
+                                                    <FiSave /> Guardar Cambios
+                                                </button>
+                                                <button
+                                                    onClick={handleCompleteOrderAction}
+                                                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium flex items-center gap-2"
+                                                >
+                                                    <FiCheckCircle /> Recibir y Cargar Stock
+                                                </button>
+                                            </>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'historial' && (
+                <div className="bg-white rounded-lg shadow-sm border overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[600px]">
+                        <thead className="bg-gray-50 border-b">
+                            <tr>
+                                <th className="p-4 font-semibold text-gray-600">Fecha</th>
+                                <th className="p-4 font-semibold text-gray-600">Estado</th>
+                                <th className="p-4 font-semibold text-gray-600">Locaciones</th>
+                                <th className="p-4 font-semibold text-gray-600">Total Artículos</th>
+                                <th className="p-4 font-semibold text-gray-600">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {ordersLoading ? (
+                                <tr><td colSpan="5" className="text-center py-8 text-gray-500">Cargando...</td></tr>
+                            ) : orders.length > 0 ? (
+                                orders.map(order => {
+                                    const totalItems = order.groups ? order.groups.reduce((acc, g) => acc + (g.items ? g.items.reduce((sum, item) => sum + item.quantity, 0) : 0), 0) : 0;
+                                    const locations = order.groups ? order.groups.map(g => g.location || 'Sin Nombre').join(', ') : 'Sin locaciones';
+
+                                    return (
+                                        <tr key={order.id} className="border-b hover:bg-gray-50">
+                                            <td className="p-4">{format(new Date(order.date), 'dd/MM/yyyy', { locale: es })}</td>
+                                            <td className="p-4">
+                                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+                                                    order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                                    order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'
+                                                }`}>
+                                                    {order.status === 'completed' && <FiCheckCircle />}
+                                                    {order.status === 'pending' && <FiClock />}
+                                                    {order.status === 'in_progress' && <FiEdit />}
+                                                    {order.status === 'completed' ? 'Completado' : order.status === 'pending' ? 'Pendiente' : 'Borrador'}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 truncate max-w-[200px]" title={locations}>{locations}</td>
+                                            <td className="p-4">{totalItems}</td>
+                                            <td className="p-4 flex gap-2">
+                                                <button
+                                                    onClick={() => handleEditOrder(order)}
+                                                    className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-md"
+                                                    title="Ver / Editar Pedido"
+                                                >
+                                                    {order.status === 'completed' ? <FiSearch /> : <FiEdit />}
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        if(window.confirm('¿Estás seguro de eliminar este pedido?')) deleteOrder(order.id);
+                                                    }}
+                                                    className="p-1.5 text-red-600 hover:bg-red-100 rounded-md"
+                                                    title="Eliminar Pedido"
+                                                >
+                                                    <FiTrash2 />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            ) : (
+                                <tr><td colSpan="5" className="text-center py-8 text-gray-500">No hay pedidos registrados.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+
+                    {totalPages > 1 && (
+                        <div className="p-4 border-t flex justify-center gap-2">
+                            <button
+                                onClick={() => fetchOrders(Math.max(1, currentPage - 1))}
+                                disabled={currentPage === 1}
+                                className="px-3 py-1 border rounded disabled:opacity-50"
+                            >
+                                Anterior
+                            </button>
+                            <span className="py-1 px-3">Página {currentPage} de {totalPages}</span>
+                            <button
+                                onClick={() => fetchOrders(Math.min(totalPages, currentPage + 1))}
+                                disabled={currentPage === totalPages}
+                                className="px-3 py-1 border rounded disabled:opacity-50"
+                            >
+                                Siguiente
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
