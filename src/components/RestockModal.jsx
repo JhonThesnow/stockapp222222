@@ -13,7 +13,7 @@ const RestockModal = ({ product, onClose }) => {
             alert('Por favor, ingresa una cantidad válida.');
             return;
         }
-        await restockProduct(product.id, amount);
+        await restockProduct(product, amount);
         onClose();
     };
 

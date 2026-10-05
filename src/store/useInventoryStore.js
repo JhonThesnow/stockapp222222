@@ -107,6 +107,16 @@ const useInventoryStore = create((set, get) => ({
         }
     },
 
+    restockProduct: async (product, amount) => {
+        const productToRestock = {
+            id: product.id,
+            name: product.name,
+            subtype: product.subtype,
+            amountToAdd: amount
+        };
+        await get().batchRestock([productToRestock]);
+    },
+
     batchRestock: async (productsToRestock) => {
         set({ loading: true, error: null });
         try {
