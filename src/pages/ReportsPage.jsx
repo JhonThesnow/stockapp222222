@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import useSalesStore from '../store/useSalesStore';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { FiTrendingUp, FiDollarSign, FiAward, FiCalendar, FiFileText, FiFilter, FiX, FiClock } from 'react-icons/fi';
+import { FiTrendingUp, FiDollarSign, FiAward, FiCalendar, FiFileText, FiFilter, FiX, FiClock, FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import DatePicker from 'react-datepicker';
@@ -30,6 +30,14 @@ const ReportsPage = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [activeTab, setActiveTab] = useState('statistics');
     const [historyPage, setHistoryPage] = useState(1);
+    const [expandedDays, setExpandedDays] = useState({});
+
+    const toggleDay = (dayKey) => {
+        setExpandedDays(prev => ({
+            ...prev,
+            [dayKey]: !prev[dayKey]
+        }));
+    };
 
     useEffect(() => {
         // Fetch filter options
@@ -93,6 +101,34 @@ const ReportsPage = () => {
     };
 
     const activeReport = reportData?.currentPeriod;
+
+    // Agrupar ventas del historial por día
+    const groupedSales = useMemo(() => {
+        if (!activeReport || !activeReport.salesDetails) return [];
+
+        const groups = activeReport.salesDetails.reduce((acc, sale) => {
+            const dateKey = format(new Date(sale.date), "dd/MM/yyyy");
+            if (!acc[dateKey]) {
+                acc[dateKey] = {
+                    dateKey,
+                    sales: [],
+                    totalAmount: 0,
+                    totalSales: 0
+                };
+            }
+            acc[dateKey].sales.push(sale);
+            acc[dateKey].totalAmount += sale.finalAmount;
+            acc[dateKey].totalSales += 1;
+            return acc;
+        }, {});
+
+        // Convertir a array y ordenar por fecha (el más reciente primero)
+        return Object.values(groups).sort((a, b) => {
+            const dateA = a.sales[0].date;
+            const dateB = b.sales[0].date;
+            return new Date(dateB) - new Date(dateA);
+        });
+    }, [activeReport]);
 
     // Obtener los productos ordenados y paginados
     const getPaginatedProducts = () => {
@@ -451,46 +487,73 @@ const ReportsPage = () => {
                     {(!activeReport || !activeReport.salesDetails || activeReport.salesDetails.length === 0) ? (
                         <p className="text-center text-gray-500 py-12">No se encontraron ventas para este período y filtros.</p>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50 text-gray-600 uppercase">
-                                    <tr>
-                                        <th className="py-3 px-4 font-semibold">Fecha y Hora</th>
-                                        <th className="py-3 px-4 font-semibold">Monto Total</th>
-                                        <th className="py-3 px-4 font-semibold">Método de Pago</th>
-                                        <th className="py-3 px-4 font-semibold">Items</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {activeReport.salesDetails.slice((historyPage - 1) * 20, historyPage * 20).map((sale) => (
-                                        <tr key={sale.id} className="border-b hover:bg-gray-50 transition-colors">
-                                            <td className="py-3 px-4 whitespace-nowrap">
-                                                {format(new Date(sale.date), "dd/MM/yyyy HH:mm")}
-                                            </td>
-                                            <td className="py-3 px-4 font-bold text-gray-800">
-                                                $\{formatNumber(sale.finalAmount)}
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs font-medium">
-                                                    {sale.paymentMethod || 'Otros'}
-                                                </span>
-                                            </td>
-                                            <td className="py-3 px-4 text-gray-600">
-                                                <ul className="list-disc list-inside">
-                                                    {sale.items && sale.items.map((item, idx) => (
-                                                        <li key={idx} className="truncate max-w-[200px] md:max-w-xs" title={`${item.quantity}x ${item.fullName}`}>
-                                                            <span className="font-medium text-gray-800">{`${item.quantity}x`}</span> {`${item.fullName}`}
-                                                        </li>
+                        <div className="flex flex-col gap-4">
+                            {groupedSales.slice((historyPage - 1) * 10, historyPage * 10).map((group) => (
+                                <div key={group.dateKey} className="border rounded-lg overflow-hidden bg-white shadow-sm">
+                                    {/* Cabecera del día */}
+                                    <div
+                                        className="bg-gray-50 p-4 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors"
+                                        onClick={() => toggleDay(group.dateKey)}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            {expandedDays[group.dateKey] ? <FiChevronUp className="text-gray-500" /> : <FiChevronDown className="text-gray-500" />}
+                                            <h3 className="font-bold text-gray-800 text-lg">Ventas del {group.dateKey}</h3>
+                                            <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
+                                                {group.totalSales} {group.totalSales === 1 ? 'venta' : 'ventas'}
+                                            </span>
+                                        </div>
+                                        <div className="font-bold text-gray-800">
+                                            Total: ${formatNumber(group.totalAmount)}
+                                        </div>
+                                    </div>
+
+                                    {/* Detalles de las ventas (se muestra si está expandido) */}
+                                    {expandedDays[group.dateKey] && (
+                                        <div className="overflow-x-auto border-t">
+                                            <table className="w-full text-left text-sm">
+                                                <thead className="bg-white text-gray-600 uppercase border-b">
+                                                    <tr>
+                                                        <th className="py-3 px-4 font-semibold">Hora</th>
+                                                        <th className="py-3 px-4 font-semibold">Monto</th>
+                                                        <th className="py-3 px-4 font-semibold">Método</th>
+                                                        <th className="py-3 px-4 font-semibold">Items</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {group.sales.map((sale) => (
+                                                        <tr key={sale.id} className="border-b last:border-0 hover:bg-gray-50 transition-colors">
+                                                            <td className="py-3 px-4 whitespace-nowrap text-gray-600">
+                                                                {format(new Date(sale.date), "HH:mm")}
+                                                            </td>
+                                                            <td className="py-3 px-4 font-bold text-gray-800">
+                                                                ${formatNumber(sale.finalAmount)}
+                                                            </td>
+                                                            <td className="py-3 px-4">
+                                                                <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs font-medium">
+                                                                    {sale.paymentMethod || 'Otros'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-3 px-4 text-gray-600">
+                                                                <ul className="list-disc list-inside">
+                                                                    {sale.items && sale.items.map((item, idx) => (
+                                                                        <li key={idx} className="truncate max-w-[200px] md:max-w-xs" title={`${item.quantity}x ${item.fullName}`}>
+                                                                            <span className="font-medium text-gray-800">{`${item.quantity}x`}</span> {`${item.fullName}`}
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </td>
+                                                        </tr>
                                                     ))}
-                                                </ul>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            {/* Paginación de Historial */}
-                            {Math.ceil(activeReport.salesDetails.length / 20) > 1 && (
-                                <div className="flex justify-between items-center mt-6 pt-4 border-t">
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+
+                            {/* Paginación de Grupos de Historial */}
+                            {Math.ceil(groupedSales.length / 10) > 1 && (
+                                <div className="flex justify-between items-center mt-4 pt-4 border-t">
                                     <button
                                         onClick={() => setHistoryPage(prev => Math.max(prev - 1, 1))}
                                         disabled={historyPage === 1}
@@ -499,11 +562,11 @@ const ReportsPage = () => {
                                         Anterior
                                     </button>
                                     <span className="text-sm text-gray-500">
-                                        Página {historyPage} de {Math.ceil(activeReport.salesDetails.length / 20)}
+                                        Página {historyPage} de {Math.ceil(groupedSales.length / 10)}
                                     </span>
                                     <button
-                                        onClick={() => setHistoryPage(prev => Math.min(prev + 1, Math.ceil(activeReport.salesDetails.length / 20)))}
-                                        disabled={historyPage === Math.ceil(activeReport.salesDetails.length / 20)}
+                                        onClick={() => setHistoryPage(prev => Math.min(prev + 1, Math.ceil(groupedSales.length / 10)))}
+                                        disabled={historyPage === Math.ceil(groupedSales.length / 10)}
                                         className="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50"
                                     >
                                         Siguiente
