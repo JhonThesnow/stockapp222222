@@ -126,18 +126,44 @@ app.get('/api/products', (req, res) => {
 
     const where = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
-    let orderBy = 'ORDER BY brand, name';
+
+    let orderBy = 'ORDER BY p.brand, p.name';
+    let isBestSelling = false;
     if (sortBy) {
         switch (sortBy) {
-            case 'stock_asc': orderBy = 'ORDER BY quantity ASC'; break;
-            case 'stock_desc': orderBy = 'ORDER BY quantity DESC'; break;
-            case 'price_asc': orderBy = `ORDER BY json_extract(salePrices, '$[0].price') ASC`; break;
-            case 'price_desc': orderBy = `ORDER BY json_extract(salePrices, '$[0].price') DESC`; break;
+            case 'stock_asc': orderBy = 'ORDER BY p.quantity ASC'; break;
+            case 'stock_desc': orderBy = 'ORDER BY p.quantity DESC'; break;
+            case 'price_asc': orderBy = `ORDER BY json_extract(p.salePrices, '$[0].price') ASC`; break;
+            case 'price_desc': orderBy = `ORDER BY json_extract(p.salePrices, '$[0].price') DESC`; break;
+            case 'best_selling':
+                orderBy = 'ORDER BY total_sold DESC';
+                isBestSelling = true;
+                break;
         }
     }
 
-    const countSql = `SELECT COUNT(*) as count FROM products ${where}`;
-    const dataSql = `SELECT * FROM products ${where} ${orderBy} LIMIT ? OFFSET ?`;
+    // Adapt where clauses to use alias 'p.'
+    const whereReplaced = whereClauses.length > 0 ? `WHERE ` + whereClauses.join(' AND ').replace(/(brand|name|subtype|code|quantity)/g, 'p.$1') : '';
+
+    const countSql = `SELECT COUNT(*) as count FROM products p ${whereReplaced}`;
+
+    let dataSql = `SELECT p.* FROM products p ${whereReplaced} ${orderBy} LIMIT ? OFFSET ?`;
+    if (isBestSelling) {
+        dataSql = `
+            SELECT p.*, COALESCE(s.total_sold, 0) as total_sold
+            FROM products p
+            LEFT JOIN (
+                SELECT json_extract(value, '$.productId') as productId, SUM(json_extract(value, '$.quantity')) as total_sold
+                FROM sales, json_each(sales.items)
+                WHERE status = 'completed'
+                GROUP BY json_extract(value, '$.productId')
+            ) s ON p.id = s.productId
+            ${whereReplaced}
+            ${orderBy}
+            LIMIT ? OFFSET ?
+        `;
+    }
+
 
     db.get(countSql, params, (err, row) => {
         if (err) return res.status(500).json({ "error": err.message });
