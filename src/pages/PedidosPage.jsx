@@ -41,9 +41,9 @@ const PedidosPage = () => {
         if (activeTab === 'historial') {
             fetchOrders(1, 100);
         } else if (activeTab === 'nuevo') {
-            fetchProducts(1, 1000); // Fetch all for easy filtering client-side
+            fetchProducts(1, 1000, { sortBy: filterType === 'best_selling' ? 'best_selling' : undefined });
         }
-    }, [activeTab, fetchOrders, fetchProducts]);
+    }, [activeTab, fetchOrders, fetchProducts, filterType]);
 
     // Persist draft to local storage
     useEffect(() => {
@@ -338,6 +338,12 @@ const PedidosPage = () => {
                                 >
                                     Stock Bajo
                                 </button>
+                                <button
+                                    onClick={() => setFilterType('best_selling')}
+                                    className={`px-3 py-1 text-sm rounded-full ${filterType === 'best_selling' ? 'bg-green-100 text-green-700 font-medium' : 'bg-gray-100 text-gray-600'}`}
+                                >
+                                    Más Vendidos
+                                </button>
                             </div>
                         </div>
 
@@ -381,7 +387,7 @@ const PedidosPage = () => {
                                     {filteredProducts.map(p => (
                                         <div key={p.id} className="p-3 border rounded-md hover:bg-gray-50 flex justify-between items-center group">
                                             <div>
-                                                <p className="font-medium text-gray-800">{p.name} {p.subtype}</p>
+                                                <p className="font-medium text-gray-800">{p.brand ? p.brand + ' - ' : ''}{p.name} {p.subtype}</p>
                                                 <p className={`text-xs ${p.quantity <= (p.lowStockThreshold || 10) ? 'text-red-500 font-semibold' : 'text-gray-500'}`}>Stock: {p.quantity}</p>
                                             </div>
                                             <div className="hidden group-hover:flex gap-1 flex-wrap justify-end max-w-[120px]">
@@ -472,7 +478,7 @@ const PedidosPage = () => {
                                                         <tr key={item.productId || `custom-${idx}`} className={`border-b last:border-0 ${!item.productId ? 'bg-blue-50/30' : ''}`}>
                                                             <td className="py-2">
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="font-medium text-gray-800">{item.name} {item.subtype}</span>
+                                                                    <span className="font-medium text-gray-800">{item.brand ? item.brand + ' - ' : ''}{item.name} {item.subtype}</span>
                                                                     {!item.productId && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">NUEVO</span>}
                                                                 </div>
                                                                 {item.current_stock !== undefined && <span className="text-xs text-gray-500 block">Stock act: {item.current_stock}</span>}
@@ -516,6 +522,9 @@ const PedidosPage = () => {
                                             </table>
                                         </div>
                                     )}
+                                    <div className="text-right font-bold text-gray-700 mt-3 pt-2 border-t">
+                                        Subtotal Grupo: <span className="text-blue-600">${formatNumber(group.items.reduce((acc, i) => acc + ((i.quantity || 0) * (i.estimated_price || 0)), 0))}</span>
+                                    </div>
                                 </div>
                             ))}
 
@@ -570,7 +579,7 @@ const PedidosPage = () => {
                                                 <button
                                                     onClick={handleConfirmOrder}
                                                     disabled={orderGroups.every(g => g.items.length === 0)}
-                                                    className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 font-medium flex items-center gap-2 disabled:opacity-50"
+                                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium flex items-center gap-2 disabled:opacity-50"
                                                 >
                                                     <FiClock /> Confirmar (Pendiente)
                                                 </button>
