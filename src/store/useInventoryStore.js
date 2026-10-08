@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import useAccountStore from './useAccountStore';
+import useDashboardStore from './useDashboardStore';
 
 const API_URL = '/api';
 
@@ -203,6 +205,60 @@ const useInventoryStore = create((set, get) => ({
             get().fetchPriceIncreaseHistory(1, 5); // Refresh
         } catch (e) {
             set({ loading: false, error: e.message });
+        }
+    },
+
+    // --- Bajas / Ajustes de stock (Inventario -> Finanzas) ---
+    stockAdjustments: [],
+    stockAdjustmentsLoading: false,
+
+    fetchStockAdjustments: async (params = {}) => {
+        set({ stockAdjustmentsLoading: true });
+        try {
+            const query = new URLSearchParams();
+            Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') query.append(k, v); });
+            const response = await fetch(`${API_URL}/stock-adjustments?${query.toString()}`);
+            if (!response.ok) throw new Error('Error al cargar los ajustes de stock');
+            const json = await response.json();
+            set({ stockAdjustments: json.data || [], stockAdjustmentsLoading: false });
+            return { success: true };
+        } catch (e) {
+            set({ stockAdjustmentsLoading: false, error: e.message });
+            return { success: false, error: e.message };
+        }
+    },
+
+    /**
+     * Registra una baja de stock. Siempre impacta la rentabilidad (pérdida a costo).
+     * Si se envía accountId, además genera un egreso real en esa cuenta.
+     */
+    registerStockAdjustment: async ({ product_id, quantity, type, reason, unit_cost, accountId }) => {
+        try {
+            const response = await fetch(`${API_URL}/stock-adjustments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    product_id,
+                    quantity: parseInt(quantity, 10),
+                    type,
+                    reason,
+                    unit_cost: parseFloat(unit_cost),
+                    accountId: accountId ? parseInt(accountId, 10) : null,
+                }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Error al registrar ajuste');
+
+            // Sincronizar todos los dominios afectados
+            get().fetchProducts({ page: get().currentPage });
+            get().fetchStockAdjustments();
+            const accountStore = useAccountStore.getState();
+            if (accountStore.accounts.length > 0) accountStore.fetchDataForCurrentState();
+            useDashboardStore.getState().fetchDashboardSummary();
+
+            return { success: true, message: data.message, lossAmount: data.lossAmount };
+        } catch (e) {
+            return { success: false, error: e.message };
         }
     },
 }));

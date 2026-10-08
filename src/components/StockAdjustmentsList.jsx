@@ -1,32 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { FiCalendar, FiBox, FiAlertCircle } from 'react-icons/fi';
 import { formatNumber } from '../utils/formatting';
+import useInventoryStore from '../store/useInventoryStore';
 
 const StockAdjustmentsList = () => {
-    const [adjustments, setAdjustments] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const { stockAdjustments: adjustments, stockAdjustmentsLoading: loading, fetchStockAdjustments } = useInventoryStore();
+    const [error, setError] = React.useState(null);
 
     useEffect(() => {
-        const fetchAdjustments = async () => {
-            try {
-                const response = await fetch('/api/stock-adjustments');
-                if (!response.ok) {
-                    throw new Error('Error al cargar los ajustes de stock');
-                }
-                const data = await response.json();
-                // Assuming data.data is the array, if the api returns { data: [...] }
-                // Let's check the server code to be sure, or just handle both cases.
-                setAdjustments(data.data || data || []);
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
+        fetchStockAdjustments().then(r => { if (!r.success) setError(r.error); });
+    }, [fetchStockAdjustments]);
 
-        fetchAdjustments();
-    }, []);
+    const totalLoss = useMemo(
+        () => adjustments.reduce((sum, a) => sum + (a.total_cost ?? (a.unit_cost || 0) * a.quantity), 0),
+        [adjustments]
+    );
 
     const getTypeColor = (type) => {
         switch (type) {
@@ -48,7 +36,7 @@ const StockAdjustmentsList = () => {
         }
     };
 
-    if (loading) {
+    if (loading && adjustments.length === 0) {
         return <div className="p-8 text-center text-gray-500">Cargando registros...</div>;
     }
 
@@ -58,10 +46,17 @@ const StockAdjustmentsList = () => {
 
     return (
         <div className="bg-white rounded-lg shadow-sm p-4 md:p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <FiAlertCircle className="text-orange-500" />
-                Historial de Bajas y Ajustes
-            </h2>
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <FiAlertCircle className="text-orange-500" />
+                    Historial de Bajas y Ajustes
+                </h2>
+                <div className="sm:text-right">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Pérdida total a costo</p>
+                    <p className="text-2xl font-extrabold text-red-600 tabular-nums">-${formatNumber(totalLoss)}</p>
+                    <p className="text-xs text-gray-400">Se descuenta de la Ganancia Neta en Cuentas</p>
+                </div>
+            </div>
 
             {adjustments.length === 0 ? (
                 <div className="text-center p-12 text-gray-500 border border-dashed rounded-lg">
@@ -78,6 +73,7 @@ const StockAdjustmentsList = () => {
                                 <th scope="col" className="px-4 py-3 text-right">Cant.</th>
                                 <th scope="col" className="px-4 py-3 text-right">Costo Unit.</th>
                                 <th scope="col" className="px-4 py-3 text-right">Total</th>
+                                <th scope="col" className="px-4 py-3">Impacto</th>
                                 <th scope="col" className="px-4 py-3">Motivo/Nota</th>
                             </tr>
                         </thead>
@@ -115,8 +111,19 @@ const StockAdjustmentsList = () => {
                                     <td className="px-4 py-4 text-right">
                                         ${formatNumber(adj.unit_cost || 0)}
                                     </td>
-                                    <td className="px-4 py-4 text-right font-medium">
-                                        ${formatNumber((adj.unit_cost || 0) * adj.quantity)}
+                                    <td className="px-4 py-4 text-right font-semibold text-red-600 tabular-nums">
+                                        -${formatNumber((adj.unit_cost || 0) * adj.quantity)}
+                                    </td>
+                                    <td className="px-4 py-4">
+                                        {adj.charged_account_name ? (
+                                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-100" title="Generó un retiro en esta cuenta">
+                                                Egreso: {adj.charged_account_name}
+                                            </span>
+                                        ) : (
+                                            <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600" title="Sólo descuenta de la Ganancia Neta (no mueve caja)">
+                                                Sólo rentabilidad
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="px-4 py-4 text-gray-600 truncate max-w-xs" title={adj.reason}>
                                         {adj.reason || '-'}

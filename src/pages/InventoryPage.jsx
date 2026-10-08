@@ -406,7 +406,11 @@ const InventoryPage = () => {
 
                     {showForm && <ProductForm productToEdit={productToEdit} onClose={handleCloseForm} />}
                     {productToRestock && <RestockModal product={productToRestock} onClose={() => setProductToRestock(null)} />}
-                    {isStockAdjustmentModalOpen && <StockAdjustmentModal onClose={() => setIsStockAdjustmentModalOpen(false)} products={allProducts} />}
+                    {isStockAdjustmentModalOpen && <StockAdjustmentModal
+                onClose={() => setIsStockAdjustmentModalOpen(false)}
+                products={allProducts}
+                onSuccess={() => fetch('/api/products?limit=9999').then(r => r.json()).then(j => setAllProducts(j.data || [])).catch(() => {})}
+            />}
 
                     <ConfirmModal
                         isOpen={deleteModalConfig.isOpen}

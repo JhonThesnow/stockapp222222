@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import useAccountStore from '../store/useAccountStore';
 import { formatNumber } from '../utils/formatting';
-import { FiTrendingUp, FiTrendingDown, FiPlus, FiX, FiFileText, FiEdit, FiTrash, FiDollarSign } from 'react-icons/fi';
+import { FiTrendingUp, FiTrendingDown, FiPlus, FiX, FiFileText, FiEdit, FiTrash, FiDollarSign, FiInfo, FiShoppingBag, FiPackage, FiAlertTriangle, FiBarChart2 } from 'react-icons/fi';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import EditMovementDrawer from '../components/EditMovementDrawer';
@@ -9,6 +9,81 @@ import TransferFundsModal from '../components/TransferFundsModal';
 import PaymentMethodsCommissionModal from '../components/PaymentMethodsCommissionModal';
 import PocketsModal from '../components/PocketsModal';
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
+
+// --- Helpers de UI financiera ---
+const money = (n = 0) => `${n < 0 ? '-' : ''}$${formatNumber(Math.abs(n))}`;
+const pct = (r = 0) => `${(r * 100).toFixed(1)}%`;
+
+const LOSS_TYPE_LABELS = {
+    merma: 'Merma',
+    rotura: 'Rotura',
+    regalo: 'Regalo',
+    consumo_interno: 'Consumo Interno',
+    perdida: 'Pérdida',
+};
+
+const InfoTip = ({ text, light = false }) => (
+    <span className="relative group inline-flex align-middle">
+        <FiInfo size={14} className={`cursor-help ${light ? 'text-white/70 hover:text-white' : 'text-gray-400 hover:text-gray-600'}`} />
+        <span className="pointer-events-none absolute z-30 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 rounded-lg bg-gray-900 px-3 py-2 text-xs font-normal normal-case tracking-normal text-left text-white opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100">
+            {text}
+        </span>
+    </span>
+);
+
+const TONES = {
+    income: { ring: 'border-emerald-100', icon: 'bg-emerald-50 text-emerald-600', value: 'text-gray-900', bar: 'bg-emerald-500' },
+    cost: { ring: 'border-orange-100', icon: 'bg-orange-50 text-orange-600', value: 'text-orange-600', bar: 'bg-orange-500' },
+    loss: { ring: 'border-red-100', icon: 'bg-red-50 text-red-600', value: 'text-red-600', bar: 'bg-red-500' },
+};
+
+const ProfitCard = ({ label, value, tone = 'income', icon, subtitle, formula, tip, prefix = '' }) => {
+    const t = TONES[tone];
+    return (
+        <div className={`bg-white border ${t.ring} rounded-xl p-5 shadow-sm flex flex-col gap-2`}>
+            <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                    {label} {tip && <InfoTip text={tip} />}
+                </p>
+                <div className={`p-2 rounded-full ${t.icon}`}>{icon}</div>
+            </div>
+            <p className={`text-3xl font-extrabold tabular-nums leading-tight ${t.value}`}>
+                {prefix}{money(Math.abs(value))}
+            </p>
+            {subtitle && <div className="text-xs text-gray-500 leading-relaxed">{subtitle}</div>}
+            {formula && <p className="mt-auto pt-2 border-t border-dashed border-gray-100 text-[11px] font-mono text-gray-400">{formula}</p>}
+        </div>
+    );
+};
+
+const NetProfitCard = ({ value, margin, grossProfit }) => {
+    const positive = value >= 0;
+    return (
+        <div className={`relative overflow-hidden rounded-xl p-5 shadow-md text-white flex flex-col gap-2 bg-gradient-to-br ${positive ? 'from-emerald-500 to-emerald-700' : 'from-red-500 to-red-700'}`}>
+            <div className="absolute -right-4 -top-4 opacity-15">
+                {positive ? <FiTrendingUp size={96} /> : <FiTrendingDown size={96} />}
+            </div>
+            <p className="relative text-xs font-semibold uppercase tracking-wider text-white/80 flex items-center gap-1.5">
+                Ganancia Neta
+                <InfoTip light text="Lo que realmente te queda: Ingresos − Costo de lo vendido − Gastos operativos asignados − Pérdidas de stock (roturas, mermas, regalos, consumo interno)." />
+            </p>
+            <p className="relative text-4xl font-black tabular-nums leading-tight">{money(value)}</p>
+            <div className="relative flex flex-wrap items-center gap-2 text-xs">
+                <span className="px-2 py-0.5 rounded-full bg-white/20 font-semibold">Margen neto {pct(margin)}</span>
+                <span className="text-white/80">Bruta: {money(grossProfit)}</span>
+            </div>
+            <p className="relative mt-auto pt-2 border-t border-white/20 text-[11px] font-mono text-white/70">
+                = Ingresos − COGS − Gastos − Pérdidas
+            </p>
+        </div>
+    );
+};
+
+const FormulaChip = ({ label, value, className }) => (
+    <span className={`inline-flex items-center gap-1 rounded-md px-2 py-1 font-semibold tabular-nums ${className}`}>
+        <span className="font-normal opacity-80">{label}</span> {money(value)}
+    </span>
+);
 
 const ModifyFundsModal = ({ onClose, accounts, selectedAccountId }) => {
     const { addMovement, loading, categories } = useAccountStore();
@@ -106,8 +181,12 @@ const AccountPage = () => {
         accounts, selectedAccountId, setSelectedAccountId,
         accountSummary, salesProfitSummary, movements, cashClosings, loading, pockets, breakdown,
         setDateRange, deleteMovement, fetchInitialData,
-        startDate, endDate
+        startDate, endDate, getProfitBreakdown
     } = useAccountStore();
+
+    // P&L del período (se recalcula cuando cambia el resumen de rentabilidad)
+    const profit = useMemo(() => getProfitBreakdown(), [salesProfitSummary, getProfitBreakdown]);
+    const isAllocated = !!selectedAccountId;
 
     const [showModifyFundsModal, setShowModifyFundsModal] = useState(false);
     const [showTransferModal, setShowTransferModal] = useState(false);
@@ -240,49 +319,135 @@ const AccountPage = () => {
                 </div>
             </div>
 
+            {/* ===================== 1. FLUJO DE CAJA ===================== */}
+            <div className="flex items-end justify-between mb-3">
+                <div>
+                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2"><FiDollarSign className="text-blue-600" /> Flujo de Caja</h2>
+                    <p className="text-xs text-gray-500">Dinero que efectivamente entró y salió de {selectedAccount?.name || (selectedAccountId === 'mercado_pago' ? 'Mercado Pago' : 'todas las cuentas')}.</p>
+                </div>
+            </div>
             {/* Tarjetas de Resumen */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white p-5 rounded-lg shadow-md flex flex-col justify-between relative overflow-hidden">
+                <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white p-5 rounded-xl shadow-md flex flex-col justify-between relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-4 opacity-20">
                         <FiDollarSign size={64} />
                     </div>
                     <div className="relative z-10 flex justify-between items-center mb-2">
-                        <p className="text-sm font-medium text-blue-100 uppercase tracking-wider">Saldo Total Acumulado</p>
+                        <p className="text-xs font-semibold text-blue-100 uppercase tracking-wider flex items-center gap-1.5">
+                            Saldo Total Acumulado
+                            <InfoTip light text="Todo lo histórico hasta la fecha 'Hasta': ventas cobradas + ingresos manuales − gastos − retiros (incluye egresos por pérdidas de stock si los registraste en una cuenta)." />
+                        </p>
                     </div>
-                    <p className="relative z-10 text-3xl font-bold">
+                    <p className={`relative z-10 text-3xl font-extrabold tabular-nums ${accountSummary.historicalBalance < 0 ? 'text-red-200' : ''}`}>
                         {accountSummary.historicalBalance >= 0 ? '$' : '-$'}{formatNumber(Math.abs(accountSummary.historicalBalance || 0))}
                     </p>
+                    <p className="relative z-10 text-[11px] text-blue-100/80 mt-2">Lo que debería haber hoy en la cuenta</p>
                 </div>
-                <div className="bg-white border border-gray-200 p-5 rounded-lg shadow-sm flex flex-col justify-between">
+                <div className="bg-white border border-gray-200 p-5 rounded-xl shadow-sm flex flex-col justify-between">
                     <div className="flex justify-between items-center mb-2">
-                        <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Ingresos (Período)</p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Ingresos (Período)</p>
                         <div className="p-2 bg-green-50 rounded-full text-green-600">
                             <FiTrendingUp size={18} />
                         </div>
                     </div>
-                    <p className="text-2xl font-bold text-gray-900">${formatNumber(accountSummary.totalIncome)}</p>
+                    <p className="text-2xl font-extrabold text-green-600 tabular-nums">+${formatNumber(accountSummary.totalIncome)}</p>
+                    <p className="text-[11px] text-gray-400 mt-2">Ventas cobradas + ingresos manuales</p>
                 </div>
-                <div className="bg-white border border-gray-200 p-5 rounded-lg shadow-sm flex flex-col justify-between">
+                <div className="bg-white border border-gray-200 p-5 rounded-xl shadow-sm flex flex-col justify-between">
                     <div className="flex justify-between items-center mb-2">
-                        <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Egresos (Período)</p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Egresos (Período)</p>
                         <div className="p-2 bg-red-50 rounded-full text-red-600">
                             <FiTrendingDown size={18} />
                         </div>
                     </div>
-                    <p className="text-2xl font-bold text-gray-900">-${formatNumber(accountSummary.totalOutcome)}</p>
+                    <p className="text-2xl font-extrabold text-red-600 tabular-nums">-${formatNumber(accountSummary.totalOutcome)}</p>
+                    <p className="text-[11px] text-gray-400 mt-2">Gastos, retiros, pagos y transferencias enviadas</p>
                 </div>
-                <div className="bg-white border border-gray-200 p-5 rounded-lg shadow-sm flex flex-col justify-between">
+                <div className={`bg-white border p-5 rounded-xl shadow-sm flex flex-col justify-between ${accountSummary.periodResult >= 0 ? 'border-green-200' : 'border-red-200'}`}>
                     <div className="flex justify-between items-center mb-2">
-                        <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">Resultado (Período)</p>
-                        <div className={`p-2 rounded-full ${accountSummary.periodResult >= 0 ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-600'}`}>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Resultado (Período)</p>
+                        <div className={`p-2 rounded-full ${accountSummary.periodResult >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
                             <FiDollarSign size={18} />
                         </div>
                     </div>
-                    <p className={`text-2xl font-bold ${accountSummary.periodResult >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                    <p className={`text-2xl font-extrabold tabular-nums ${accountSummary.periodResult >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {accountSummary.periodResult >= 0 ? '$' : '-$'}{formatNumber(Math.abs(accountSummary.periodResult))}
                     </p>
+                    <p className="text-[11px] font-mono text-gray-400 mt-2">= Ingresos − Egresos</p>
                 </div>
             </div>
+
+            {/* ===================== 2. RENTABILIDAD ===================== */}
+            <section className="mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-3">
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2"><FiBarChart2 className="text-emerald-600" /> Rentabilidad del Período</h2>
+                        <p className="text-xs text-gray-500">
+                            Cuánto ganás realmente: lo vendido, menos lo que te costó esa mercadería, los gastos y las pérdidas de stock.
+                        </p>
+                    </div>
+                    <button onClick={() => setActiveTab('sales-profit')} className="self-start sm:self-auto text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">
+                        Ver de dónde sale →
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    <ProfitCard
+                        label="Ingresos Brutos"
+                        tone="income"
+                        icon={<FiShoppingBag size={18} />}
+                        value={profit.revenue}
+                        tip="Suma de todas las ventas completadas del período (monto final cobrado, con descuentos aplicados)."
+                        subtitle={<span>{profit.salesCount} ventas · {profit.unitsSold} unidades</span>}
+                        formula="Σ ventas completadas"
+                    />
+                    <ProfitCard
+                        label="Costo Mercadería (COGS)"
+                        tone="cost"
+                        prefix="-"
+                        icon={<FiPackage size={18} />}
+                        value={profit.cogs}
+                        tip="Lo que te costó comprar los productos que vendiste: precio de compra × cantidad vendida, guardado al momento de cada venta."
+                        subtitle={<span>Ganancia bruta: <strong className={profit.grossProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}>{money(profit.grossProfit)}</strong> ({pct(profit.grossMargin)})</span>}
+                        formula="Σ (costo × cant. vendida)"
+                    />
+                    <ProfitCard
+                        label="Gastos / Pérdidas"
+                        tone="loss"
+                        prefix="-"
+                        icon={<FiAlertTriangle size={18} />}
+                        value={profit.totalDeductions}
+                        tip={`Gastos operativos (alquiler, servicios, etc.) asignados según incidencia ${pct(profit.incidenceRate)} + mercadería perdida valuada a costo (roturas, mermas, regalos, consumo interno).`}
+                        subtitle={
+                            <div className="space-y-0.5">
+                                <div className="flex justify-between"><span>Gastos operativos</span><span className="tabular-nums font-medium text-gray-700">-{money(profit.operating)}</span></div>
+                                <div className="flex justify-between"><span>Pérdidas de stock</span><span className="tabular-nums font-medium text-gray-700">-{money(profit.stockLosses)}</span></div>
+                            </div>
+                        }
+                        formula="Gastos op. + Pérdidas stock"
+                    />
+                    <NetProfitCard value={profit.netProfit} margin={profit.netMargin} grossProfit={profit.grossProfit} />
+                </div>
+
+                {/* Barra de fórmula con números reales */}
+                <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs bg-white border border-gray-200 rounded-xl px-3 py-2.5 shadow-sm">
+                    <span className="font-semibold text-gray-700 mr-1">Cálculo:</span>
+                    <FormulaChip label="Ingresos" value={profit.revenue} className="bg-emerald-50 text-emerald-700" />
+                    <span className="text-gray-400 font-bold">−</span>
+                    <FormulaChip label="COGS" value={profit.cogs} className="bg-orange-50 text-orange-700" />
+                    <span className="text-gray-400 font-bold">−</span>
+                    <FormulaChip label="Gastos" value={profit.operating} className="bg-red-50 text-red-700" />
+                    <span className="text-gray-400 font-bold">−</span>
+                    <FormulaChip label="Pérdidas" value={profit.stockLosses} className="bg-red-50 text-red-700" />
+                    <span className="text-gray-400 font-bold">=</span>
+                    <FormulaChip label="Neta" value={profit.netProfit} className={profit.netProfit >= 0 ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'} />
+                </div>
+                {isAllocated && (
+                    <p className="mt-2 text-[11px] text-gray-500 flex items-center gap-1">
+                        <FiInfo size={12} /> Vista por cuenta: gastos y pérdidas se asignan en proporción a lo vendido por esta cuenta ({pct(profit.revenueShare)} del total).
+                    </p>
+                )}
+            </section>
 
             <div>
                 {/* Pestañas (Tabs) Estilo Underline */}
@@ -367,36 +532,143 @@ const AccountPage = () => {
                                 <p className="text-center text-gray-500">No hay datos de ventas disponibles para este período.</p>
                             ) : (
                                 <div className="space-y-6">
-                                    <h3 className="text-lg font-bold text-gray-800 border-b pb-2">Resumen de Rentabilidad (Período Seleccionado)</h3>
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b pb-3 gap-2">
+                                        <div>
+                                            <h3 className="text-lg font-bold text-gray-800">Estado de Resultados (P&L del Período)</h3>
+                                            <p className="text-xs text-gray-500">Desglose transparente paso a paso de ingresos brutos a ganancia neta.</p>
+                                        </div>
+                                        <div className="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-full font-medium self-start sm:self-auto">
+                                            Fórmula: Ganancia Neta = Ingresos − COGS − Gastos Op. − Pérdidas
+                                        </div>
+                                    </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                                            <p className="text-xs font-medium text-gray-500 uppercase mb-1">Total Vendido</p>
-                                            <p className="text-xl font-bold text-gray-900">${formatNumber(salesProfitSummary.totalRevenue)}</p>
+                                    {/* Tarjetas Principales */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100 flex flex-col justify-between">
+                                            <div>
+                                                <p className="text-xs font-medium text-gray-500 uppercase mb-1">1. Ingresos Brutos</p>
+                                                <p className="text-2xl font-bold text-gray-900">${formatNumber(salesProfitSummary.totalRevenue)}</p>
+                                            </div>
+                                            <p className="text-[11px] text-gray-500 mt-2">{profit.salesCount} ventas ({profit.unitsSold} u.)</p>
                                         </div>
-                                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                                            <p className="text-xs font-medium text-gray-500 uppercase mb-1">Costo de Mercadería</p>
-                                            <p className="text-xl font-bold text-orange-600">-${formatNumber(salesProfitSummary.totalCostOfGoods)}</p>
+                                        <div className="p-4 bg-orange-50/50 rounded-lg border border-orange-100 flex flex-col justify-between">
+                                            <div>
+                                                <p className="text-xs font-medium text-orange-700 uppercase mb-1">2. Costo Mercadería (COGS)</p>
+                                                <p className="text-2xl font-bold text-orange-600">-${formatNumber(salesProfitSummary.totalCostOfGoods)}</p>
+                                            </div>
+                                            <p className="text-[11px] text-orange-800 mt-2 font-medium">Margen Bruto: {pct(profit.grossMargin)}</p>
                                         </div>
-                                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                                            <p className="text-xs font-medium text-gray-500 uppercase mb-1">Costo Operativo Asignado</p>
-                                            <p className="text-xl font-bold text-orange-600">-${formatNumber(salesProfitSummary.totalOperatingCosts)}</p>
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                (Incidencia global del {(salesProfitSummary.incidenceRate * 100).toFixed(1)}%)
-                                            </p>
+                                        <div className="p-4 bg-red-50/40 rounded-lg border border-red-100 flex flex-col justify-between">
+                                            <div>
+                                                <p className="text-xs font-medium text-red-700 uppercase mb-1">3. Gastos Operativos</p>
+                                                <p className="text-2xl font-bold text-red-600">-${formatNumber(salesProfitSummary.totalOperatingCosts)}</p>
+                                            </div>
+                                            <p className="text-[11px] text-red-800 mt-2">Incidencia del {pct(salesProfitSummary.incidenceRate)}</p>
                                         </div>
-                                        <div className={`p-4 rounded-lg border ${salesProfitSummary.realProfit >= 0 ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'}`}>
-                                            <p className={`text-xs font-medium uppercase mb-1 ${salesProfitSummary.realProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                                                Rentabilidad Real
-                                            </p>
-                                            <p className={`text-2xl font-bold ${salesProfitSummary.realProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                ${formatNumber(salesProfitSummary.realProfit)}
+                                        <div className="p-4 bg-red-50/60 rounded-lg border border-red-200 flex flex-col justify-between">
+                                            <div>
+                                                <p className="text-xs font-medium text-red-700 uppercase mb-1">4. Pérdidas de Stock</p>
+                                                <p className="text-2xl font-bold text-red-600">-${formatNumber(profit.stockLosses)}</p>
+                                            </div>
+                                            <p className="text-[11px] text-red-700 mt-2">Roturas / mermas a costo</p>
+                                        </div>
+                                        <div className={`p-4 rounded-lg border flex flex-col justify-between ${profit.netProfit >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                                            <div>
+                                                <p className={`text-xs font-bold uppercase mb-1 ${profit.netProfit >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                                                    5. Ganancia Real / Neta
+                                                </p>
+                                                <p className={`text-2xl font-extrabold tabular-nums ${profit.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {profit.netProfit >= 0 ? '$' : '-$'}{formatNumber(Math.abs(profit.netProfit))}
+                                                </p>
+                                            </div>
+                                            <p className={`text-[11px] font-semibold mt-2 ${profit.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                                Margen Neto: {pct(profit.netMargin)}
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 p-4 bg-blue-50 text-blue-800 rounded-lg text-sm">
-                                        <p><strong>Nota de cálculo:</strong> La incidencia global ({(salesProfitSummary.incidenceRate * 100).toFixed(1)}%) se calcula tomando todos los Gastos Operativos (${formatNumber(salesProfitSummary.totalExpenses)}) divididos por las Ventas Globales Totales (${formatNumber(salesProfitSummary.totalGlobalRevenue)}) del período seleccionado.</p>
+                                    {/* Cascada Explicativa (Waterfall View) */}
+                                    <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                                        <h4 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                            <span>Cascada de Rentabilidad</span>
+                                            <span className="text-xs font-normal text-gray-500">(Cómo se transforma cada peso vendido)</span>
+                                        </h4>
+                                        <div className="space-y-3">
+                                            <div>
+                                                <div className="flex justify-between text-xs mb-1 font-semibold text-gray-700">
+                                                    <span>Ingresos Brutos (100%)</span>
+                                                    <span>${formatNumber(salesProfitSummary.totalRevenue)}</span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                                    <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: '100%' }}></div>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <div className="flex justify-between text-xs mb-1 text-gray-600">
+                                                    <span>− Costo de Mercadería Vendida (COGS)</span>
+                                                    <span className="text-orange-600 font-semibold">-${formatNumber(salesProfitSummary.totalCostOfGoods)}</span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                                    <div className="bg-orange-400 h-2 rounded-full" style={{ width: `${Math.min(100, Math.max(0, salesProfitSummary.totalRevenue > 0 ? (salesProfitSummary.totalCostOfGoods / salesProfitSummary.totalRevenue) * 100 : 0))}%` }}></div>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <div className="flex justify-between text-xs mb-1 text-gray-600">
+                                                    <span>− Gastos Operativos Prorrateados</span>
+                                                    <span className="text-red-600 font-semibold">-${formatNumber(salesProfitSummary.totalOperatingCosts)}</span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                                    <div className="bg-red-400 h-2 rounded-full" style={{ width: `${Math.min(100, Math.max(0, salesProfitSummary.totalRevenue > 0 ? (salesProfitSummary.totalOperatingCosts / salesProfitSummary.totalRevenue) * 100 : 0))}%` }}></div>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <div className="flex justify-between text-xs mb-1 text-gray-600">
+                                                    <span>− Pérdidas de Stock (Roturas, Mermas, etc.)</span>
+                                                    <span className="text-red-600 font-semibold">-${formatNumber(profit.stockLosses)}</span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                                    <div className="bg-red-500 h-2 rounded-full" style={{ width: `${Math.min(100, Math.max(0, salesProfitSummary.totalRevenue > 0 ? (profit.stockLosses / salesProfitSummary.totalRevenue) * 100 : 0))}%` }}></div>
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-2 border-t border-gray-200">
+                                                <div className="flex justify-between text-sm font-bold">
+                                                    <span className={profit.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}>= Ganancia Neta Final</span>
+                                                    <span className={profit.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}>
+                                                        {profit.netProfit >= 0 ? '$' : '-$'}{formatNumber(Math.abs(profit.netProfit))}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Desglose de Pérdidas de Stock si existen */}
+                                    {profit.stockLossesBreakdown && profit.stockLossesBreakdown.length > 0 && (
+                                        <div className="border border-red-100 rounded-xl p-4 bg-red-50/20">
+                                            <h4 className="text-xs font-bold uppercase tracking-wider text-red-800 mb-3 flex items-center gap-1.5">
+                                                <FiAlertTriangle className="text-red-600" /> Detalle de Pérdidas de Stock en este Período
+                                            </h4>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                                                {profit.stockLossesBreakdown.map((item, idx) => (
+                                                    <div key={idx} className="bg-white p-3 rounded-lg border border-red-100 shadow-2xs">
+                                                        <span className="text-xs text-gray-500 font-medium capitalize">{LOSS_TYPE_LABELS[item.type] || item.type}</span>
+                                                        <p className="text-lg font-bold text-red-600 mt-1">-${formatNumber(item.total)}</p>
+                                                        <p className="text-[11px] text-gray-400">{item.units} unidades</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Nota de cálculo y transparencia */}
+                                    <div className="p-4 bg-blue-50/80 border border-blue-200 rounded-xl text-blue-900 text-xs leading-relaxed space-y-1">
+                                        <p className="font-bold flex items-center gap-1"><FiInfo className="text-blue-600" /> Transparencia de Fórmulas Financieras:</p>
+                                        <p>• <strong>Costo de Mercadería (COGS):</strong> Valuado al precio de costo unitario registrado al momento exacto de cada venta concretada.</p>
+                                        <p>• <strong>Incidencia de Gastos Operativos ({pct(salesProfitSummary.incidenceRate)}):</strong> Calculada como el total de Gastos Operativos (${formatNumber(salesProfitSummary.totalExpenses)}) sobre las Ventas Totales Globales (${formatNumber(salesProfitSummary.totalGlobalRevenue)}).</p>
+                                        <p>• <strong>Pérdidas de Stock:</strong> Valuadas al costo de compra de cada producto descartado (roturas, mermas, consumos internos). Impactan restando directamente en la Ganancia Neta para que tu rentabilidad refleje la realidad física de tu negocio.</p>
                                     </div>
                                 </div>
                             )

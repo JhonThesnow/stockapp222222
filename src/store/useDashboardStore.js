@@ -6,6 +6,10 @@ const useDashboardStore = create((set) => ({
     summary: {
         totalRevenueToday: 0,
         salesCountToday: 0,
+        costOfGoodsToday: 0,
+        stockLossesToday: 0,
+        grossProfitToday: 0,
+        netProfitToday: 0,
         lowStockProducts: [],
         recentMovements: [],
     },

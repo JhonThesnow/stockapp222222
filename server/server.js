@@ -65,22 +65,36 @@ app.get('/api/dashboard-summary', (req, res) => {
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    const salesSql = `SELECT finalAmount FROM sales WHERE status = 'completed' AND date >= ? AND date <= ?`;
+    const salesSql = `SELECT finalAmount, items FROM sales WHERE status = 'completed' AND date >= ? AND date <= ?`;
     const lowStockSql = `SELECT * FROM products WHERE quantity <= lowStockThreshold AND lowStockThreshold > 0 ORDER BY quantity ASC LIMIT 5`;
     const recentMovementsSql = `SELECT * FROM account_movements ORDER BY date DESC LIMIT 5`;
+    const stockLossesSql = `SELECT COALESCE(SUM(quantity * unit_cost), 0) as total FROM stock_adjustments WHERE created_at >= ? AND created_at <= ?`;
 
     Promise.all([
         new Promise((resolve, reject) => db.all(salesSql, [todayStart.toISOString(), todayEnd.toISOString()], (err, rows) => err ? reject(err) : resolve(rows))),
         new Promise((resolve, reject) => db.all(lowStockSql, [], (err, rows) => err ? reject(err) : resolve(rows))),
-        new Promise((resolve, reject) => db.all(recentMovementsSql, [], (err, rows) => err ? reject(err) : resolve(rows)))
-    ]).then(([salesToday, lowStockProducts, recentMovements]) => {
+        new Promise((resolve, reject) => db.all(recentMovementsSql, [], (err, rows) => err ? reject(err) : resolve(rows))),
+        new Promise((resolve, reject) => db.get(stockLossesSql, [todayStart.toISOString(), todayEnd.toISOString()], (err, row) => err ? reject(err) : resolve(row?.total || 0)))
+    ]).then(([salesToday, lowStockProducts, recentMovements, stockLossesToday]) => {
         const totalRevenueToday = salesToday.reduce((sum, s) => sum + s.finalAmount, 0);
         const salesCountToday = salesToday.length;
+        const costOfGoodsToday = salesToday.reduce((sum, s) => {
+            try {
+                const items = JSON.parse(s.items || '[]');
+                return sum + items.reduce((acc, i) => acc + ((i.purchasePrice || 0) * (i.quantity || 0)), 0);
+            } catch { return sum; }
+        }, 0);
+        const grossProfitToday = totalRevenueToday - costOfGoodsToday;
+        const netProfitToday = grossProfitToday - stockLossesToday;
 
         res.json({
             data: {
                 totalRevenueToday,
                 salesCountToday,
+                costOfGoodsToday,
+                stockLossesToday,
+                grossProfitToday,
+                netProfitToday,
                 lowStockProducts: lowStockProducts.map(p => ({ ...p, salePrices: JSON.parse(p.salePrices || '[]') })),
                 recentMovements
             }
@@ -320,42 +334,88 @@ app.delete('/api/products/:id', (req, res) => {
 // --- Nuevos Endpoints de INVENTARIO ---
 
 
+const ADJUSTMENT_TYPE_LABELS = {
+    merma: 'Merma',
+    rotura: 'Rotura',
+    regalo: 'Regalo a cliente',
+    consumo_interno: 'Consumo Interno',
+    perdida: 'Pérdida',
+};
+
 app.post('/api/stock-adjustments', (req, res) => {
-    const { product_id, quantity, type, reason, unit_cost } = req.body;
+    const { product_id, quantity, type, reason, unit_cost, accountId } = req.body;
     if (!product_id || !quantity || !type || unit_cost === undefined) {
         return res.status(400).json({ error: "Faltan campos requeridos." });
     }
+    const qty = parseInt(quantity, 10);
+    const cost = parseFloat(unit_cost);
+    if (!(qty > 0) || isNaN(cost) || cost < 0) {
+        return res.status(400).json({ error: "Cantidad o costo unitario inválidos." });
+    }
+    const lossAmount = qty * cost;
+    const createdAt = new Date().toISOString();
 
-    db.serialize(() => {
-        db.run('BEGIN TRANSACTION');
+    const run = (sql, params) => new Promise((resolve, reject) =>
+        db.run(sql, params, function (err) { err ? reject(err) : resolve(this); }));
+    const get = (sql, params) => new Promise((resolve, reject) =>
+        db.get(sql, params, (err, row) => err ? reject(err) : resolve(row)));
 
-        const adjustStockSql = `UPDATE products SET quantity = quantity - ? WHERE id = ? AND quantity >= ?`;
-        db.run(adjustStockSql, [quantity, product_id, quantity], function (err) {
-            if (err || this.changes === 0) {
-                db.run('ROLLBACK');
-                return res.status(400).json({ error: 'Stock insuficiente o error al actualizar stock', details: err ? err.message : null });
+    (async () => {
+        try {
+            await run('BEGIN TRANSACTION', []);
+
+            const product = await get('SELECT name, subtype FROM products WHERE id = ?', [product_id]);
+            if (!product) throw Object.assign(new Error('Producto no encontrado'), { status: 404 });
+
+            const upd = await run(`UPDATE products SET quantity = quantity - ? WHERE id = ? AND quantity >= ?`, [qty, product_id, qty]);
+            if (upd.changes === 0) throw Object.assign(new Error('Stock insuficiente o error al actualizar stock'), { status: 400 });
+
+            const ins = await run(
+                `INSERT INTO stock_adjustments (product_id, quantity, type, reason, unit_cost, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+                [product_id, qty, type, reason, cost, createdAt]
+            );
+            const adjustmentId = ins.lastID;
+
+            // Impacto en caja (opcional): sólo si hubo una salida real de dinero asociada a la baja
+            let accountMovementId = null;
+            if (accountId && lossAmount > 0) {
+                const category = await get(`SELECT id FROM movement_categories WHERE name = 'Pérdida de Stock'`, []);
+                const productLabel = `${product.name}${product.subtype ? ' - ' + product.subtype : ''}`;
+                const movReason = `Pérdida de stock (${ADJUSTMENT_TYPE_LABELS[type] || type}): ${productLabel} x${qty}`;
+                const mov = await run(
+                    `INSERT INTO account_movements (date, type, amount, reason, accountId, categoryId) VALUES (?, 'withdrawal', ?, ?, ?, ?)`,
+                    [createdAt, lossAmount, movReason, accountId, category ? category.id : null]
+                );
+                accountMovementId = mov.lastID;
+                await run(`UPDATE stock_adjustments SET account_movement_id = ? WHERE id = ?`, [accountMovementId, adjustmentId]);
             }
 
-            const insertAdjustmentSql = `INSERT INTO stock_adjustments (product_id, quantity, type, reason, unit_cost, created_at) VALUES (?, ?, ?, ?, ?, ?)`;
-            db.run(insertAdjustmentSql, [product_id, quantity, type, reason, unit_cost, new Date().toISOString()], function (err) {
-                if (err) {
-                    db.run('ROLLBACK');
-                    return res.status(500).json({ error: 'Error al registrar el ajuste de stock', details: err.message });
-                }
-
-                db.run('COMMIT');
-                res.status(201).json({ message: 'Ajuste de stock registrado exitosamente', id: this.lastID });
+            await run('COMMIT', []);
+            res.status(201).json({
+                message: accountMovementId
+                    ? `Baja registrada. Pérdida de $${lossAmount.toFixed(2)} descontada de la cuenta.`
+                    : `Baja registrada. Pérdida de $${lossAmount.toFixed(2)} imputada a la rentabilidad.`,
+                id: adjustmentId,
+                lossAmount,
+                accountMovementId,
             });
-        });
-    });
+        } catch (err) {
+            db.run('ROLLBACK');
+            res.status(err.status || 500).json({ error: err.message || 'Error al registrar el ajuste de stock' });
+        }
+    })();
 });
 
 app.get('/api/stock-adjustments', (req, res) => {
     const { startDate, endDate, productId, type } = req.query;
 
-    let sql = `SELECT sa.*, p.name as product_name, p.brand as product_brand, p.subtype as product_subtype
+    let sql = `SELECT sa.*, p.name as product_name, p.brand as product_brand, p.subtype as product_subtype,
+                      (sa.quantity * sa.unit_cost) as total_cost,
+                      am.accountId as charged_account_id, a.name as charged_account_name
                FROM stock_adjustments sa
                JOIN products p ON sa.product_id = p.id
+               LEFT JOIN account_movements am ON am.id = sa.account_movement_id
+               LEFT JOIN accounts a ON a.id = am.accountId
                WHERE 1=1`;
     const params = [];
 
@@ -1265,21 +1325,30 @@ app.get('/api/account/sales-profit', (req, res) => {
 
     const salesSql = `SELECT finalAmount, items FROM sales WHERE status = 'completed' AND date >= ? AND date <= ? ${accountFilter}`;
     const operatingExpensesSql = `SELECT amount FROM operating_expenses WHERE date >= ? AND date <= ?`; // Gastos operativos de todo el periodo, independientemente de la cuenta
+    // Pérdidas de inventario (roturas, mermas, regalos, consumo interno) valuadas a costo
+    const stockLossesSql = `
+        SELECT type, SUM(quantity * unit_cost) as total, SUM(quantity) as units, COUNT(*) as count
+        FROM stock_adjustments
+        WHERE created_at >= ? AND created_at <= ?
+        GROUP BY type`;
 
     Promise.all([
         new Promise((resolve, reject) => db.all(salesSql, queryParams, (err, rows) => err ? reject(err) : resolve(rows))),
         new Promise((resolve, reject) => db.all(operatingExpensesSql, baseParams, (err, rows) => err ? reject(err) : resolve(rows))),
-    ]).then(([sales, operatingExpenses]) => {
+        new Promise((resolve, reject) => db.all(stockLossesSql, baseParams, (err, rows) => err ? reject(err) : resolve(rows))),
+    ]).then(([sales, operatingExpenses, stockLossRows]) => {
         let totalRevenue = 0;
         let totalCostOfGoods = 0;
+        let unitsSold = 0;
 
         sales.forEach(s => {
             totalRevenue += s.finalAmount;
             if (s.items) {
                 try {
                     const items = JSON.parse(s.items);
-                    const costOfGoods = items.reduce((acc, i) => acc + (i.purchasePrice * i.quantity), 0);
+                    const costOfGoods = items.reduce((acc, i) => acc + ((i.purchasePrice || 0) * i.quantity), 0);
                     totalCostOfGoods += costOfGoods;
+                    unitsSold += items.reduce((acc, i) => acc + (i.quantity || 0), 0);
                 } catch (e) {
                     console.error("Error parsing sales items in sales-profit endpoint", e);
                 }
@@ -1287,6 +1356,7 @@ app.get('/api/account/sales-profit', (req, res) => {
         });
 
         const totalExpenses = operatingExpenses.reduce((sum, e) => sum + e.amount, 0);
+        const totalStockLossesGlobal = stockLossRows.reduce((sum, r) => sum + (r.total || 0), 0);
         let incidenceRate = 0;
 
         // Calculate dynamic incidence rate for the selected period based on ALL sales vs ALL expenses for that period?
@@ -1303,7 +1373,23 @@ app.get('/api/account/sales-profit', (req, res) => {
              }
 
              const operatingCostForSelectedSales = totalRevenue * incidenceRate;
-             const realProfit = totalRevenue - totalCostOfGoods - operatingCostForSelectedSales;
+
+             // Las pérdidas de stock no pertenecen a una cuenta: si se filtra por cuenta,
+             // se asignan en proporción a lo que esa cuenta vendió (mismo criterio que los gastos operativos).
+             const revenueShare = accountId
+                 ? (totalGlobalRevenue > 0 ? totalRevenue / totalGlobalRevenue : 0)
+                 : 1;
+             const stockLosses = totalStockLossesGlobal * revenueShare;
+             const stockLossesBreakdown = stockLossRows.map(r => ({
+                 type: r.type,
+                 total: (r.total || 0) * revenueShare,
+                 units: r.units || 0,
+                 count: r.count || 0,
+             }));
+
+             const grossProfit = totalRevenue - totalCostOfGoods;
+             const netProfit = grossProfit - operatingCostForSelectedSales - stockLosses;
+             const realProfit = netProfit;
 
              res.json({
                  data: {
@@ -1313,7 +1399,18 @@ app.get('/api/account/sales-profit', (req, res) => {
                      realProfit,
                      incidenceRate,
                      totalExpenses,
-                     totalGlobalRevenue
+                     totalGlobalRevenue,
+                     // --- Nuevos campos (desglose de rentabilidad) ---
+                     salesCount: sales.length,
+                     unitsSold,
+                     grossProfit,
+                     grossMargin: totalRevenue > 0 ? grossProfit / totalRevenue : 0,
+                     stockLosses,
+                     stockLossesGlobal: totalStockLossesGlobal,
+                     stockLossesBreakdown,
+                     revenueShare,
+                     netProfit,
+                     netMargin: totalRevenue > 0 ? netProfit / totalRevenue : 0,
                  }
              });
         });

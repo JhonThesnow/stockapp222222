@@ -128,6 +128,14 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                 FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
             )`);
 
+            // Vínculo Inventario -> Finanzas: egreso de caja (opcional) generado por la baja
+            db.run(`ALTER TABLE stock_adjustments ADD COLUMN account_movement_id INTEGER`, (err) => {
+                if (err && !err.message.includes("duplicate column")) {
+                    console.log("Error adding account_movement_id to stock_adjustments:", err.message);
+                }
+            });
+            db.run(`CREATE INDEX IF NOT EXISTS idx_stock_adjustments_created_at ON stock_adjustments(created_at)`);
+
             db.run(`CREATE TABLE IF NOT EXISTS sales (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 accountId INTEGER,
@@ -247,7 +255,8 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                     ('Retiro Personal', 'withdrawal'), ('Pago a Proveedores', 'withdrawal'),
                     ('Alquiler', 'withdrawal'), ('Servicios (Luz, Agua)', 'withdrawal'),
                     ('Sueldos', 'withdrawal'), ('Marketing', 'withdrawal'),
-                    ('Impuestos', 'withdrawal'), ('Otros Gastos', 'withdrawal')
+                    ('Impuestos', 'withdrawal'), ('Otros Gastos', 'withdrawal'),
+                    ('Pérdida de Stock', 'withdrawal')
                 `);
 
                 const defaultMethods = [

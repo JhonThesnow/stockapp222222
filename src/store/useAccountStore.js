@@ -347,6 +347,48 @@ const useAccountStore = create((set, get) => ({
             return { success: false, error: e.message };
         }
     },
+
+    // --- Integración Inventario <-> Finanzas ---
+    ensureAccountsLoaded: async () => {
+        if (get().accounts.length === 0) {
+            await get().fetchAccounts();
+            await get().fetchCategories();
+        }
+        return get().accounts;
+    },
+
+    /**
+     * P&L normalizado del período seleccionado.
+     * Ganancia Bruta = Ingresos - Costo de Mercadería Vendida (COGS)
+     * Ganancia Neta  = Ganancia Bruta - Gastos Operativos asignados - Pérdidas de Stock
+     */
+    getProfitBreakdown: () => {
+        const s = get().salesProfitSummary || {};
+        const revenue = s.totalRevenue || 0;
+        const cogs = s.totalCostOfGoods || 0;
+        const operating = s.totalOperatingCosts || 0;
+        const stockLosses = s.stockLosses || 0;
+        const grossProfit = s.grossProfit ?? (revenue - cogs);
+        const netProfit = s.netProfit ?? (grossProfit - operating - stockLosses);
+        return {
+            revenue,
+            cogs,
+            operating,
+            stockLosses,
+            totalDeductions: operating + stockLosses,
+            grossProfit,
+            netProfit,
+            grossMargin: revenue > 0 ? grossProfit / revenue : 0,
+            netMargin: revenue > 0 ? netProfit / revenue : 0,
+            incidenceRate: s.incidenceRate || 0,
+            salesCount: s.salesCount || 0,
+            unitsSold: s.unitsSold || 0,
+            stockLossesBreakdown: s.stockLossesBreakdown || [],
+            revenueShare: s.revenueShare ?? 1,
+            totalExpenses: s.totalExpenses || 0,
+            totalGlobalRevenue: s.totalGlobalRevenue || 0,
+        };
+    },
 }));
 
 export default useAccountStore;
