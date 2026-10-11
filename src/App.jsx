@@ -15,6 +15,7 @@ const PreciosPage = lazy(() => import('./pages/PreciosPage'));
 const PedidosPage = lazy(() => import('./pages/PedidosPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+const AjustesPage = lazy(() => import('./pages/AjustesPage'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -39,7 +40,8 @@ import {
   FiRefreshCw, 
   FiTruck, 
   FiShield, 
-  FiLogOut 
+  FiLogOut,
+  FiSettings
 } from 'react-icons/fi';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useGlobalScanner, handleGlobalScan } from './hooks/useGlobalScanner';
@@ -175,6 +177,12 @@ const Navigation = ({ onLinkClick }) => {
               <span>Pedidos</span>
             </NavLink>
           </li>
+          <li>
+            <NavLink to="/ajustes" style={({ isActive }) => isActive ? activeLinkStyle : undefined} onClick={onLinkClick} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors">
+              <FiSettings />
+              <span>Ajustes</span>
+            </NavLink>
+          </li>
         </ul>
       </div>
 
@@ -248,6 +256,7 @@ const AppLayout = () => {
               <Route path="/pedidos" element={<PedidosPage />} />
               <Route path="/costos" element={<CostsPage />} />
               <Route path="/promociones" element={<PromotionsPage />} />
+              <Route path="/ajustes" element={<AjustesPage />} />
               {/* Ruta exclusiva de Administrador */}
               <Route 
                 path="/admin" 

@@ -28,3 +28,15 @@ server/inventory.db-wal
 inventory.db
 inventory.db-shm
 inventory.db-wal
+*credentials*.json
+backups_temp/
+server/backups_temp/
+backups/*.sqlite
+backups/
+backup_status.json
+server/backup_status.json
+oauth_tokens.json
+server/oauth_tokens.json
+.env
+server/.env
+

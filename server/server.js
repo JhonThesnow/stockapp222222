@@ -1,5 +1,6 @@
 /* eslint-env node */
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 
@@ -16,6 +17,7 @@ const salesRoutes = require('./routes/salesRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const accountRoutes = require('./routes/accountRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const backupRoutes = require('./routes/backupRoutes');
 
 // Importación del servicio de backups automatizados
 const { initBackupScheduler } = require('./services/backupService');
@@ -38,6 +40,7 @@ app.use('/api', salesRoutes);
 app.use('/api', reportRoutes);
 app.use('/api', accountRoutes);
 app.use('/api', orderRoutes);
+app.use('/api/backup', backupRoutes);
 
 // Manejo de errores no capturados
 process.on('uncaughtException', (err) => {
