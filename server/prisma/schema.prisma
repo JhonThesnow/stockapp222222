@@ -1,0 +1,237 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model account_movements {
+  id                  Int                  @id @default(autoincrement())
+  accountId           Int
+  categoryId          Int?
+  date                String
+  type                String
+  amount              Float
+  reason              String
+  movement_categories movement_categories? @relation(fields: [categoryId], references: [id], onUpdate: NoAction)
+  accounts            accounts             @relation(fields: [accountId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([accountId], map: "idx_account_movements_account_id")
+}
+
+model account_pockets {
+  id        Int      @id @default(autoincrement())
+  accountId Int
+  name      String
+  amount    Float?   @default(0)
+  accounts  accounts @relation(fields: [accountId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model accounts {
+  id                Int                 @id @default(autoincrement())
+  name              String              @unique(map: "sqlite_autoindex_accounts_1")
+  type              String
+  initialBalance    Float?              @default(0)
+  account_movements account_movements[]
+  account_pockets   account_pockets[]
+  cash_closings     cash_closings[]
+  expenses          expenses[]
+  sales             sales[]
+}
+
+model cash_closings {
+  id         Int      @id @default(autoincrement())
+  accountId  Int
+  date       String
+  expected   Float
+  counted    Float
+  difference Float
+  notes      String?
+  accounts   accounts @relation(fields: [accountId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([accountId], map: "idx_cash_closings_account_id")
+}
+
+model combo_items {
+  id                                        Int      @id @default(autoincrement())
+  combo_id                                  Int
+  product_id                                Int
+  quantity                                  Int
+  products_combo_items_product_idToproducts products @relation("combo_items_product_idToproducts", fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  products_combo_items_combo_idToproducts   products @relation("combo_items_combo_idToproducts", fields: [combo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model custom_orders {
+  id              Int     @id @default(autoincrement())
+  date            String
+  customer_name   String
+  phone           String?
+  description     String
+  advance_payment Float?  @default(0)
+  status          String  @default("active")
+
+  @@index([status], map: "idx_custom_orders_status")
+}
+
+model expenses {
+  id                  Int                  @id @default(autoincrement())
+  accountId           Int
+  categoryId          Int?
+  date                String
+  description         String
+  amount              Float
+  movement_categories movement_categories? @relation(fields: [categoryId], references: [id], onUpdate: NoAction)
+  accounts            accounts             @relation(fields: [accountId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([accountId], map: "idx_expenses_account_id")
+}
+
+model movement_categories {
+  id                Int                 @id @default(autoincrement())
+  name              String              @unique(map: "sqlite_autoindex_movement_categories_1")
+  type              String
+  account_movements account_movements[]
+  expenses          expenses[]
+}
+
+model operating_expenses {
+  id                   Int     @id @default(autoincrement())
+  date                 String
+  description          String
+  amount               Float
+  is_recurring         Int?    @default(0)
+  status               String? @default("pending")
+  paid_from_account_id Int?
+}
+
+model payment_methods {
+  id              Int    @id @default(autoincrement())
+  name            String @unique(map: "sqlite_autoindex_payment_methods_1")
+  isFixed         Int    @default(0)
+  commission_rate Float? @default(0)
+}
+
+model price_increases {
+  id       Int    @id @default(autoincrement())
+  date     String
+  details  String
+  products String
+}
+
+model products {
+  id                                           Int                 @id @default(autoincrement())
+  code                                         String?
+  name                                         String
+  type                                         String
+  brand                                        String?
+  subtype                                      String?
+  quantity                                     Int
+  purchasePrice                                Float
+  salePrices                                   String
+  lowStockThreshold                            Int?                @default(10)
+  is_combo                                     Boolean?            @default(false)
+  provider_url                                 String?
+  provider_price                               Float?
+  last_price_check                             String?
+  combo_items_combo_items_product_idToproducts combo_items[]       @relation("combo_items_product_idToproducts")
+  combo_items_combo_items_combo_idToproducts   combo_items[]       @relation("combo_items_combo_idToproducts")
+  stock_adjustments                            stock_adjustments[]
+
+  @@index([is_combo], map: "idx_products_is_combo")
+  @@index([type], map: "idx_products_type")
+  @@index([brand], map: "idx_products_brand")
+  @@index([name], map: "idx_products_name")
+  @@index([code], map: "idx_products_code")
+}
+
+model promotions {
+  id             Int      @id @default(autoincrement())
+  name           String
+  type           String
+  category_id    String?
+  brand_id       String?
+  min_quantity   Int
+  discount_type  String
+  discount_value Float
+  active         Boolean? @default(true)
+  product_id     Int?
+  buy_quantity   Int?     @default(3)
+  pay_quantity   Int?     @default(2)
+  description    String?
+}
+
+model purchase_orders {
+  id     Int     @id @default(autoincrement())
+  date   String
+  status String  @default("in_progress")
+  groups String
+  notes  String?
+}
+
+model sales {
+  id                 Int       @id @default(autoincrement())
+  accountId          Int?
+  shiftId            Int?
+  date               String
+  items              String
+  subtotal           Float
+  discount           Float?
+  totalAmount        Float
+  status             String    @default("pending")
+  paymentMethod      String?
+  finalDiscount      Float?    @default(0)
+  finalAmount        Float?
+  appliedTax         Float?    @default(0)
+  cancellationReason String?
+  userId             Int?
+  shifts             shifts?   @relation(fields: [shiftId], references: [id], onUpdate: NoAction)
+  accounts           accounts? @relation(fields: [accountId], references: [id], onUpdate: NoAction)
+
+  @@index([accountId], map: "idx_sales_account_id")
+  @@index([shiftId], map: "idx_sales_shift_id")
+  @@index([paymentMethod], map: "idx_sales_payment_method")
+  @@index([status], map: "idx_sales_status")
+  @@index([date], map: "idx_sales_date")
+}
+
+model shifts {
+  id          Int     @id @default(autoincrement())
+  startTime   String
+  endTime     String?
+  status      String  @default("active")
+  initialCash Float?  @default(0)
+  sales       sales[]
+
+  @@index([status], map: "idx_shifts_status")
+}
+
+model stock_adjustments {
+  id                  Int      @id @default(autoincrement())
+  product_id          Int
+  quantity            Int
+  type                String
+  reason              String?
+  unit_cost           Float
+  created_at          String
+  account_movement_id Int?
+  products            products @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at], map: "idx_stock_adjustments_created_at")
+}
+
+model stock_entries {
+  id       Int    @id @default(autoincrement())
+  date     String
+  products String
+}
+
+model users {
+  id         Int    @id @default(autoincrement())
+  username   String @unique(map: "sqlite_autoindex_users_1")
+  password   String
+  name       String
+  role       String @default("empleado")
+  created_at String
+}
