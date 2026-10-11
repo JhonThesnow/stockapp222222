@@ -41,11 +41,14 @@ const useSalesStore = create(persist((set, get) => ({
             const json = await res.json();
             if (res.ok) {
                 set({ currentShift: json.data });
+                return json.data;
             } else {
                 console.error("Error fetching shift:", json.error);
+                return null;
             }
         } catch (error) {
             console.error("Error fetching shift:", error);
+            return null;
         }
     },
     startShift: async (initialCash = 0) => {
@@ -148,18 +151,28 @@ const useSalesStore = create(persist((set, get) => ({
             finalTotal = roundCash(saleDetails.totalAmount);
         }
 
+        let currentUserId = null;
+        try {
+            const authStorage = JSON.parse(localStorage.getItem('auth-storage') || '{}');
+            currentUserId = authStorage?.state?.user?.id || null;
+        } catch {
+            currentUserId = null;
+        }
+
         const saleData = {
             subtotal: saleDetails.subtotal,
             discount: saleDetails.discount,
             totalAmount: finalTotal,
             paymentMethod: saleDetails.paymentMethod || null,
+            userId: currentUserId,
             items: cart.map(item => ({
                 productId: item.id.toString().startsWith('qs-') ? null : item.id,
                 fullName: `${item.name}${item.subtype ? ` - ${item.subtype}` : ''}`,
                 brand: item.brand || null,
                 quantity: item.quantity,
                 unitPrice: item.salePrices[0]?.price || 0,
-                purchasePrice: item.purchasePrice,
+                purchasePrice: Number(item.purchasePrice) || 0,
+                is_combo: item.is_combo ? 1 : 0,
             })),
         };
 
@@ -183,20 +196,49 @@ const useSalesStore = create(persist((set, get) => ({
         }
     },
 
-    fetchAllSales: async () => {
+    fetchAllSales: async (filters) => {
         set({ loading: true, error: null });
         try {
-            const response = await fetch(`${API_URL}/sales`);
+            const currentShift = get().currentShift;
+            const effectiveFilters = filters !== undefined ? filters : (
+                currentShift ? { shiftId: currentShift.id, includePending: true } : { pendingOnly: true }
+            );
+
+            let url = `${API_URL}/sales`;
+            const params = new URLSearchParams();
+            if (effectiveFilters.shiftId) {
+                params.append('shiftId', effectiveFilters.shiftId);
+                if (effectiveFilters.includePending) {
+                    params.append('includePending', 'true');
+                }
+            } else if (effectiveFilters.pendingOnly) {
+                params.append('status', 'pending');
+            }
+
+            const qs = params.toString();
+            if (qs) url += `?${qs}`;
+
+            const response = await fetch(url);
             if (!response.ok) throw new Error('No se pudieron obtener las ventas');
             const json = await response.json();
-            const allSales = json.data.map(s => ({ ...s, items: JSON.parse(s.items) }));
+            const allSales = (json.data || []).map(s => {
+                let items = [];
+                try {
+                    items = typeof s.items === 'string' ? JSON.parse(s.items) : (s.items || []);
+                } catch {
+                    items = [];
+                }
+                return { ...s, items };
+            });
             set({
                 pendingSales: allSales.filter(s => s.status === 'pending'),
                 completedSales: allSales.filter(s => s.status === 'completed' || s.status === 'canceled'),
                 loading: false
             });
+            return allSales;
         } catch (e) {
             set({ loading: false, error: e.message });
+            return [];
         }
     },
 
@@ -231,16 +273,25 @@ const useSalesStore = create(persist((set, get) => ({
                 throw new Error("No se encontró una cuenta apropiada para registrar la venta.");
             }
 
+            let currentUserId = null;
+            try {
+                const authStorage = JSON.parse(localStorage.getItem('auth-storage') || '{}');
+                currentUserId = authStorage?.state?.user?.id || null;
+            } catch {
+                currentUserId = null;
+            }
+
             const response = await fetch(`${API_URL}/sales/${saleId}/complete`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...saleData, accountId }),
+                body: JSON.stringify({ ...saleData, accountId, userId: currentUserId }),
             });
             if (!response.ok) {
                 const errorText = await response.json();
                 throw new Error(errorText.error || 'Falló al completar la venta');
             }
             get().fetchAllSales();
+            useInventoryStore.getState().invalidateProductsCache();
             useInventoryStore.getState().fetchProducts();
             useAccountStore.getState().fetchAccountSummary();
             return { success: true };
@@ -313,17 +364,19 @@ const useSalesStore = create(persist((set, get) => ({
         }
     },
 
-    deletePendingSale: async (saleId) => {
-        if (!window.confirm('¿Estás seguro de que quieres eliminar esta venta pendiente?')) return;
+    deletePendingSale: async (saleId, skipConfirm = false) => {
+        if (!skipConfirm && !window.confirm('¿Estás seguro de que quieres eliminar esta venta pendiente?')) return { success: false };
         try {
             const response = await fetch(`${API_URL}/sales/pending/${saleId}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Falló al eliminar la venta');
             set(state => ({
                 pendingSales: state.pendingSales.filter(s => s.id !== saleId)
             }));
+            return { success: true };
         } catch (e) {
             console.error("Error deleting pending sale:", e);
-            alert(e.message);
+            if (!skipConfirm) alert(e.message);
+            return { success: false, error: e.message };
         }
     },
 

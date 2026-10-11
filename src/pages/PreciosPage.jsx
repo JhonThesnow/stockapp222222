@@ -1,16 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-import { FiRefreshCw, FiExternalLink, FiSearch, FiSave, FiInfo } from 'react-icons/fi';
+import {
+    RefreshCw,
+    ExternalLink,
+    Search,
+    Save,
+    Info,
+    Settings,
+    CheckSquare,
+    Square,
+    Play,
+    Pause,
+    XCircle,
+    SlidersHorizontal,
+    TrendingUp,
+    AlertCircle,
+    CheckCircle2,
+    DollarSign,
+    Sparkles,
+    Check,
+    X,
+    Layers,
+    ArrowUpRight,
+    ArrowRight
+} from 'lucide-react';
 import useInventoryStore from '../store/useInventoryStore';
 import { formatNumber } from '../utils/formatting';
 import usePriceSyncStore from '../store/usePriceSyncStore';
 import PriceSyncSettingsModal from '../components/PriceSyncSettingsModal';
-import { FiSettings, FiCheckSquare, FiSquare, FiPlay, FiPause, FiXCircle } from 'react-icons/fi';
 
 const API_URL = '/api';
 
 const PreciosPage = () => {
-        const { products, fetchProducts, updateProduct } = useInventoryStore();
+    const { products, fetchProducts, updateProduct } = useInventoryStore();
     const { settings, startSync, pauseSync, resumeSync, cancelSync, isSyncing, isPaused, queue, currentIndex } = usePriceSyncStore();
     const [loadingCheck, setLoadingCheck] = useState({});
     const [searchTerm, setSearchTerm] = useState('');
@@ -19,21 +41,22 @@ const PreciosPage = () => {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     useEffect(() => {
-        // Aseguramos de tener productos cargados
-        fetchProducts({ page: 1, limit: 1000 }); // Cargamos más para filtrar
+        fetchProducts({ page: 1, limit: 1000 });
     }, [fetchProducts]);
 
-        // Filtrar productos que tengan provider_url configurada
-    const productsWithProvider = products.filter(p => p.provider_url && p.provider_url.trim() !== '');
+    // Filtrar productos que tengan provider_url configurada
+    const productsWithProvider = useMemo(() => {
+        return products.filter(p => p.provider_url && p.provider_url.trim() !== '');
+    }, [products]);
 
     // Check if product has significant change
     const hasSignificantChange = (product) => {
         if (!product.provider_price) return false;
         const diff = product.provider_price - product.purchasePrice;
-        if (diff <= 0) return false; // Solo aumentos o podemos considerar bajadas usando Math.abs(diff)
+        if (diff <= 0) return false;
 
         if (settings.thresholdType === 'percentage') {
-            const percentChange = (diff / product.purchasePrice) * 100;
+            const percentChange = (diff / (product.purchasePrice || 1)) * 100;
             return percentChange >= settings.thresholdValue;
         } else {
             return diff >= settings.thresholdValue;
@@ -41,18 +64,25 @@ const PreciosPage = () => {
     };
 
     // Filtro adicional por búsqueda local y tab
-    const filteredProducts = productsWithProvider.filter(p => {
-        const matchesSearch =
-            p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (p.code && p.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (p.brand && p.brand.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (p.type && p.type.toLowerCase().includes(searchTerm.toLowerCase())) ||
-            (p.subtype && p.subtype.toLowerCase().includes(searchTerm.toLowerCase()));
+    const filteredProducts = useMemo(() => {
+        return productsWithProvider.filter(p => {
+            const term = searchTerm.toLowerCase();
+            const matchesSearch =
+                p.name?.toLowerCase().includes(term) ||
+                (p.code && p.code.toLowerCase().includes(term)) ||
+                (p.brand && p.brand.toLowerCase().includes(term)) ||
+                (p.type && p.type.toLowerCase().includes(term)) ||
+                (p.subtype && p.subtype.toLowerCase().includes(term));
 
-        const matchesTab = activeTab === 'todos' || (activeTab === 'cambios' && hasSignificantChange(p));
+            const matchesTab = activeTab === 'todos' || (activeTab === 'cambios' && hasSignificantChange(p));
 
-        return matchesSearch && matchesTab;
-    });
+            return matchesSearch && matchesTab;
+        });
+    }, [productsWithProvider, searchTerm, activeTab, settings]);
+
+    const productsWithChangesCount = useMemo(() => {
+        return productsWithProvider.filter(hasSignificantChange).length;
+    }, [productsWithProvider, settings]);
 
     const handleSelectAll = () => {
         if (selectedIds.size === filteredProducts.length) {
@@ -86,7 +116,6 @@ const PreciosPage = () => {
 
             const now = new Date().toISOString();
 
-            // Actualizar en base de datos local
             const updateRes = await fetch(`${API_URL}/products/${product.id}/provider`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -100,9 +129,8 @@ const PreciosPage = () => {
                 throw new Error('Error al guardar el precio comprobado localmente');
             }
 
-            toast.success(`Precio comprobado para ${product.name}: $${formatNumber(data.provider_price)}`);
-            fetchProducts({ page: 1, limit: 1000 }); // Refrescar
-
+            toast.success(`Comprobado: $${formatNumber(data.provider_price)} para ${product.name}`);
+            fetchProducts({ page: 1, limit: 1000 });
         } catch (error) {
             console.error(error);
             toast.error(error.message);
@@ -111,7 +139,6 @@ const PreciosPage = () => {
         }
     };
 
-    // Lógica de redondeo
     const roundPrice = (price) => {
         const rounded = Math.round(price);
         const lastTwoDigits = rounded % 100;
@@ -124,7 +151,6 @@ const PreciosPage = () => {
         }
     };
 
-    // Actualización masiva
     const handleMassUpdate = async (type) => {
         const productsToUpdate = selectedIds.size > 0
             ? filteredProducts.filter(p => selectedIds.has(p.id))
@@ -132,7 +158,6 @@ const PreciosPage = () => {
 
         if (productsToUpdate.length === 0) return;
 
-        // Mostrar un toast para el progreso
         const toastId = toast.loading(`Actualizando ${productsToUpdate.length} productos...`);
 
         let successCount = 0;
@@ -147,7 +172,7 @@ const PreciosPage = () => {
                 if (type === 'cost_only') {
                     updatedProductData.purchasePrice = product.provider_price;
                 } else if (type === 'cost_and_margin') {
-                    const oldCost = product.purchasePrice || 1; // Prevenir división por 0
+                    const oldCost = product.purchasePrice || 1;
                     const multiplier = product.provider_price / oldCost;
 
                     updatedProductData.purchasePrice = product.provider_price;
@@ -173,7 +198,7 @@ const PreciosPage = () => {
             }
         }
 
-        fetchProducts({ page: 1, limit: 1000 }); // Refrescar
+        fetchProducts({ page: 1, limit: 1000 });
         setSelectedIds(new Set());
         toast.dismiss(toastId);
 
@@ -188,41 +213,66 @@ const PreciosPage = () => {
         if (!product.provider_price) return;
 
         try {
-            // Re-utilizamos el endpoint existente de PUT de productos completo,
-            // pasando la data del producto pero actualizando el purchasePrice
             const updatedProductData = {
                 ...product,
                 purchasePrice: product.provider_price
             };
 
             await updateProduct(product.id, updatedProductData);
-            toast.success('Costo actualizado correctamente.');
-            fetchProducts({ page: 1, limit: 1000 }); // Refrescar
-
+            toast.success(`Costo local actualizado a $${formatNumber(product.provider_price)}`);
+            fetchProducts({ page: 1, limit: 1000 });
         } catch (error) {
             toast.error('Error al actualizar el costo local.');
         }
     };
 
     return (
-        <div className="p-4 sm:p-6 pb-24 md:pb-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <h1 className="text-2xl font-bold text-gray-800 flex items-center">
-                    <FiRefreshCw className="mr-2" />
-                    Sincronización de Precios
-                </h1>
-                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+        <div className="p-4 md:p-6 lg:p-8 bg-slate-50 min-h-screen pb-32 text-slate-800">
+            {/* ENCABEZADO */}
+            <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm shadow-indigo-500/20">
+                            <RefreshCw size={22} />
+                        </div>
+                        Sincronización de Precios
+                    </h1>
+                    <p className="text-sm text-slate-500 mt-1">
+                        Scraping y monitoreo de precios del proveedor en tiempo real para mantener márgenes.
+                    </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                    {/* Panel de proceso de sincronización */}
                     {isSyncing || isPaused ? (
-                        <div className="flex items-center gap-2 bg-blue-50 text-blue-800 px-4 py-2 rounded-lg border border-blue-200">
-                            <span className="text-sm font-medium mr-2">
-                                {currentIndex} / {queue.length}
+                        <div className="flex items-center gap-2.5 bg-indigo-50 border border-indigo-200 px-3.5 py-2 rounded-xl text-indigo-900 shadow-xs">
+                            <span className="text-xs font-bold">
+                                {currentIndex} / {queue.length} procesados
                             </span>
                             {!isPaused ? (
-                                <button onClick={pauseSync} className="p-1 hover:bg-blue-100 rounded" title="Pausar"><FiPause /></button>
+                                <button
+                                    onClick={pauseSync}
+                                    className="p-1.5 hover:bg-indigo-100 rounded-lg text-indigo-700 transition-colors"
+                                    title="Pausar"
+                                >
+                                    <Pause size={16} />
+                                </button>
                             ) : (
-                                <button onClick={resumeSync} className="p-1 hover:bg-blue-100 rounded" title="Reanudar"><FiPlay /></button>
+                                <button
+                                    onClick={resumeSync}
+                                    className="p-1.5 hover:bg-indigo-100 rounded-lg text-indigo-700 transition-colors"
+                                    title="Reanudar"
+                                >
+                                    <Play size={16} />
+                                </button>
                             )}
-                            <button onClick={cancelSync} className="p-1 hover:bg-blue-100 rounded" title="Cancelar"><FiXCircle /></button>
+                            <button
+                                onClick={cancelSync}
+                                className="p-1.5 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors"
+                                title="Cancelar"
+                            >
+                                <XCircle size={16} />
+                            </button>
                         </div>
                     ) : (
                         <button
@@ -231,196 +281,318 @@ const PreciosPage = () => {
                                 startSync(idsToSync);
                             }}
                             disabled={filteredProducts.length === 0}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center disabled:opacity-50"
+                            className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold shadow-sm shadow-indigo-500/20 transition-all active:scale-[0.99] disabled:opacity-50"
                         >
-                            <FiPlay className="mr-2" />
-                            Sincronizar {selectedIds.size > 0 ? `${selectedIds.size} seleccionados` : `${filteredProducts.length} productos`}
+                            <Play size={16} />
+                            <span>
+                                Sincronizar {selectedIds.size > 0 ? `(${selectedIds.size})` : `(${filteredProducts.length})`}
+                            </span>
                         </button>
                     )}
+
                     <button
                         onClick={() => setIsSettingsOpen(true)}
-                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 flex items-center justify-center"
+                        className="flex items-center justify-center gap-2 py-2.5 px-3.5 bg-white border border-slate-200 hover:bg-slate-100 active:bg-slate-200 rounded-xl text-slate-700 font-semibold text-xs transition-all shadow-xs"
                     >
-                        <FiSettings className="mr-2" />
-                        Ajustes
+                        <Settings size={16} />
+                        <span>Ajustes</span>
                     </button>
                 </div>
             </div>
 
-                        <div className="bg-white p-4 rounded-lg shadow mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto items-start sm:items-center">
-                    <div className="flex gap-2">
+            {/* QUICK STATS */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                        <Layers size={20} />
+                    </div>
+                    <div className="min-w-0">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                            Vinculados a Web
+                        </span>
+                        <span className="text-lg md:text-xl font-bold text-slate-900">
+                            {productsWithProvider.length} productos
+                        </span>
+                    </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                        <AlertCircle size={20} />
+                    </div>
+                    <div className="min-w-0">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                            Con Variación de Precio
+                        </span>
+                        <span className="text-lg md:text-xl font-bold text-amber-600">
+                            {productsWithChangesCount} detectados
+                        </span>
+                    </div>
+                </div>
+
+                <div className="col-span-2 md:col-span-1 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                        <CheckSquare size={20} />
+                    </div>
+                    <div className="min-w-0">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                            Selección Actual
+                        </span>
+                        <span className="text-lg md:text-xl font-bold text-slate-900">
+                            {selectedIds.size > 0 ? `${selectedIds.size} ítems` : 'Ninguno marcado'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* BARRA DE ACCIÓN, FILTROS Y BÚSQUEDA */}
+            <div className="bg-white p-3.5 md:p-4 rounded-2xl border border-slate-200/80 shadow-xs mb-6 flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                    {/* Segmented Control */}
+                    <div className="bg-slate-100 p-1 rounded-xl flex gap-1">
                         <button
                             onClick={() => setActiveTab('todos')}
-                            className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'todos' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                activeTab === 'todos'
+                                    ? 'bg-white text-indigo-700 shadow-xs'
+                                    : 'text-slate-600 hover:text-slate-900'
+                            }`}
                         >
                             Todos ({productsWithProvider.length})
                         </button>
                         <button
                             onClick={() => setActiveTab('cambios')}
-                            className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'cambios' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                                activeTab === 'cambios'
+                                    ? 'bg-white text-amber-600 shadow-xs'
+                                    : 'text-slate-600 hover:text-slate-900'
+                            }`}
                         >
-                            Con Cambios ({productsWithProvider.filter(hasSignificantChange).length})
+                            <span>Con Aumentos</span>
+                            {productsWithChangesCount > 0 && (
+                                <span className="bg-amber-100 text-amber-800 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                                    {productsWithChangesCount}
+                                </span>
+                            )}
                         </button>
                     </div>
 
-                    {activeTab === 'cambios' && filteredProducts.length > 0 && (
-                        <div className="flex gap-2 items-center bg-green-50 p-2 rounded-md border border-green-200 w-full sm:w-auto">
-                            <span className="text-xs font-bold text-green-800 ml-2 hidden lg:inline">Acción Masiva:</span>
+                    {/* Acciones Masivas si estamos en cambios o hay seleccionados */}
+                    {(activeTab === 'cambios' || selectedIds.size > 0) && filteredProducts.length > 0 && (
+                        <div className="flex items-center gap-1.5 bg-emerald-50/80 border border-emerald-200/80 p-1 rounded-xl">
+                            <span className="text-[11px] font-bold text-emerald-800 px-2 hidden sm:inline">
+                                Aplicar a {selectedIds.size > 0 ? selectedIds.size : filteredProducts.length}:
+                            </span>
                             <button
                                 onClick={() => handleMassUpdate('cost_only')}
-                                className="bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 text-xs font-medium"
-                                title="Actualizar solo el precio de compra"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg text-xs font-semibold shadow-xs transition-colors"
+                                title="Actualizar solo el precio de costo local"
                             >
                                 Solo Costo
                             </button>
                             <button
                                 onClick={() => handleMassUpdate('cost_and_margin')}
-                                className="bg-emerald-600 text-white px-3 py-1.5 rounded hover:bg-emerald-700 text-xs font-medium"
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-lg text-xs font-semibold shadow-xs transition-colors"
                                 title="Actualizar costo y recalcular precios de venta manteniendo margen"
                             >
-                                Costo + Ganancia
+                                Costo + Márgenes
                             </button>
                         </div>
                     )}
                 </div>
 
-                <div className="relative w-full md:w-80">
-                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                {/* Buscador */}
+                <div className="relative w-full lg:w-80">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                     <input
                         type="text"
-                        placeholder="Buscar por nombre, código, marca, tipo..."
-                        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Buscar por nombre, código o marca..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
                     />
+                    {searchTerm && (
+                        <button
+                            onClick={() => setSearchTerm('')}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        >
+                            <X size={14} />
+                        </button>
+                    )}
                 </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="block w-full overflow-x-auto">
-                    <table className="min-w-full block md:table divide-y divide-gray-200">
-                                                <thead className="bg-gray-50 hidden md:table-header-group">
-                            <tr className="md:table-row block">
-                                <th className="px-6 py-3 text-left w-12">
-                                    <button onClick={handleSelectAll} className="text-gray-500 hover:text-gray-700">
-                                        {filteredProducts.length > 0 && selectedIds.size === filteredProducts.length ? (
-                                            <FiCheckSquare size={20} />
-                                        ) : (
-                                            <FiSquare size={20} />
-                                        )}
-                                    </button>
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Costo Local</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Costo Proveedor</th>
-                                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Última Comprobación</th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200 block md:table-row-group">
-                            {filteredProducts.length === 0 ? (
-                                <tr className="block md:table-row">
-                                    <td colSpan="6" className="px-6 py-12 text-center text-gray-500 block md:table-cell w-full">
-                                        <div className="flex flex-col items-center">
-                                            <FiInfo className="w-12 h-12 text-gray-400 mb-2" />
-                                            <p>No se encontraron productos con URL de proveedor configurada.</p>
-                                            <p className="text-sm mt-1">Configura la URL de proveedor desde la edición de producto en Inventario.</p>
-                                        </div>
-                                    </td>
-                                </tr>
+            {/* TABLA RESPONSIVA / LISTA MODERNA */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+                {/* Header de tabla (desktop) con botón de seleccionar todos */}
+                <div className="p-3.5 bg-slate-50 border-b border-slate-200/80 flex items-center justify-between text-xs font-bold text-slate-600">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleSelectAll}
+                            className="p-1 hover:bg-slate-200/70 rounded-lg text-slate-600 transition-colors flex items-center gap-1.5"
+                            title="Seleccionar o deseleccionar todos"
+                        >
+                            {filteredProducts.length > 0 && selectedIds.size === filteredProducts.length ? (
+                                <CheckSquare size={18} className="text-indigo-600" />
                             ) : (
-                                filteredProducts.map((product) => {
-                                    const diff = product.provider_price ? product.provider_price - product.purchasePrice : 0;
-                                    const hasDiff = Math.abs(diff) > 0.01;
-
-                                    return (
-                                        <tr key={product.id} className={`hover:bg-gray-50 block md:table-row border-b border-gray-200 md:border-b-0 pb-4 md:pb-0 ${selectedIds.has(product.id) ? 'bg-indigo-50/50' : ''}`}>
-                                            <td className="px-4 py-2 md:px-6 md:py-4 block md:table-cell w-full md:w-12">
-                                                <div className="flex justify-between md:justify-center items-center">
-                                                    <span className="text-xs font-bold text-gray-500 uppercase md:hidden">Seleccionar:</span>
-                                                    <button onClick={() => toggleSelection(product.id)} className="text-gray-500 hover:text-indigo-600">
-                                                        {selectedIds.has(product.id) ? <FiCheckSquare size={20} className="text-indigo-600" /> : <FiSquare size={20} />}
-                                                    </button>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-2 md:px-6 md:py-4 block md:table-cell">
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium text-gray-900">{product.name} {product.subtype}</span>
-                                                    <span className="text-xs text-gray-500">{product.brand} | {product.code}</span>
-                                                    <a href={product.provider_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline flex items-center mt-1 w-fit">
-                                                        Ver en web <FiExternalLink className="ml-1" />
-                                                    </a>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-1 md:px-6 md:py-4 block md:table-cell md:text-right">
-                                                <div className="flex justify-between items-center md:block">
-                                                    <span className="text-xs font-bold text-gray-500 uppercase md:hidden">Costo Local:</span>
-                                                    <span className="font-medium">${formatNumber(product.purchasePrice)}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-1 md:px-6 md:py-4 block md:table-cell md:text-right">
-                                                <div className="flex justify-between items-center md:flex-col md:items-end">
-                                                    <span className="text-xs font-bold text-gray-500 uppercase md:hidden">Costo Proveedor:</span>
-                                                    {product.provider_price !== null && product.provider_price !== undefined ? (
-                                                        <div className="flex flex-col items-end">
-                                                            <span className={`font-medium ${hasDiff ? 'text-orange-600' : 'text-green-600'}`}>
-                                                                ${formatNumber(product.provider_price)}
-                                                            </span>
-                                                            {hasDiff && (
-                                                                <span className="text-xs text-gray-500">
-                                                                    Diferencia: ${formatNumber(diff)}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-gray-400 italic">No comprobado</span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-1 md:px-6 md:py-4 block md:table-cell md:text-center text-sm text-gray-500">
-                                                <div className="flex justify-between items-center md:block">
-                                                    <span className="text-xs font-bold text-gray-500 uppercase md:hidden">Última Comprobación:</span>
-                                                    <span>{product.last_price_check ? new Date(product.last_price_check).toLocaleDateString('es-AR', {
-                                                        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute:'2-digit'
-                                                    }) : '-'}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 md:px-6 md:py-4 block md:table-cell md:text-right text-sm font-medium">
-                                                <div className="flex flex-wrap items-center justify-start md:justify-end gap-2">
-                                                    <button
-                                                        onClick={() => handleCheckPrice(product)}
-                                                        disabled={loadingCheck[product.id]}
-                                                        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                                                    >
-                                                        {loadingCheck[product.id] ? (
-                                                            <FiRefreshCw className="mr-1.5 animate-spin" />
-                                                        ) : (
-                                                            <FiSearch className="mr-1.5" />
-                                                        )}
-                                                        Comprobar
-                                                    </button>
-
-                                                    {product.provider_price !== null && product.provider_price !== undefined && hasDiff && (
-                                                        <button
-                                                            onClick={() => handleUpdateCost(product)}
-                                                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                                                            title="Actualizar Costo Local con el de Proveedor"
-                                                        >
-                                                            <FiSave className="mr-1.5" />
-                                                            Actualizar costo
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })
+                                <Square size={18} />
                             )}
-                        </tbody>
-                    </table>
+                            <span className="font-semibold text-slate-700">Seleccionar todos</span>
+                        </button>
+                    </div>
+
+                    <span className="text-slate-400 text-[11px] uppercase tracking-wider hidden md:inline">
+                        {filteredProducts.length} productos listados
+                    </span>
                 </div>
+
+                {/* Contenido */}
+                {filteredProducts.length === 0 ? (
+                    <div className="p-16 text-center text-slate-400 flex flex-col items-center">
+                        <Info size={44} className="text-slate-300 mb-2.5" />
+                        <p className="font-semibold text-slate-700 text-sm">
+                            {productsWithProvider.length === 0
+                                ? 'No tenés productos con enlace de proveedor configurado.'
+                                : 'No hay productos que coincidan con los filtros actuales.'}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1 max-w-md">
+                            {productsWithProvider.length === 0
+                                ? 'Para monitorear precios, editá un producto en Inventario y completá el campo "URL del proveedor".'
+                                : 'Cambiá la pestaña o el buscador para ver los demás artículos.'}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="divide-y divide-slate-100">
+                        {filteredProducts.map((product) => {
+                            const isSelected = selectedIds.has(product.id);
+                            const diff = product.provider_price ? product.provider_price - product.purchasePrice : 0;
+                            const hasDiff = Math.abs(diff) > 0.01;
+                            const isHigher = diff > 0.01;
+
+                            return (
+                                <div
+                                    key={product.id}
+                                    className={`p-4 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+                                        isSelected ? 'bg-indigo-50/40' : 'hover:bg-slate-50/80'
+                                    }`}
+                                >
+                                    {/* Selección y Datos del Producto */}
+                                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                                        <button
+                                            onClick={() => toggleSelection(product.id)}
+                                            className="mt-0.5 p-1 text-slate-400 hover:text-indigo-600 rounded-lg"
+                                        >
+                                            {isSelected ? (
+                                                <CheckSquare size={19} className="text-indigo-600" />
+                                            ) : (
+                                                <Square size={19} />
+                                            )}
+                                        </button>
+
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <span className="font-bold text-slate-900 text-sm">
+                                                    {product.name} {product.subtype}
+                                                </span>
+                                                {product.code && (
+                                                    <span className="text-[11px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
+                                                        {product.code}
+                                                    </span>
+                                                )}
+                                                {product.brand && (
+                                                    <span className="text-[11px] text-slate-400 font-medium">
+                                                        ({product.brand})
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-slate-500">
+                                                <a
+                                                    href={product.provider_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1 text-blue-600 hover:underline font-medium"
+                                                >
+                                                    <span>Web proveedor</span>
+                                                    <ExternalLink size={12} />
+                                                </a>
+
+                                                {product.last_price_check && (
+                                                    <span className="text-slate-400 text-[11px]">
+                                                        Comprobado: {new Date(product.last_price_check).toLocaleDateString('es-AR', {
+                                                            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+                                                        })}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Comparativa de Costos (Local vs Proveedor) */}
+                                    <div className="flex flex-wrap items-center justify-between md:justify-end gap-4 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                                        {/* Costo Local */}
+                                        <div className="text-left md:text-right">
+                                            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">
+                                                Costo Local
+                                            </span>
+                                            <span className="font-extrabold text-slate-800 text-sm">
+                                                ${formatNumber(product.purchasePrice)}
+                                            </span>
+                                        </div>
+
+                                        {/* Costo Proveedor & Diferencia */}
+                                        <div className="text-right min-w-[110px]">
+                                            <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">
+                                                En Proveedor
+                                            </span>
+                                            {product.provider_price !== null && product.provider_price !== undefined ? (
+                                                <div className="flex flex-col items-end">
+                                                    <span className={`font-extrabold text-sm ${isHigher ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                                        ${formatNumber(product.provider_price)}
+                                                    </span>
+                                                    {hasDiff && (
+                                                        <span className={`text-[10px] font-bold flex items-center gap-0.5 ${isHigher ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                                            {isHigher ? '+' : ''}${formatNumber(diff)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-slate-400 italic">No comprobado</span>
+                                            )}
+                                        </div>
+
+                                        {/* Acciones */}
+                                        <div className="flex items-center gap-1.5 self-end md:self-center">
+                                            <button
+                                                onClick={() => handleCheckPrice(product)}
+                                                disabled={loadingCheck[product.id]}
+                                                className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 text-indigo-700 border border-indigo-200/80 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all disabled:opacity-50"
+                                                title="Comprobar precio scrapeando la web"
+                                            >
+                                                <RefreshCw size={13} className={loadingCheck[product.id] ? "animate-spin" : ""} />
+                                                <span>{loadingCheck[product.id] ? 'Leyendo...' : 'Comprobar'}</span>
+                                            </button>
+
+                                            {product.provider_price !== null && product.provider_price !== undefined && hasDiff && (
+                                                <button
+                                                    onClick={() => handleUpdateCost(product)}
+                                                    className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1 shadow-xs shadow-emerald-500/20 transition-all active:scale-95"
+                                                    title="Actualizar costo local con el del proveedor"
+                                                >
+                                                    <Save size={13} />
+                                                    <span>Actualizar</span>
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
+
+            {/* Modal de Configuración */}
             <PriceSyncSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
         </div>
     );

@@ -40,6 +40,17 @@ const BottomNav = () => {
                         </Link>
 
                         <Link
+                            to="/admin"
+                            className="h-12 flex items-center gap-3 text-indigo-700 hover:text-indigo-900 bg-indigo-50/70 px-2 rounded-lg"
+                            onClick={() => setIsMenuOpen(false)}
+                        >
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                            <span className="font-bold">Panel Admin</span>
+                        </Link>
+
+                        <Link
                             to="/encargos"
                             className="h-12 flex items-center gap-3 text-gray-700 hover:text-blue-600 px-2 rounded-lg hover:bg-gray-50"
                             onClick={() => setIsMenuOpen(false)}
@@ -107,6 +118,22 @@ const BottomNav = () => {
                             </svg>
                             <span className="font-medium">Promociones</span>
                         </Link>
+
+                        <button
+                            onClick={() => {
+                                setIsMenuOpen(false);
+                                localStorage.removeItem('auth-storage');
+                                window.location.href = '/login';
+                            }}
+                            className="h-12 flex items-center gap-3 text-red-600 hover:text-red-700 px-2 rounded-lg hover:bg-red-50 text-left w-full mt-2 border-t pt-2"
+                        >
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                            <span className="font-medium">Cerrar Sesión</span>
+                        </button>
                     </div>
                 </>
             )}

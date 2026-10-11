@@ -32,15 +32,47 @@ const useInventoryStore = create((set, get) => ({
     }),
     clearSelectedProductsForIncome: () => set({ selectedProductsForIncome: {} }),
 
+    allProducts: [],
+    allProductsLastFetched: null,
+    loadingAllProducts: false,
+    fetchAllProducts: async (force = false) => {
+        const { allProducts, allProductsLastFetched, loadingAllProducts } = get();
+        const now = Date.now();
+        // Usar caché si ya se cargó y pasaron menos de 60 segundos, salvo que force sea true
+        if (!force && allProducts.length > 0 && allProductsLastFetched && (now - allProductsLastFetched < 60000)) {
+            return allProducts;
+        }
+        if (loadingAllProducts) return allProducts;
+
+        set({ loadingAllProducts: true });
+        try {
+            const response = await fetch(`${API_URL}/products?limit=9999`);
+            if (!response.ok) throw new Error('Falló al cargar lista completa de productos');
+            const json = await response.json();
+            const data = json.data || [];
+            set({ allProducts: data, allProductsLastFetched: Date.now(), loadingAllProducts: false });
+            return data;
+        } catch (err) {
+            console.error("Error en fetchAllProducts:", err);
+            set({ loadingAllProducts: false });
+            return get().allProducts;
+        }
+    },
+    invalidateProductsCache: () => {
+        set({ allProductsLastFetched: null });
+        get().fetchAllProducts(true);
+    },
+
     fetchProducts: async (params = {}) => {
         set({ loading: true, error: null });
-        const { page = 1, limit = 10, brand, name, sortBy, searchTerm } = params;
+        const { page = 1, limit = 10, brand, name, sortBy, searchTerm, is_combo } = params;
 
         const query = new URLSearchParams({
             page: page.toString(),
             limit: limit.toString(),
         });
 
+        if (is_combo !== undefined && is_combo !== null && is_combo !== '') query.append('is_combo', is_combo);
         if (brand && brand !== 'Todas') query.append('brand', brand);
         if (name && name !== 'Todos') query.append('name', name);
         if (sortBy) query.append('sortBy', sortBy);
@@ -73,6 +105,7 @@ const useInventoryStore = create((set, get) => ({
                 const err = await response.json();
                 throw new Error(err.details || 'Falló la carga por lote de productos.');
             }
+            get().invalidateProductsCache();
             get().fetchProducts(); // Recarga la primera página
             return { success: true };
         } catch (e) {
@@ -90,6 +123,7 @@ const useInventoryStore = create((set, get) => ({
                 body: JSON.stringify(updatedData),
             });
             if (!response.ok) throw new Error('Falló al actualizar el producto.');
+            get().invalidateProductsCache();
             get().fetchProducts({ page: get().currentPage }); // Recarga la página actual
         } catch (e) {
             set({ loading: false, error: e.message });
@@ -103,6 +137,7 @@ const useInventoryStore = create((set, get) => ({
                 method: 'DELETE',
             });
             if (!response.ok) throw new Error('Falló al eliminar el producto.');
+            get().invalidateProductsCache();
             get().fetchProducts({ page: get().currentPage }); // Recarga la página actual
         } catch (e) {
             set({ loading: false, error: e.message });
@@ -128,6 +163,7 @@ const useInventoryStore = create((set, get) => ({
                 body: JSON.stringify({ products: productsToRestock }),
             });
             if (!response.ok) throw new Error('Falló el ingreso de stock por lote.');
+            get().invalidateProductsCache();
             get().fetchProducts({ page: get().currentPage });
         } catch (e) {
             set({ loading: false, error: e.message });
@@ -142,7 +178,8 @@ const useInventoryStore = create((set, get) => ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(increaseData),
             });
-            if (!response.ok) throw new Error('Falló al aumentar los precios.');
+            if (!response.ok) throw new Error('Falló el aumento masivo de precios.');
+            get().invalidateProductsCache();
             get().fetchProducts({ page: get().currentPage });
         } catch (e) {
             set({ loading: false, error: e.message });
@@ -250,6 +287,7 @@ const useInventoryStore = create((set, get) => ({
             if (!response.ok) throw new Error(data.error || 'Error al registrar ajuste');
 
             // Sincronizar todos los dominios afectados
+            get().invalidateProductsCache();
             get().fetchProducts({ page: get().currentPage });
             get().fetchStockAdjustments();
             const accountStore = useAccountStore.getState();

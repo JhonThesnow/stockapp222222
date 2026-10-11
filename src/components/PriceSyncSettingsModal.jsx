@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiX } from 'react-icons/fi';
+import { X, Sliders, Settings } from 'lucide-react';
 import usePriceSyncStore from '../store/usePriceSyncStore';
 
 const PriceSyncSettingsModal = ({ isOpen, onClose }) => {
@@ -16,23 +16,28 @@ const PriceSyncSettingsModal = ({ isOpen, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h2 className="text-lg font-semibold">Ajustes de Sincronización</h2>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-                        <FiX size={24} />
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200/90 w-full max-w-md overflow-hidden animate-fadeIn">
+                <div className="flex justify-between items-center p-4 sm:p-5 border-b border-slate-100 bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                            <Settings size={18} />
+                        </div>
+                        <h2 className="text-base font-bold text-slate-900">Ajustes de Sincronización</h2>
+                    </div>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                        <X size={18} />
                     </button>
                 </div>
-                <div className="p-4 space-y-4">
-                    <p className="text-sm text-gray-600">
-                        Configura cuándo un producto debe aparecer en la pestaña &quot;Con Cambios&quot;.
+                <div className="p-4 sm:p-6 space-y-4">
+                    <p className="text-xs text-slate-500 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        Configurá el umbral de variación a partir del cual un artículo se marca en la pestaña <strong>&quot;Con Aumentos&quot;</strong>.
                     </p>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Diferencia</label>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">Tipo de Diferencia</label>
                         <select
-                            className="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 border"
+                            className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                             value={settings.thresholdType}
                             onChange={handleChangeType}
                         >
@@ -42,23 +47,23 @@ const PriceSyncSettingsModal = ({ isOpen, onClose }) => {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Valor mínimo de cambio {settings.thresholdType === 'percentage' ? '(%)' : '($)'}
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                            Variación mínima requerida {settings.thresholdType === 'percentage' ? '(%)' : '($)'}
                         </label>
                         <input
                             type="number"
                             min="0"
-                            step={settings.thresholdType === 'percentage' ? "1" : "100"}
-                            className="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 border"
+                            step={settings.thresholdType === 'percentage' ? "1" : "10"}
+                            className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                             value={settings.thresholdValue}
                             onChange={handleChangeValue}
                         />
                     </div>
                 </div>
-                <div className="p-4 border-t bg-gray-50 flex justify-end">
+                <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end">
                     <button
                         onClick={onClose}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium"
+                        className="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white px-5 py-2 rounded-xl text-xs font-semibold shadow-sm shadow-indigo-500/20 transition-all"
                     >
                         Guardar y Cerrar
                     </button>

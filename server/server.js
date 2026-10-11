@@ -1,13 +1,127 @@
 /* eslint-env node */
 const express = require('express');
 const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const db = require('./database.js');
 
 const app = express();
 const PORT = 3001;
+const JWT_SECRET = process.env.JWT_SECRET || 'stock-app-super-secret-key-2026';
 
 app.use(cors());
 app.use(express.json());
+
+// Auth helper middleware
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Token no proporcionado' });
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.status(403).json({ error: 'Token inválido o expirado' });
+        req.user = user;
+        next();
+    });
+};
+
+const requireAdmin = (req, res, next) => {
+    if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Acceso denegado: solo para administradores' });
+    }
+    next();
+};
+
+// --- Endpoints de AUTENTICACIÓN ---
+app.post('/api/auth/login', (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Usuario y contraseña requeridos' });
+    }
+
+    db.get("SELECT * FROM users WHERE username = ?", [username.trim().toLowerCase()], async (err, user) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!user) return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+
+        const token = jwt.sign(
+            { id: user.id, username: user.username, role: user.role, name: user.name },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        res.json({
+            token,
+            user: {
+                id: user.id,
+                username: user.username,
+                role: user.role,
+                name: user.name
+            }
+        });
+    });
+});
+
+app.get('/api/auth/me', authenticateToken, (req, res) => {
+    db.get("SELECT id, username, name, role, created_at FROM users WHERE id = ?", [req.user.id], (err, user) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+        res.json({ user });
+    });
+});
+
+// Listar usuarios (solo admin)
+app.get('/api/users', authenticateToken, requireAdmin, (req, res) => {
+    db.all("SELECT id, username, name, role, created_at FROM users ORDER BY id ASC", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ users: rows });
+    });
+});
+
+// Crear nuevo usuario/empleado (solo admin)
+app.post('/api/users', authenticateToken, requireAdmin, async (req, res) => {
+    const { username, password, name, role = 'empleado' } = req.body;
+    if (!username || !password || !name) {
+        return res.status(400).json({ error: 'Todos los campos son requeridos' });
+    }
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const createdAt = new Date().toISOString();
+        db.run(
+            "INSERT INTO users (username, password, name, role, created_at) VALUES (?, ?, ?, ?, ?)",
+            [username.trim().toLowerCase(), hashedPassword, name.trim(), role, createdAt],
+            function (err) {
+                if (err) {
+                    if (err.message.includes('UNIQUE constraint failed')) {
+                        return res.status(400).json({ error: 'El nombre de usuario ya existe' });
+                    }
+                    return res.status(500).json({ error: err.message });
+                }
+                res.status(201).json({
+                    message: 'Usuario creado exitosamente',
+                    user: { id: this.lastID, username, name, role }
+                });
+            }
+        );
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Cambiar contraseña o eliminar usuario (solo admin)
+app.delete('/api/users/:id', authenticateToken, requireAdmin, (req, res) => {
+    const { id } = req.params;
+    if (parseInt(id, 10) === req.user.id) {
+        return res.status(400).json({ error: 'No puedes eliminar tu propio usuario administrador' });
+    }
+    db.run("DELETE FROM users WHERE id = ?", [id], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'Usuario eliminado' });
+    });
+});
 
 // --- Endpoint para Shifts ---
 app.get('/api/shifts/current', (req, res) => {
@@ -118,11 +232,19 @@ app.get('/api/products', (req, res) => {
     // TIPADO ESTRICTO AQUÍ: parseInt previene bugs en SQLite al usar LIMIT/OFFSET
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 10;
-    const { brand, name, sortBy, searchTerm } = req.query;
+    const { brand, name, sortBy, searchTerm, is_combo } = req.query;
     const offset = (page - 1) * limit;
 
     let whereClauses = [];
     let params = [];
+
+    if (is_combo !== undefined && is_combo !== '') {
+        if (is_combo === '1' || is_combo === 'true') {
+            whereClauses.push("is_combo = 1");
+        } else if (is_combo === '0' || is_combo === 'false') {
+            whereClauses.push("(is_combo = 0 OR is_combo IS NULL)");
+        }
+    }
 
     if (brand && brand !== 'Todas') {
         whereClauses.push("brand = ?");
@@ -157,7 +279,7 @@ app.get('/api/products', (req, res) => {
     }
 
     // Adapt where clauses to use alias 'p.'
-    const whereReplaced = whereClauses.length > 0 ? `WHERE ` + whereClauses.join(' AND ').replace(/(brand|name|subtype|code|quantity)/g, 'p.$1') : '';
+    const whereReplaced = whereClauses.length > 0 ? `WHERE ` + whereClauses.join(' AND ').replace(/(brand|name|subtype|code|quantity|is_combo)/g, 'p.$1') : '';
 
     const countSql = `SELECT COUNT(*) as count FROM products p ${whereReplaced}`;
 
@@ -190,11 +312,51 @@ app.get('/api/products', (req, res) => {
 
             const products = rows.map(p => ({ ...p, salePrices: JSON.parse(p.salePrices || '[]') }));
 
-            res.json({
-                message: "success",
-                data: products,
-                totalPages,
-                currentPage: page,
+            const hasCombos = products.some(p => p.is_combo);
+            if (!hasCombos) {
+                return res.json({
+                    message: "success",
+                    data: products,
+                    totalPages,
+                    currentPage: page,
+                });
+            }
+
+            // Enriquecer combos con sus items y calcular stock disponible en tiempo real
+            const enrichPromises = products.map(prod => {
+                if (!prod.is_combo) return Promise.resolve(prod);
+
+                return new Promise((resolve) => {
+                    const itemsSql = `
+                        SELECT ci.quantity, p.id, p.name, p.subtype, p.brand, p.quantity as componentStock
+                        FROM combo_items ci
+                        JOIN products p ON ci.product_id = p.id
+                        WHERE ci.combo_id = ?
+                    `;
+                    db.all(itemsSql, [prod.id], (errItems, comboItems) => {
+                        if (errItems || !comboItems || comboItems.length === 0) {
+                            return resolve({ ...prod, combo_items: [], quantity: 0 });
+                        }
+                        const possibleStocks = comboItems.map(item => Math.floor(item.componentStock / item.quantity));
+                        const calculatedStock = possibleStocks.length > 0 ? Math.max(0, Math.min(...possibleStocks)) : 0;
+                        resolve({
+                            ...prod,
+                            quantity: calculatedStock,
+                            combo_items: comboItems
+                        });
+                    });
+                });
+            });
+
+            Promise.all(enrichPromises).then(enrichedProducts => {
+                res.json({
+                    message: "success",
+                    data: enrichedProducts,
+                    totalPages,
+                    currentPage: page,
+                });
+            }).catch(e => {
+                res.status(500).json({ error: e.message });
             });
         });
     });
@@ -442,16 +604,39 @@ app.get('/api/stock-adjustments', (req, res) => {
 
 
 app.get('/api/promotions', (req, res) => {
-    db.all("SELECT * FROM promotions ORDER BY id DESC", [], (err, rows) => {
+    const sql = `
+        SELECT p.*, pr.name as product_name, pr.subtype as product_subtype, pr.brand as product_brand, pr.purchasePrice as product_purchase_price, pr.salePrices as product_sale_prices
+        FROM promotions p
+        LEFT JOIN products pr ON p.product_id = pr.id
+        ORDER BY p.id DESC
+    `;
+    db.all(sql, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ message: 'success', data: rows });
+        const promotions = rows.map(r => ({
+            ...r,
+            product_sale_prices: r.product_sale_prices ? JSON.parse(r.product_sale_prices) : []
+        }));
+        res.json({ message: 'success', data: promotions });
     });
 });
 
 app.post('/api/promotions', (req, res) => {
-    const { name, type, category_id, brand_id, min_quantity, discount_type, discount_value, active } = req.body;
-    const sql = `INSERT INTO promotions (name, type, category_id, brand_id, min_quantity, discount_type, discount_value, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-    const params = [name, type, category_id || null, brand_id || null, min_quantity, discount_type, discount_value, active !== undefined ? active : 1];
+    const { name, type, category_id, brand_id, product_id, min_quantity, buy_quantity, pay_quantity, discount_type, discount_value, active, description } = req.body;
+    const sql = `INSERT INTO promotions (name, type, category_id, brand_id, product_id, min_quantity, buy_quantity, pay_quantity, discount_type, discount_value, active, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const params = [
+        name,
+        type || 'volume_discount',
+        category_id || null,
+        brand_id || null,
+        product_id || null,
+        min_quantity || 2,
+        buy_quantity || (type === '3x2' ? 3 : 2),
+        pay_quantity || (type === '3x2' ? 2 : 1),
+        discount_type || 'percentage',
+        discount_value !== undefined && discount_value !== '' ? discount_value : 0,
+        active !== undefined ? (active ? 1 : 0) : 1,
+        description || null
+    ];
 
     db.run(sql, params, function (err) {
         if (err) return res.status(500).json({ error: err.message });
@@ -461,9 +646,23 @@ app.post('/api/promotions', (req, res) => {
 
 app.put('/api/promotions/:id', (req, res) => {
     const { id } = req.params;
-    const { name, type, category_id, brand_id, min_quantity, discount_type, discount_value, active } = req.body;
-    const sql = `UPDATE promotions SET name = ?, type = ?, category_id = ?, brand_id = ?, min_quantity = ?, discount_type = ?, discount_value = ?, active = ? WHERE id = ?`;
-    const params = [name, type, category_id || null, brand_id || null, min_quantity, discount_type, discount_value, active, id];
+    const { name, type, category_id, brand_id, product_id, min_quantity, buy_quantity, pay_quantity, discount_type, discount_value, active, description } = req.body;
+    const sql = `UPDATE promotions SET name = ?, type = ?, category_id = ?, brand_id = ?, product_id = ?, min_quantity = ?, buy_quantity = ?, pay_quantity = ?, discount_type = ?, discount_value = ?, active = ?, description = ? WHERE id = ?`;
+    const params = [
+        name,
+        type || 'volume_discount',
+        category_id || null,
+        brand_id || null,
+        product_id || null,
+        min_quantity || 2,
+        buy_quantity || (type === '3x2' ? 3 : 2),
+        pay_quantity || (type === '3x2' ? 2 : 1),
+        discount_type || 'percentage',
+        discount_value !== undefined && discount_value !== '' ? discount_value : 0,
+        active ? 1 : 0,
+        description || null,
+        id
+    ];
 
     db.run(sql, params, function (err) {
         if (err) return res.status(500).json({ error: err.message });
@@ -476,6 +675,233 @@ app.delete('/api/promotions/:id', (req, res) => {
     db.run("DELETE FROM promotions WHERE id = ?", [id], function(err) {
         if (err) return res.status(500).json({ error: err.message });
         res.json({ message: 'Promoción eliminada' });
+    });
+});
+
+// --- COMBOS ENDPOINTS ---
+app.get('/api/combos', (req, res) => {
+    const sql = "SELECT * FROM products WHERE is_combo = 1 ORDER BY id DESC";
+    db.all(sql, [], (err, combos) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (combos.length === 0) return res.json({ message: 'success', data: [] });
+
+        const comboPromises = combos.map(combo => {
+            return new Promise((resolve, reject) => {
+                const itemsSql = `
+                    SELECT ci.id as combo_item_id, ci.quantity, p.id as product_id, p.name, p.subtype, p.brand, p.purchasePrice, p.salePrices, p.quantity as componentStock
+                    FROM combo_items ci
+                    JOIN products p ON ci.product_id = p.id
+                    WHERE ci.combo_id = ?
+                `;
+                db.all(itemsSql, [combo.id], (itemErr, items) => {
+                    if (itemErr) return reject(itemErr);
+
+                    const parsedSalePrices = JSON.parse(combo.salePrices || '[]');
+                    const comboPrice = parsedSalePrices[0]?.price || 0;
+
+                    let totalCost = 0;
+                    let regularPrice = 0;
+                    let possibleStocks = [];
+
+                    items.forEach(item => {
+                        const compPrices = JSON.parse(item.salePrices || '[]');
+                        const compUnitPrice = compPrices[0]?.price || 0;
+                        item.unitPrice = compUnitPrice;
+                        totalCost += (item.purchasePrice || 0) * item.quantity;
+                        regularPrice += compUnitPrice * item.quantity;
+                        if (item.quantity > 0) {
+                            possibleStocks.push(Math.floor(item.componentStock / item.quantity));
+                        }
+                    });
+
+                    const calculatedStock = possibleStocks.length > 0 ? Math.max(0, Math.min(...possibleStocks)) : 0;
+                    const grossProfit = comboPrice - totalCost;
+                    const marginPercent = comboPrice > 0 ? ((grossProfit / comboPrice) * 100) : 0;
+
+                    resolve({
+                        ...combo,
+                        salePrices: parsedSalePrices,
+                        combo_items: items,
+                        calculatedStock,
+                        quantity: calculatedStock,
+                        totalCost,
+                        regularPrice,
+                        comboPrice,
+                        grossProfit,
+                        marginPercent
+                    });
+                });
+            });
+        });
+
+        Promise.all(comboPromises)
+            .then(data => res.json({ message: 'success', data }))
+            .catch(err => res.status(500).json({ error: err.message }));
+    });
+});
+
+app.post('/api/combos', (req, res) => {
+    const { name, code, brand, subtype, comboPrice, combo_items } = req.body;
+    if (!name || !comboPrice || !Array.isArray(combo_items) || combo_items.length === 0) {
+        return res.status(400).json({ error: "Nombre, precio y componentes del combo son requeridos." });
+    }
+
+    const productIds = combo_items.map(ci => ci.product_id);
+    const placeholders = productIds.map(() => '?').join(',');
+
+    db.all(`SELECT id, purchasePrice, quantity FROM products WHERE id IN (${placeholders})`, productIds, (err, productsInDb) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        let totalCost = 0;
+        let possibleStocks = [];
+
+        combo_items.forEach(ci => {
+            const prod = productsInDb.find(p => p.id === ci.product_id);
+            if (prod) {
+                totalCost += (prod.purchasePrice || 0) * ci.quantity;
+                if (ci.quantity > 0) {
+                    possibleStocks.push(Math.floor(prod.quantity / ci.quantity));
+                }
+            }
+        });
+
+        const initialStock = possibleStocks.length > 0 ? Math.max(0, Math.min(...possibleStocks)) : 0;
+        const salePrices = JSON.stringify([{ name: 'Minorista', price: Number(comboPrice) }]);
+
+        db.serialize(() => {
+            db.run('BEGIN TRANSACTION');
+
+            const insertComboSql = `
+                INSERT INTO products (code, name, type, brand, subtype, quantity, purchasePrice, salePrices, lowStockThreshold, is_combo)
+                VALUES (?, ?, 'Combo', ?, ?, ?, ?, ?, 5, 1)
+            `;
+
+            db.run(insertComboSql, [
+                code || `CB-${Date.now().toString().slice(-4)}`,
+                name,
+                brand || 'Combos',
+                subtype || null,
+                initialStock,
+                totalCost,
+                salePrices
+            ], function(insertErr) {
+                if (insertErr) {
+                    db.run('ROLLBACK');
+                    return res.status(500).json({ error: insertErr.message });
+                }
+
+                const comboId = this.lastID;
+                const itemStmt = db.prepare(`INSERT INTO combo_items (combo_id, product_id, quantity) VALUES (?, ?, ?)`);
+
+                combo_items.forEach(ci => {
+                    itemStmt.run(comboId, ci.product_id, ci.quantity);
+                });
+
+                itemStmt.finalize((stmtErr) => {
+                    if (stmtErr) {
+                        db.run('ROLLBACK');
+                        return res.status(500).json({ error: stmtErr.message });
+                    }
+
+                    db.run('COMMIT');
+                    res.status(201).json({ message: 'Combo creado exitosamente', id: comboId });
+                });
+            });
+        });
+    });
+});
+
+app.put('/api/combos/:id', (req, res) => {
+    const { id } = req.params;
+    const { name, code, brand, subtype, comboPrice, combo_items } = req.body;
+    if (!name || !comboPrice || !Array.isArray(combo_items) || combo_items.length === 0) {
+        return res.status(400).json({ error: "Nombre, precio y componentes del combo son requeridos." });
+    }
+
+    const productIds = combo_items.map(ci => ci.product_id);
+    const placeholders = productIds.map(() => '?').join(',');
+
+    db.all(`SELECT id, purchasePrice, quantity FROM products WHERE id IN (${placeholders})`, productIds, (err, productsInDb) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        let totalCost = 0;
+        let possibleStocks = [];
+
+        combo_items.forEach(ci => {
+            const prod = productsInDb.find(p => p.id === ci.product_id);
+            if (prod) {
+                totalCost += (prod.purchasePrice || 0) * ci.quantity;
+                if (ci.quantity > 0) {
+                    possibleStocks.push(Math.floor(prod.quantity / ci.quantity));
+                }
+            }
+        });
+
+        const calculatedStock = possibleStocks.length > 0 ? Math.max(0, Math.min(...possibleStocks)) : 0;
+        const salePrices = JSON.stringify([{ name: 'Minorista', price: Number(comboPrice) }]);
+
+        db.serialize(() => {
+            db.run('BEGIN TRANSACTION');
+
+            const updateComboSql = `
+                UPDATE products
+                SET code = ?, name = ?, brand = ?, subtype = ?, quantity = ?, purchasePrice = ?, salePrices = ?
+                WHERE id = ? AND is_combo = 1
+            `;
+
+            db.run(updateComboSql, [
+                code || null,
+                name,
+                brand || 'Combos',
+                subtype || null,
+                calculatedStock,
+                totalCost,
+                salePrices,
+                id
+            ], function(updateErr) {
+                if (updateErr) {
+                    db.run('ROLLBACK');
+                    return res.status(500).json({ error: updateErr.message });
+                }
+
+                db.run(`DELETE FROM combo_items WHERE combo_id = ?`, [id], (delErr) => {
+                    if (delErr) {
+                        db.run('ROLLBACK');
+                        return res.status(500).json({ error: delErr.message });
+                    }
+
+                    const itemStmt = db.prepare(`INSERT INTO combo_items (combo_id, product_id, quantity) VALUES (?, ?, ?)`);
+                    combo_items.forEach(ci => {
+                        itemStmt.run(id, ci.product_id, ci.quantity);
+                    });
+
+                    itemStmt.finalize((stmtErr) => {
+                        if (stmtErr) {
+                            db.run('ROLLBACK');
+                            return res.status(500).json({ error: stmtErr.message });
+                        }
+
+                        db.run('COMMIT');
+                        res.json({ message: 'Combo actualizado exitosamente' });
+                    });
+                });
+            });
+        });
+    });
+});
+
+app.delete('/api/combos/:id', (req, res) => {
+    const { id } = req.params;
+    db.serialize(() => {
+        db.run('BEGIN TRANSACTION');
+        db.run(`DELETE FROM combo_items WHERE combo_id = ?`, [id], (err1) => {
+            if (err1) { db.run('ROLLBACK'); return res.status(500).json({ error: err1.message }); }
+            db.run(`DELETE FROM products WHERE id = ? AND is_combo = 1`, [id], function(err2) {
+                if (err2) { db.run('ROLLBACK'); return res.status(500).json({ error: err2.message }); }
+                db.run('COMMIT');
+                res.json({ message: 'Combo eliminado exitosamente' });
+            });
+        });
     });
 });
 
@@ -703,7 +1129,7 @@ app.put('/api/stock-entry-history/:id', (req, res) => {
 
 // --- Endpoints de VENTAS ---
 app.post('/api/sales', (req, res) => {
-    const { items, subtotal, discount, totalAmount, paymentMethod } = req.body;
+    const { items, subtotal, discount, totalAmount, paymentMethod, userId } = req.body;
     if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'La venta debe contener al menos un producto.' });
     }
@@ -713,8 +1139,8 @@ app.post('/api/sales', (req, res) => {
         if (!shift) return res.status(400).json({ error: 'No se puede crear una venta sin un turno activo.' });
 
         const shiftId = shift.id;
-        const sql = `INSERT INTO sales (date, items, subtotal, discount, totalAmount, status, paymentMethod, shiftId) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`;
-        const params = [new Date().toISOString(), JSON.stringify(items), subtotal, discount, totalAmount, paymentMethod || null, shiftId];
+        const sql = `INSERT INTO sales (date, items, subtotal, discount, totalAmount, status, paymentMethod, shiftId, userId) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)`;
+        const params = [new Date().toISOString(), JSON.stringify(items), subtotal, discount, totalAmount, paymentMethod || null, shiftId, userId || null];
         db.run(sql, params, function (err) {
             if (err) return res.status(500).json({ error: 'Error al crear la venta pendiente', details: err.message });
             res.status(201).json({ message: 'Venta pendiente creada exitosamente', saleId: this.lastID });
@@ -723,8 +1149,36 @@ app.post('/api/sales', (req, res) => {
 });
 
 app.get('/api/sales', (req, res) => {
-    const sql = "SELECT * FROM sales ORDER BY date DESC";
-    db.all(sql, [], (err, rows) => {
+    const { shiftId, status, includePending } = req.query;
+    let sql = `
+        SELECT s.*, u.name as userName, u.username as userUsername, u.role as userRole
+        FROM sales s
+        LEFT JOIN users u ON s.userId = u.id
+    `;
+    const params = [];
+    const conditions = [];
+
+    if (shiftId && includePending === 'true') {
+        conditions.push(`(s.shiftId = ? OR s.status = 'pending')`);
+        params.push(shiftId);
+    } else {
+        if (shiftId) {
+            conditions.push('s.shiftId = ?');
+            params.push(shiftId);
+        }
+        if (status) {
+            conditions.push('s.status = ?');
+            params.push(status);
+        }
+    }
+
+    if (conditions.length > 0) {
+        sql += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    sql += ' ORDER BY s.date DESC';
+
+    db.all(sql, params, (err, rows) => {
         if (err) return res.status(500).json({ "error": err.message });
         res.json({ "message": "success", "data": rows });
     });
@@ -732,7 +1186,7 @@ app.get('/api/sales', (req, res) => {
 
 app.put('/api/sales/:id/complete', (req, res) => {
     const { id } = req.params;
-    const { paymentMethod, finalDiscountPercentage, accountId } = req.body;
+    const { paymentMethod, finalDiscountPercentage, accountId, userId } = req.body;
 
     if (!accountId) {
         return res.status(400).json({ error: "No se proporcionó una cuenta para la venta." });
@@ -754,9 +1208,10 @@ app.put('/api/sales/:id/complete', (req, res) => {
                 }
                 const finalAmount = sale.totalAmount - (sale.totalAmount * ((finalDiscountPercentage || 0) / 100));
                 const items = JSON.parse(sale.items);
+                const finalUserId = sale.userId || userId || null;
 
-                const updateSaleSql = `UPDATE sales SET status = 'completed', paymentMethod = ?, finalDiscount = ?, finalAmount = ?, date = ?, accountId = ?, shiftId = ? WHERE id = ?`;
-                db.run(updateSaleSql, [paymentMethod, (finalDiscountPercentage || 0), finalAmount, new Date().toISOString(), accountId, activeShiftId, id], function (err) {
+                const updateSaleSql = `UPDATE sales SET status = 'completed', paymentMethod = ?, finalDiscount = ?, finalAmount = ?, date = ?, accountId = ?, shiftId = ?, userId = ? WHERE id = ?`;
+                db.run(updateSaleSql, [paymentMethod, (finalDiscountPercentage || 0), finalAmount, new Date().toISOString(), accountId, activeShiftId, finalUserId, id], function (err) {
                 if (err) { db.run('ROLLBACK'); return res.status(500).json({ error: 'Error al actualizar la venta', details: err.message }); }
 
 
@@ -855,9 +1310,25 @@ app.post('/api/sales/history/:id/cancel', (req, res) => {
 
                     const stockPromises = items.map(item => new Promise((resolve, reject) => {
                         if (!item.productId) return resolve();
-                        const restockSql = `UPDATE products SET quantity = quantity + ? WHERE id = ?`;
-                        db.run(restockSql, [item.quantity, item.productId], (err) => {
-                            if (err) reject(err); else resolve();
+                        db.get("SELECT is_combo FROM products WHERE id = ?", [item.productId], (err, product) => {
+                            if (err) return reject(err);
+                            if (product && product.is_combo) {
+                                db.all("SELECT product_id, quantity FROM combo_items WHERE combo_id = ?", [item.productId], (err, comboItems) => {
+                                    if (err) return reject(err);
+                                    const comboPromises = comboItems.map(ci => new Promise((resolveC, rejectC) => {
+                                        const returnQty = ci.quantity * item.quantity;
+                                        db.run("UPDATE products SET quantity = quantity + ? WHERE id = ?", [returnQty, ci.product_id], (err) => {
+                                            if (err) rejectC(err); else resolveC();
+                                        });
+                                    }));
+                                    Promise.all(comboPromises).then(resolve).catch(reject);
+                                });
+                            } else {
+                                const restockSql = `UPDATE products SET quantity = quantity + ? WHERE id = ?`;
+                                db.run(restockSql, [item.quantity, item.productId], (err) => {
+                                    if (err) reject(err); else resolve();
+                                });
+                            }
                         });
                     }));
 
@@ -1151,9 +1622,10 @@ app.post('/api/sales-report-data', async (req, res) => {
 
         const getSalesForPeriod = (startUtc, endUtc) => new Promise((resolve, reject) => {
             const salesQuery = `
-                SELECT id, date, finalAmount, items, paymentMethod
-                FROM sales
-                WHERE status = 'completed' AND date >= ? AND date < ?
+                SELECT s.id, s.date, s.finalAmount, s.items, s.paymentMethod, s.userId, u.name as userName, u.username as userUsername
+                FROM sales s
+                LEFT JOIN users u ON s.userId = u.id
+                WHERE s.status = 'completed' AND s.date >= ? AND s.date < ?
             `;
             db.all(salesQuery, [startUtc, endUtc], (err, sales) => err ? reject(err) : resolve(sales));
         });
@@ -2191,6 +2663,14 @@ app.post('/api/check-price', async (req, res) => {
             await browser.close();
         }
     }
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
 app.listen(PORT, () => {

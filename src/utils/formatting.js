@@ -10,6 +10,10 @@ export const formatNumber = (number) => {
     }).format(number);
 };
 
+export const formatCurrency = (number) => {
+    return `$${formatNumber(number)}`;
+};
+
 /**
  * Redondea un monto para pagos en efectivo a la centena más cercana.
  * (ej: 2330 -> 2300, 2350 -> 2400, 2380 -> 2400).

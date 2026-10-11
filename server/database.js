@@ -117,6 +117,30 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                 active BOOLEAN DEFAULT 1
             )`);
 
+            db.run(`ALTER TABLE promotions ADD COLUMN product_id INTEGER`, (err) => {
+                if (err && !err.message.includes("duplicate column")) {
+                    console.log("Error adding product_id to promotions:", err.message);
+                }
+            });
+
+            db.run(`ALTER TABLE promotions ADD COLUMN buy_quantity INTEGER DEFAULT 3`, (err) => {
+                if (err && !err.message.includes("duplicate column")) {
+                    console.log("Error adding buy_quantity to promotions:", err.message);
+                }
+            });
+
+            db.run(`ALTER TABLE promotions ADD COLUMN pay_quantity INTEGER DEFAULT 2`, (err) => {
+                if (err && !err.message.includes("duplicate column")) {
+                    console.log("Error adding pay_quantity to promotions:", err.message);
+                }
+            });
+
+            db.run(`ALTER TABLE promotions ADD COLUMN description TEXT`, (err) => {
+                if (err && !err.message.includes("duplicate column")) {
+                    console.log("Error adding description to promotions:", err.message);
+                }
+            });
+
             db.run(`CREATE TABLE IF NOT EXISTS stock_adjustments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 product_id INTEGER NOT NULL,
@@ -151,6 +175,21 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
             db.run(`ALTER TABLE sales ADD COLUMN shiftId INTEGER`, (err) => {
                 if (err && !err.message.includes("duplicate column")) {
                     console.log("Error adding shiftId to sales:", err.message);
+                }
+            });
+
+            db.run(`CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                name TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'empleado',
+                created_at TEXT NOT NULL
+            )`);
+
+            db.run(`ALTER TABLE sales ADD COLUMN userId INTEGER`, (err) => {
+                if (err && !err.message.includes("duplicate column")) {
+                    console.log("Error adding userId to sales:", err.message);
                 }
             });
 
@@ -226,9 +265,17 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
             db.run(`CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(date)`);
             db.run(`CREATE INDEX IF NOT EXISTS idx_sales_status ON sales(status)`);
             db.run(`CREATE INDEX IF NOT EXISTS idx_sales_payment_method ON sales(paymentMethod)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_sales_shift_id ON sales(shiftId)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_sales_account_id ON sales(accountId)`);
 
             db.run(`CREATE INDEX IF NOT EXISTS idx_products_code ON products(code)`);
             db.run(`CREATE INDEX IF NOT EXISTS idx_products_name ON products(name)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_products_type ON products(type)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_products_is_combo ON products(is_combo)`);
+
+            db.run(`CREATE INDEX IF NOT EXISTS idx_shifts_status ON shifts(status)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_custom_orders_status ON custom_orders(status)`);
 
             db.run(`CREATE INDEX IF NOT EXISTS idx_account_movements_account_id ON account_movements(accountId)`);
             db.run(`CREATE INDEX IF NOT EXISTS idx_expenses_account_id ON expenses(accountId)`);
@@ -273,6 +320,25 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                 stmt.finalize((err) => {
                     if (err) console.error("Error al sembrar métodos de pago:", err.message);
                     else console.log("Métodos de pago verificados.");
+                });
+
+                // Seeding usuarios por defecto si no existen
+                const bcrypt = require('bcryptjs');
+                db.get("SELECT COUNT(*) as count FROM users", async (err, row) => {
+                    if (!err && (!row || row.count === 0)) {
+                        console.log("Seeding: Creando usuarios iniciales (admin y empleado)...");
+                        const adminHash = await bcrypt.hash('admin123', 10);
+                        const empHash = await bcrypt.hash('empleado123', 10);
+                        const now = new Date().toISOString();
+                        db.run(
+                            `INSERT INTO users (username, password, name, role, created_at) VALUES (?, ?, ?, ?, ?)`,
+                            ['admin', adminHash, 'Administrador General', 'admin', now]
+                        );
+                        db.run(
+                            `INSERT INTO users (username, password, name, role, created_at) VALUES (?, ?, ?, ?, ?)`,
+                            ['empleado', empHash, 'Empleado de Turno', 'empleado', now]
+                        );
+                    }
                 });
             };
 

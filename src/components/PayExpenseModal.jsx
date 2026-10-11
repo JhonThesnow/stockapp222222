@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import useAccountStore from '../store/useAccountStore';
 import useCostsStore from '../store/useCostsStore';
 import { formatNumber } from '../utils/formatting';
+import { X, CreditCard, DollarSign, Wallet } from 'lucide-react';
+import { toast } from 'sonner';
 
 const PayExpenseModal = ({ onClose, expense, onPaid }) => {
     const { accounts, fetchAccounts } = useAccountStore();
@@ -16,13 +18,14 @@ const PayExpenseModal = ({ onClose, expense, onPaid }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!accountId) {
-            alert('Por favor selecciona una cuenta');
+            toast.error('Por favor selecciona una cuenta');
             return;
         }
         setIsSubmitting(true);
         const success = await payExpense(expense.id, accountId);
         setIsSubmitting(false);
         if (success) {
+            toast.success('Gasto pagado y debitado de la cuenta con éxito.');
             if (onPaid) onPaid();
             onClose();
         }
@@ -30,45 +33,64 @@ const PayExpenseModal = ({ onClose, expense, onPaid }) => {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md z-10 overflow-hidden flex flex-col max-h-[90vh]">
-                <div className="p-4 sm:p-6 border-b flex justify-between items-center bg-gray-50">
-                    <h3 className="text-xl font-bold text-gray-800">Pagar Gasto</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={onClose}></div>
+            <div className="bg-white rounded-2xl shadow-xl border border-slate-200/90 w-full max-w-md z-10 overflow-hidden flex flex-col max-h-[90vh] animate-fadeIn">
+                <div className="p-4 sm:p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <CreditCard size={18} />
+                        </div>
+                        <h3 className="text-base font-bold text-slate-900">Pagar Gasto Operativo</h3>
+                    </div>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                        <X size={18} />
                     </button>
                 </div>
                 <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
                     <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
-                        <div className="bg-blue-50 p-4 rounded-lg">
-                            <p className="text-sm text-blue-800 mb-1">Total a pagar:</p>
-                            <p className="text-2xl font-bold text-blue-900">${formatNumber(expense.amount)}</p>
-                            <p className="text-sm text-blue-700 mt-2 font-medium">{expense.description}</p>
+                        <div className="bg-emerald-50/70 border border-emerald-200/80 p-4 rounded-xl">
+                            <p className="text-xs uppercase tracking-wider font-semibold text-emerald-800 mb-0.5">Total a abonar:</p>
+                            <p className="text-2xl font-black text-emerald-900">${formatNumber(expense.amount)}</p>
+                            <p className="text-xs text-emerald-700 mt-1 font-medium">{expense.description}</p>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Pagar desde la cuenta:</label>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                                <Wallet size={15} className="text-slate-400" />
+                                Debitar de la cuenta:
+                            </label>
                             <select
                                 value={accountId}
                                 onChange={(e) => setAccountId(e.target.value)}
-                                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                className="w-full p-2.5 text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                                 required
                             >
-                                <option value="">Selecciona una cuenta...</option>
+                                <option value="">Selecciona una cuenta de egreso...</option>
                                 {accounts.filter(a => a.id !== 'mercado_pago').map(acc => (
-                                    <option key={acc.id} value={acc.id}>{acc.name}</option>
+                                    <option key={acc.id} value={acc.id}>
+                                        {acc.name} (${formatNumber(acc.balance || 0)})
+                                    </option>
                                 ))}
                             </select>
-                            <p className="text-xs text-gray-500 mt-2">El monto se descontará automáticamente del saldo de esta cuenta.</p>
+                            <p className="text-[11px] text-slate-400 mt-1.5">El importe se descontará automáticamente del saldo de la cuenta elegida.</p>
                         </div>
                     </div>
-                    <div className="p-4 sm:p-6 border-t bg-gray-50 flex flex-col-reverse sm:flex-row justify-end gap-3">
-                        <button type="button" onClick={onClose} disabled={isSubmitting} className="w-full sm:w-auto px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-100 font-medium disabled:opacity-50">
+                    <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col-reverse sm:flex-row justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={isSubmitting}
+                            className="w-full sm:w-auto px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-100 text-xs font-semibold disabled:opacity-50 transition-all"
+                        >
                             Cancelar
                         </button>
-                        <button type="submit" disabled={isSubmitting} className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 flex items-center justify-center gap-2">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-                            {isSubmitting ? 'Procesando...' : 'Confirmar Pago'}
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="w-full sm:w-auto px-5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-semibold shadow-sm shadow-emerald-500/20 disabled:opacity-50 flex items-center justify-center gap-1.5 transition-all"
+                        >
+                            <DollarSign size={15} />
+                            <span>{isSubmitting ? 'Procesando...' : 'Confirmar Pago'}</span>
                         </button>
                     </div>
                 </form>
