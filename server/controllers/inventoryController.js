@@ -104,8 +104,8 @@ exports.getProducts = async (req, res) => {
             salePrices: typeof p.salePrices === 'string' ? JSON.parse(p.salePrices || '[]') : (p.salePrices || [])
         }));
 
-        const hasCombos = products.some(p => p.is_combo);
-        if (!hasCombos) {
+        const comboIds = products.filter(p => p.is_combo).map(p => p.id);
+        if (comboIds.length === 0) {
             return res.json({
                 message: "success",
                 data: products,
@@ -114,17 +114,29 @@ exports.getProducts = async (req, res) => {
             });
         }
 
-        const enrichPromises = products.map(async (prod) => {
+        const placeholders = comboIds.map(() => '?').join(',');
+        const allComboItems = await prisma.$queryRawUnsafe(`
+            SELECT ci.combo_id, ci.quantity, p.id, p.name, p.subtype, p.brand, p.quantity as componentStock
+            FROM combo_items ci
+            JOIN products p ON ci.product_id = p.id
+            WHERE ci.combo_id IN (${placeholders})
+        `, ...comboIds);
+
+        const comboItemsByComboId = new Map();
+        for (const item of allComboItems) {
+            const cId = Number(item.combo_id);
+            if (!comboItemsByComboId.has(cId)) {
+                comboItemsByComboId.set(cId, []);
+            }
+            const { combo_id, ...rest } = item;
+            comboItemsByComboId.get(cId).push(rest);
+        }
+
+        const enrichedProducts = products.map((prod) => {
             if (!prod.is_combo) return prod;
 
-            const comboItems = await prisma.$queryRawUnsafe(`
-                SELECT ci.quantity, p.id, p.name, p.subtype, p.brand, p.quantity as componentStock
-                FROM combo_items ci
-                JOIN products p ON ci.product_id = p.id
-                WHERE ci.combo_id = ?
-            `, prod.id);
-
-            if (!comboItems || comboItems.length === 0) {
+            const comboItems = comboItemsByComboId.get(Number(prod.id)) || [];
+            if (comboItems.length === 0) {
                 return { ...prod, combo_items: [], quantity: 0 };
             }
             const possibleStocks = comboItems.map(item => Math.floor(item.componentStock / item.quantity));
@@ -136,7 +148,6 @@ exports.getProducts = async (req, res) => {
             };
         });
 
-        const enrichedProducts = await Promise.all(enrichPromises);
         res.json({
             message: "success",
             data: enrichedProducts,
@@ -662,17 +673,61 @@ exports.updateProductProvider = async (req, res) => {
     }
 };
 
+let sharedBrowser = null;
+let sharedBrowserLaunchPromise = null;
+let browserIdleTimer = null;
+const BROWSER_IDLE_TIMEOUT_MS = 60000;
+
+async function getSharedBrowser() {
+    if (browserIdleTimer) {
+        clearTimeout(browserIdleTimer);
+        browserIdleTimer = null;
+    }
+    if (sharedBrowser && sharedBrowser.connected) {
+        return sharedBrowser;
+    }
+    if (!sharedBrowserLaunchPromise) {
+        sharedBrowserLaunchPromise = puppeteer.launch({
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        }).then((browser) => {
+            sharedBrowser = browser;
+            sharedBrowserLaunchPromise = null;
+            browser.on('disconnected', () => {
+                sharedBrowser = null;
+            });
+            return browser;
+        }).catch((err) => {
+            sharedBrowserLaunchPromise = null;
+            throw err;
+        });
+    }
+    return sharedBrowserLaunchPromise;
+}
+
+function scheduleBrowserIdleClose() {
+    if (browserIdleTimer) clearTimeout(browserIdleTimer);
+    browserIdleTimer = setTimeout(async () => {
+        if (sharedBrowser) {
+            const browserToClose = sharedBrowser;
+            sharedBrowser = null;
+            try {
+                await browserToClose.close();
+            } catch (_) {
+                // Ignore errors when closing idle browser
+            }
+        }
+    }, BROWSER_IDLE_TIMEOUT_MS);
+}
+
 exports.checkPriceScraper = async (req, res) => {
     const { url } = req.body;
     if (!url) return res.status(400).json({ error: "URL es requerida" });
 
-    let browser = null;
+    let page = null;
     try {
-        browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        });
-        const page = await browser.newPage();
+        const browser = await getSharedBrowser();
+        page = await browser.newPage();
         await page.goto(url, { waitUntil: 'networkidle2' });
 
         const priceText = await page.evaluate(() => {
@@ -699,8 +754,13 @@ exports.checkPriceScraper = async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     } finally {
-        if (browser) {
-            await browser.close();
+        if (page) {
+            try {
+                await page.close();
+            } catch (_) {
+                // Ignore page close errors
+            }
         }
+        scheduleBrowserIdleClose();
     }
 };

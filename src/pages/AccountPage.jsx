@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
+import { toast } from 'sonner';
 import useAccountStore from '../store/useAccountStore';
 import { formatNumber } from '../utils/formatting';
 import { FiTrendingUp, FiTrendingDown, FiPlus, FiX, FiFileText, FiEdit, FiTrash, FiDollarSign, FiInfo, FiShoppingBag, FiPackage, FiAlertTriangle, FiBarChart2 } from 'react-icons/fi';
@@ -86,7 +88,11 @@ const FormulaChip = ({ label, value, className }) => (
 );
 
 const ModifyFundsModal = ({ onClose, accounts, selectedAccountId }) => {
-    const { addMovement, loading, categories } = useAccountStore();
+    const { addMovement, loading, categories } = useAccountStore(useShallow(state => ({
+        addMovement: state.addMovement,
+        loading: state.loading,
+        categories: state.categories
+    })));
     const [type, setType] = useState('deposit');
     const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('');
@@ -103,7 +109,7 @@ const ModifyFundsModal = ({ onClose, accounts, selectedAccountId }) => {
         e.preventDefault();
         const targetAccountId = (selectedAccountId && selectedAccountId !== 'mercado_pago') ? selectedAccountId : modalAccountId;
         if (!amount || !reason || !categoryId || !targetAccountId) {
-            alert('Por favor, completa todos los campos, incluyendo la cuenta.');
+            toast.warning('Por favor, completa todos los campos, incluyendo la cuenta.');
             return;
         }
         const result = await addMovement({
@@ -182,7 +188,24 @@ const AccountPage = () => {
         accountSummary, salesProfitSummary, movements, cashClosings, loading, pockets, breakdown,
         setDateRange, deleteMovement, fetchInitialData,
         startDate, endDate, getProfitBreakdown
-    } = useAccountStore();
+    } = useAccountStore(useShallow(state => ({
+        accounts: state.accounts,
+        selectedAccountId: state.selectedAccountId,
+        setSelectedAccountId: state.setSelectedAccountId,
+        accountSummary: state.accountSummary,
+        salesProfitSummary: state.salesProfitSummary,
+        movements: state.movements,
+        cashClosings: state.cashClosings,
+        loading: state.loading,
+        pockets: state.pockets,
+        breakdown: state.breakdown,
+        setDateRange: state.setDateRange,
+        deleteMovement: state.deleteMovement,
+        fetchInitialData: state.fetchInitialData,
+        startDate: state.startDate,
+        endDate: state.endDate,
+        getProfitBreakdown: state.getProfitBreakdown
+    })));
 
     // P&L del período (se recalcula cuando cambia el resumen de rentabilidad)
     const profit = useMemo(() => getProfitBreakdown(), [salesProfitSummary, getProfitBreakdown]);

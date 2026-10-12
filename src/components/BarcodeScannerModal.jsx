@@ -1,16 +1,26 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FiX, FiCameraOff } from 'react-icons/fi';
-import { toast } from 'sonner';
 
 const BarcodeScannerModal = ({ onClose, onScan }) => {
     const videoRef = useRef(null);
-    const canvasRef = useRef(null);
     const streamRef = useRef(null);
     const [error, setError] = useState(null);
     const [hasStarted, setHasStarted] = useState(false);
 
     useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                onClose?.();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
+    useEffect(() => {
         let animationFrameId;
+        let isMounted = true;
 
         const startCamera = async () => {
             try {
@@ -22,57 +32,83 @@ const BarcodeScannerModal = ({ onClose, onScan }) => {
                     video: { facingMode: 'environment' }
                 });
 
+                if (!isMounted) {
+                    stream.getTracks().forEach(track => track.stop());
+                    return;
+                }
+
                 streamRef.current = stream;
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream;
-                    videoRef.current.setAttribute('playsinline', true); // Safari
-                    await videoRef.current.play();
+                    videoRef.current.setAttribute('playsinline', true);
+
+                    try {
+                        await videoRef.current.play();
+                    } catch (playError) {
+                        if (playError.name !== 'AbortError' && playError.name !== 'NotAllowedError') {
+                            console.error("Play error:", playError);
+                        }
+                        return;
+                    }
+
+                    if (!isMounted) return;
                     setHasStarted(true);
 
                     const barcodeDetector = new window.BarcodeDetector({
-                        formats: ['ean_13', 'ean_8', 'qr_code', 'code_128', 'code_39']
+                        formats: ['qr_code', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39']
                     });
 
                     const detectCode = async () => {
+                        if (!isMounted) return;
                         if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {
                             try {
                                 const barcodes = await barcodeDetector.detect(videoRef.current);
                                 if (barcodes.length > 0) {
-                                    // Beep sound or vibrate
-                                    if (navigator.vibrate) {
-                                        navigator.vibrate(100);
-                                    } else {
-                                        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                                        const oscillator = audioCtx.createOscillator();
-                                        oscillator.type = 'sine';
-                                        oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
-                                        oscillator.connect(audioCtx.destination);
-                                        oscillator.start();
-                                        oscillator.stop(audioCtx.currentTime + 0.1);
+                                    try {
+                                        if (navigator.vibrate) {
+                                            navigator.vibrate(100);
+                                        } else {
+                                            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                                            if (AudioCtx) {
+                                                const audioCtx = new AudioCtx();
+                                                const oscillator = audioCtx.createOscillator();
+                                                oscillator.type = 'sine';
+                                                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+                                                oscillator.connect(audioCtx.destination);
+                                                oscillator.start();
+                                                oscillator.stop(audioCtx.currentTime + 0.1);
+                                            }
+                                        }
+                                    } catch (_) {
+                                        // Ignore audio/vibrate errors
                                     }
 
                                     onScan(barcodes[0].rawValue);
-                                    // Stop detection after first successful scan to avoid multiple firing
                                     return;
                                 }
                             } catch (e) {
                                 console.error("Error detecting barcode:", e);
                             }
                         }
-                        animationFrameId = requestAnimationFrame(detectCode);
+                        if (isMounted) {
+                            animationFrameId = requestAnimationFrame(detectCode);
+                        }
                     };
 
                     detectCode();
                 }
             } catch (err) {
-                console.error("Camera error:", err);
-                setError(err.message || "Error al acceder a la cámara.");
+                if (isMounted) {
+                    console.error("Camera error:", err);
+                    setError(err.message || "Error al acceder a la cámara.");
+                }
             }
         };
 
         startCamera();
 
         return () => {
+            isMounted = false;
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
             }
@@ -83,11 +119,16 @@ const BarcodeScannerModal = ({ onClose, onScan }) => {
     }, [onScan]);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={(e) => {
+                if (e.target === e.currentTarget) onClose?.();
+            }}
+        >
             <div className="relative bg-white w-full max-w-md m-4 rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[70vh] max-h-[600px]">
                 <div className="flex justify-between items-center p-4 bg-gray-800 text-white">
                     <h3 className="font-bold text-lg">Escanear Código</h3>
-                    <button onClick={onClose} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors">
+                    <button type="button" onClick={onClose} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors">
                         <FiX size={24} />
                     </button>
                 </div>
@@ -102,7 +143,10 @@ const BarcodeScannerModal = ({ onClose, onScan }) => {
                     ) : (
                         <>
                             <video
+                                id="scanner-video"
                                 ref={videoRef}
+                                autoPlay
+                                playsInline
                                 className="absolute inset-0 w-full h-full object-cover"
                             />
                             {/* Overlay target frame */}

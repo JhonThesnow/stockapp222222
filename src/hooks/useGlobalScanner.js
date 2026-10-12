@@ -68,7 +68,7 @@ export const handleGlobalScan = async (scannedCode, pathname) => {
                 const product = data.data[0];
                 // Double check exact match if possible, since searchTerm might be partial
                 // We will add the first match
-                useSalesStore.getState().addItemToCart({ ...product, quantity: 1 });
+                useSalesStore.getState().addItemToCart(product);
                 toast.success(`${product.name} agregado al carrito`);
             } else {
                 toast.error(`Producto no encontrado: ${scannedCode}`);

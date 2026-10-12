@@ -202,4 +202,4 @@ const BarcodeTag = ({
     );
 };
 
-export default BarcodeTag;
+export default React.memo(BarcodeTag);

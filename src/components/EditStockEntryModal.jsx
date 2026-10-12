@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useInventoryStore from '../store/useInventoryStore.js';
 import {
     X,
@@ -16,7 +17,11 @@ import { formatDateOnly } from '../utils/formatting.js';
 import { toast } from 'sonner';
 
 const EditStockEntryModal = ({ entry, onClose }) => {
-    const { updateStockEntry, allProducts, fetchAllProducts } = useInventoryStore();
+    const { updateStockEntry, allProducts, fetchAllProducts } = useInventoryStore(useShallow(state => ({
+        updateStockEntry: state.updateStockEntry,
+        allProducts: state.allProducts,
+        fetchAllProducts: state.fetchAllProducts
+    })));
     const [products, setProducts] = useState([]);
     const [showAddProduct, setShowAddProduct] = useState(false);
     const [searchFilter, setSearchFilter] = useState('');
@@ -24,6 +29,7 @@ const EditStockEntryModal = ({ entry, onClose }) => {
     const [isSaving, setIsSaving] = useState(false);
 
     const searchInputRef = useRef(null);
+    const saveHandlerRef = useRef(null);
 
     useEffect(() => {
         if (entry) {
@@ -44,7 +50,7 @@ const EditStockEntryModal = ({ entry, onClose }) => {
         }
     }, [fetchAllProducts, allProducts]);
 
-    // Atajos de teclado: Escape para cerrar, Ctrl+Enter para guardar
+    // Atajos de teclado: Escape para cerrar, Ctrl+Enter para guardar (estable)
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.key === 'Escape') {
@@ -52,13 +58,15 @@ const EditStockEntryModal = ({ entry, onClose }) => {
                 onClose();
             } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
-                handleSave();
+                if (saveHandlerRef.current) {
+                    saveHandlerRef.current();
+                }
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [products, entry, isSaving]);
+    }, [onClose]);
 
     useEffect(() => {
         if (showAddProduct && searchInputRef.current) {
@@ -112,6 +120,7 @@ const EditStockEntryModal = ({ entry, onClose }) => {
             setIsSaving(false);
         }
     };
+    saveHandlerRef.current = handleSave;
 
     // Productos elegibles para agregar (que no estén ya en la entrada)
     const availableProducts = useMemo(() => {

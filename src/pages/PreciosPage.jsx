@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { toast } from 'sonner';
 import {
     RefreshCw,
@@ -32,8 +33,22 @@ import PriceSyncSettingsModal from '../components/PriceSyncSettingsModal';
 const API_URL = '/api';
 
 const PreciosPage = () => {
-    const { products, fetchProducts, updateProduct } = useInventoryStore();
-    const { settings, startSync, pauseSync, resumeSync, cancelSync, isSyncing, isPaused, queue, currentIndex } = usePriceSyncStore();
+    const { products, fetchProducts, updateProduct } = useInventoryStore(useShallow(state => ({
+        products: state.products,
+        fetchProducts: state.fetchProducts,
+        updateProduct: state.updateProduct
+    })));
+    const { settings, startSync, pauseSync, resumeSync, cancelSync, isSyncing, isPaused, queue, currentIndex } = usePriceSyncStore(useShallow(state => ({
+        settings: state.settings,
+        startSync: state.startSync,
+        pauseSync: state.pauseSync,
+        resumeSync: state.resumeSync,
+        cancelSync: state.cancelSync,
+        isSyncing: state.isSyncing,
+        isPaused: state.isPaused,
+        queue: state.queue,
+        currentIndex: state.currentIndex
+    })));
     const [loadingCheck, setLoadingCheck] = useState({});
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('todos'); // 'todos' | 'cambios'
@@ -152,9 +167,10 @@ const PreciosPage = () => {
     };
 
     const handleMassUpdate = async (type) => {
-        const productsToUpdate = selectedIds.size > 0
+        const productsToUpdate = (selectedIds.size > 0
             ? filteredProducts.filter(p => selectedIds.has(p.id))
-            : filteredProducts;
+            : filteredProducts
+        ).filter(p => Boolean(p.provider_price));
 
         if (productsToUpdate.length === 0) return;
 
@@ -163,39 +179,43 @@ const PreciosPage = () => {
         let successCount = 0;
         let errorCount = 0;
 
-        for (const product of productsToUpdate) {
-            if (!product.provider_price) continue;
+        // Procesar en lotes paralelos de 5 para acelerar sin saturar SQLite
+        const BATCH_SIZE = 5;
+        for (let i = 0; i < productsToUpdate.length; i += BATCH_SIZE) {
+            const chunk = productsToUpdate.slice(i, i + BATCH_SIZE);
+            await Promise.all(chunk.map(async (product) => {
+                try {
+                    const updatedProductData = { ...product };
 
-            try {
-                const updatedProductData = { ...product };
+                    if (type === 'cost_only') {
+                        updatedProductData.purchasePrice = product.provider_price;
+                    } else if (type === 'cost_and_margin') {
+                        const oldCost = product.purchasePrice || 1;
+                        const multiplier = product.provider_price / oldCost;
 
-                if (type === 'cost_only') {
-                    updatedProductData.purchasePrice = product.provider_price;
-                } else if (type === 'cost_and_margin') {
-                    const oldCost = product.purchasePrice || 1;
-                    const multiplier = product.provider_price / oldCost;
+                        updatedProductData.purchasePrice = product.provider_price;
 
-                    updatedProductData.purchasePrice = product.provider_price;
-
-                    if (product.salePrices) {
-                        const parsedPrices = typeof product.salePrices === 'string' ? JSON.parse(product.salePrices) : product.salePrices;
-                        updatedProductData.salePrices = JSON.stringify(parsedPrices.map(priceTier => ({
-                            ...priceTier,
-                            price: roundPrice(priceTier.price * multiplier)
-                        })));
+                        if (product.salePrices) {
+                            const parsedPrices = typeof product.salePrices === 'string' ? JSON.parse(product.salePrices) : product.salePrices;
+                            updatedProductData.salePrices = JSON.stringify(parsedPrices.map(priceTier => ({
+                                ...priceTier,
+                                price: roundPrice(priceTier.price * multiplier)
+                            })));
+                        }
                     }
-                }
 
-                await fetch(`${API_URL}/products/${product.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updatedProductData),
-                });
-                successCount++;
-            } catch (error) {
-                console.error(error);
-                errorCount++;
-            }
+                    const res = await fetch(`${API_URL}/products/${product.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updatedProductData),
+                    });
+                    if (!res.ok) throw new Error('Error al actualizar');
+                    successCount++;
+                } catch (error) {
+                    console.error(error);
+                    errorCount++;
+                }
+            }));
         }
 
         fetchProducts({ page: 1, limit: 1000 });

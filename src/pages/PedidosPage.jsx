@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useOrderStore from '../store/useOrderStore';
 import useInventoryStore from '../store/useInventoryStore';
 import {
@@ -32,8 +33,22 @@ import { formatNumber } from '../utils/formatting';
 import { useReactToPrint } from 'react-to-print';
 
 const PedidosPage = () => {
-    const { orders, fetchOrders, createOrder, updateOrder, deleteOrder, completeOrder, loading: ordersLoading, totalPages, currentPage } = useOrderStore();
-    const { products, fetchProducts, loading: productsLoading } = useInventoryStore();
+    const { orders, fetchOrders, createOrder, updateOrder, deleteOrder, completeOrder, loading: ordersLoading, totalPages, currentPage } = useOrderStore(useShallow(state => ({
+        orders: state.orders,
+        fetchOrders: state.fetchOrders,
+        createOrder: state.createOrder,
+        updateOrder: state.updateOrder,
+        deleteOrder: state.deleteOrder,
+        completeOrder: state.completeOrder,
+        loading: state.loading,
+        totalPages: state.totalPages,
+        currentPage: state.currentPage
+    })));
+    const { products, fetchProducts, loading: productsLoading } = useInventoryStore(useShallow(state => ({
+        products: state.products,
+        fetchProducts: state.fetchProducts,
+        loading: state.loading
+    })));
     const [activeTab, setActiveTab] = useState('nuevo');
 
     // Order Builder State
@@ -64,7 +79,7 @@ const PedidosPage = () => {
         if (activeTab === 'historial') {
             fetchOrders(1, 100);
         } else if (activeTab === 'nuevo') {
-            fetchProducts(1, 1000, { sortBy: filterType === 'best_selling' ? 'best_selling' : undefined });
+            fetchProducts({ page: 1, limit: 1000, sortBy: filterType === 'best_selling' ? 'best_selling' : undefined });
         }
     }, [activeTab, fetchOrders, fetchProducts, filterType]);
 

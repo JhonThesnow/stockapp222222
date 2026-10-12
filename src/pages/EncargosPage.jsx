@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useCustomOrderStore from '../store/useCustomOrderStore';
 import {
     ClipboardList,
@@ -27,7 +28,14 @@ import { formatNumber } from '../utils/formatting';
 import { toast } from 'sonner';
 
 const EncargosPage = () => {
-    const { orders, fetchOrders, createOrder, updateOrder, deleteOrder, loading } = useCustomOrderStore();
+    const { orders, fetchOrders, createOrder, updateOrder, deleteOrder, loading } = useCustomOrderStore(useShallow(state => ({
+        orders: state.orders,
+        fetchOrders: state.fetchOrders,
+        createOrder: state.createOrder,
+        updateOrder: state.updateOrder,
+        deleteOrder: state.deleteOrder,
+        loading: state.loading
+    })));
     const [activeTab, setActiveTab] = useState('activos');
 
     // Form State

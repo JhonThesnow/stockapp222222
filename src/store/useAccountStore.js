@@ -33,9 +33,9 @@ const useAccountStore = create((set, get) => ({
         await get().fetchCategories();
         const accounts = get().accounts;
         if (accounts.length > 0) {
-            get().setSelectedAccountId(accounts[0].id);
+            await get().setSelectedAccountId(accounts[0].id);
         } else {
-            get().fetchDataForCurrentState();
+            await get().fetchDataForCurrentState();
         }
         set({ loading: false });
     },
@@ -62,12 +62,12 @@ const useAccountStore = create((set, get) => ({
 
     setSelectedAccountId: (accountId) => {
         set({ selectedAccountId: accountId });
-        get().fetchDataForCurrentState();
+        return get().fetchDataForCurrentState();
     },
 
     setDateRange: (startDate, endDate) => {
         set({ startDate, endDate });
-        get().fetchDataForCurrentState();
+        return get().fetchDataForCurrentState();
     },
 
     fetchDataForCurrentState: async () => {

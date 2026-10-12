@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useSalesStore from '../store/useSalesStore';
 
 const PaymentMethodsCommissionModal = ({ onClose }) => {
-    const { paymentMethods, updatePaymentMethod, fetchPaymentMethods } = useSalesStore();
+    const { paymentMethods, updatePaymentMethod, fetchPaymentMethods } = useSalesStore(useShallow(state => ({
+        paymentMethods: state.paymentMethods,
+        updatePaymentMethod: state.updatePaymentMethod,
+        fetchPaymentMethods: state.fetchPaymentMethods
+    })));
     const [methods, setMethods] = useState([]);
 
-useEffect(() => {
+    useEffect(() => {
         if (paymentMethods.length === 0) {
             fetchPaymentMethods();
         } else {
@@ -20,12 +25,14 @@ useEffect(() => {
     };
 
     const handleSave = async () => {
-        for (const m of methods) {
-            const original = paymentMethods.find(pm => pm.id === m.id);
-            if (original && original.commission_rate !== Number(m.commission_rate)) {
-                await updatePaymentMethod(m.id, Number(m.commission_rate));
-            }
-        }
+        const updates = methods
+            .filter(m => {
+                const original = paymentMethods.find(pm => pm.id === m.id);
+                return original && original.commission_rate !== Number(m.commission_rate);
+            })
+            .map(m => updatePaymentMethod(m.id, Number(m.commission_rate)));
+
+        await Promise.all(updates);
         onClose();
     };
 

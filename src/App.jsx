@@ -27,6 +27,7 @@ const PageLoader = () => (
   </div>
 );
 import ProtectedRoute from './components/ProtectedRoute';
+import { useShallow } from 'zustand/react/shallow';
 import useAuthStore from './store/useAuthStore';
 import { 
   FiBox, 
@@ -55,7 +56,10 @@ import useCostsStore from './store/useCostsStore';
 import PriceSyncWidget from './components/PriceSyncWidget';
 
 const Navigation = ({ onLinkClick }) => {
-  const { user, logout } = useAuthStore();
+  const { user, logout } = useAuthStore(useShallow(state => ({
+    user: state.user,
+    logout: state.logout
+  })));
   const navigate = useNavigate();
 
   const activeLinkStyle = {
@@ -212,7 +216,11 @@ const AppLayout = () => {
   const [isNativeScannerOpen, setIsNativeScannerOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAuthenticated, checkAuth } = useAuthStore();
+  const { user, isAuthenticated, checkAuth } = useAuthStore(useShallow(state => ({
+    user: state.user,
+    isAuthenticated: state.isAuthenticated,
+    checkAuth: state.checkAuth
+  })));
 
   useGlobalScanner();
 

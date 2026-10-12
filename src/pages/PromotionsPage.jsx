@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { 
     FiPlus, FiEdit2, FiTrash2, FiToggleLeft, FiToggleRight, FiTag, 
     FiPackage, FiPercent, FiTrendingUp, FiAlertCircle, FiCheck, 
@@ -14,7 +15,20 @@ const PromotionsPage = () => {
         promotions, combos, loading,
         fetchPromotions, createPromotion, updatePromotion, deletePromotion, togglePromotion,
         fetchCombos, createCombo, updateCombo, deleteCombo
-    } = usePromotionStore();
+    } = usePromotionStore(useShallow(state => ({
+        promotions: state.promotions,
+        combos: state.combos,
+        loading: state.loading,
+        fetchPromotions: state.fetchPromotions,
+        createPromotion: state.createPromotion,
+        updatePromotion: state.updatePromotion,
+        deletePromotion: state.deletePromotion,
+        togglePromotion: state.togglePromotion,
+        fetchCombos: state.fetchCombos,
+        createCombo: state.createCombo,
+        updateCombo: state.updateCombo,
+        deleteCombo: state.deleteCombo
+    })));
 
     const [allProducts, setAllProducts] = useState([]);
 

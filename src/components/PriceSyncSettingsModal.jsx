@@ -1,9 +1,25 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { X, Sliders, Settings } from 'lucide-react';
 import usePriceSyncStore from '../store/usePriceSyncStore';
 
 const PriceSyncSettingsModal = ({ isOpen, onClose }) => {
-    const { settings, setSettings } = usePriceSyncStore();
+    const { settings, setSettings } = usePriceSyncStore(useShallow(state => ({
+        settings: state.settings,
+        setSettings: state.setSettings
+    })));
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, onClose]);
 
     if (!isOpen) return null;
 
@@ -16,7 +32,12 @@ const PriceSyncSettingsModal = ({ isOpen, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+            onClick={(e) => {
+                if (e.target === e.currentTarget) onClose();
+            }}
+        >
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200/90 w-full max-w-md overflow-hidden animate-fadeIn">
                 <div className="flex justify-between items-center p-4 sm:p-5 border-b border-slate-100 bg-slate-50/50">
                     <div className="flex items-center gap-2">

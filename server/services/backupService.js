@@ -22,44 +22,37 @@ const ensureBackupsDir = () => {
  * Fuerza el vaciado de las transacciones WAL hacia el archivo principal de la base de datos
  */
 const checkpointWal = async () => {
-    return new Promise((resolve) => {
-        try {
-            const db = require('../database.js');
-            if (db && typeof db.run === 'function') {
-                db.run('PRAGMA wal_checkpoint(TRUNCATE);', (err) => {
-                    if (err) {
-                        console.warn('[BackupService] Aviso en WAL checkpoint:', err.message);
-                    } else {
-                        console.log('[BackupService] WAL checkpoint (TRUNCATE) ejecutado con éxito.');
-                    }
-                    resolve();
-                });
-            } else {
-                resolve();
-            }
-        } catch (e) {
-            console.warn('[BackupService] Error en checkpoint:', e.message);
-            resolve();
-        }
-    });
+    try {
+        const prisma = require('../prismaClient');
+        await prisma.$queryRawUnsafe('PRAGMA wal_checkpoint(TRUNCATE);');
+        console.log('[BackupService] WAL checkpoint (TRUNCATE) ejecutado con éxito vía Prisma.');
+    } catch (e) {
+        console.warn('[BackupService] Aviso en WAL checkpoint:', e.message);
+    }
 };
 
 /**
- * Detecta la ruta real del archivo SQLite activo
+ * Detecta la ruta real del archivo SQLite activo (priorizando la configurada en Prisma)
  */
 const getRealDatabasePath = () => {
-    const candidates = [
-        path.resolve(__dirname, '../../inventory.db'), // Raíz del proyecto
-        path.resolve(process.cwd(), 'inventory.db'),
-        path.resolve(__dirname, '../inventory.db'),    // Carpeta server
-        path.resolve(process.cwd(), 'server/inventory.db')
-    ];
-
     if (process.env.DATABASE_URL) {
         const clean = process.env.DATABASE_URL.replace(/^file:/, '').replace(/^\/\//, '');
-        candidates.unshift(path.resolve(__dirname, '..', clean));
-        candidates.unshift(path.resolve(__dirname, '../prisma', clean));
+        const prismaResolved = path.resolve(__dirname, '../prisma', clean);
+        if (fs.existsSync(prismaResolved) && fs.statSync(prismaResolved).isFile()) {
+            return prismaResolved;
+        }
     }
+
+    const serverDbPath = path.resolve(__dirname, '../inventory.db');
+    if (fs.existsSync(serverDbPath) && fs.statSync(serverDbPath).isFile()) {
+        return serverDbPath;
+    }
+
+    const candidates = [
+        path.resolve(__dirname, '../../inventory.db'),
+        path.resolve(process.cwd(), 'inventory.db'),
+        path.resolve(process.cwd(), 'server/inventory.db')
+    ];
 
     const validFiles = [];
     for (const filePath of candidates) {
@@ -79,7 +72,7 @@ const getRealDatabasePath = () => {
         throw new Error('No se encontró ningún archivo de base de datos SQLite (.db)');
     }
 
-    validFiles.sort((a, b) => b.size - a.size || b.mtime - a.mtime);
+    validFiles.sort((a, b) => b.mtime - a.mtime || b.size - a.size);
     return validFiles[0].path;
 };
 

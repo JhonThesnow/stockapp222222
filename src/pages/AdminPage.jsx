@@ -21,6 +21,7 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { formatCurrency } from '../utils/formatting';
+import { useShallow } from 'zustand/react/shallow';
 import useAuthStore from '../store/useAuthStore';
 import { toast } from 'sonner';
 
@@ -48,7 +49,10 @@ const getPageNumbers = (current, total) => {
 };
 
 const AdminPage = () => {
-    const { token, user: currentUser } = useAuthStore();
+    const { token, user: currentUser } = useAuthStore(useShallow(state => ({
+        token: state.token,
+        user: state.user
+    })));
     const [sales, setSales] = useState([]);
     const [users, setUsers] = useState([]);
     const [loadingSales, setLoadingSales] = useState(false);

@@ -19,6 +19,7 @@ model account_movements {
   accounts            accounts             @relation(fields: [accountId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([accountId], map: "idx_account_movements_account_id")
+  @@index([date], map: "idx_account_movements_date")
 }
 
 model account_pockets {
@@ -61,6 +62,9 @@ model combo_items {
   quantity                                  Int
   products_combo_items_product_idToproducts products @relation("combo_items_product_idToproducts", fields: [product_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   products_combo_items_combo_idToproducts   products @relation("combo_items_combo_idToproducts", fields: [combo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([combo_id], map: "idx_combo_items_combo_id")
+  @@index([product_id], map: "idx_combo_items_product_id")
 }
 
 model custom_orders {
@@ -86,6 +90,7 @@ model expenses {
   accounts            accounts             @relation(fields: [accountId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([accountId], map: "idx_expenses_account_id")
+  @@index([date], map: "idx_expenses_date")
 }
 
 model movement_categories {
@@ -104,6 +109,9 @@ model operating_expenses {
   is_recurring         Int?    @default(0)
   status               String? @default("pending")
   paid_from_account_id Int?
+
+  @@index([date], map: "idx_operating_expenses_date")
+  @@index([status], map: "idx_operating_expenses_status")
 }
 
 model payment_methods {
@@ -118,6 +126,8 @@ model price_increases {
   date     String
   details  String
   products String
+
+  @@index([date], map: "idx_price_increases_date")
 }
 
 model products {
@@ -160,6 +170,9 @@ model promotions {
   buy_quantity   Int?     @default(3)
   pay_quantity   Int?     @default(2)
   description    String?
+
+  @@index([active], map: "idx_promotions_active")
+  @@index([product_id], map: "idx_promotions_product_id")
 }
 
 model purchase_orders {
@@ -202,6 +215,7 @@ model sales {
   @@index([paymentMethod], map: "idx_sales_payment_method")
   @@index([status], map: "idx_sales_status")
   @@index([date], map: "idx_sales_date")
+  @@index([userId], map: "idx_sales_user_id")
 }
 
 model shifts {
@@ -233,6 +247,8 @@ model stock_entries {
   id       Int    @id @default(autoincrement())
   date     String
   products String
+
+  @@index([date], map: "idx_stock_entries_date")
 }
 
 model users {

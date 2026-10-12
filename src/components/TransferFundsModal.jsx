@@ -1,21 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import useAccountStore from '../store/useAccountStore';
 
 const TransferFundsModal = ({ onClose, accounts, selectedAccountId }) => {
-    const { transferFunds } = useAccountStore();
+    const transferFunds = useAccountStore(state => state.transferFunds);
     const [fromAccountId, setFromAccountId] = useState(selectedAccountId || (accounts.length > 0 ? accounts[0].id : ''));
     const [toAccountId, setToAccountId] = useState('');
     const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('');
 
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!fromAccountId || !toAccountId || !amount) {
-            alert('Por favor, completa todos los campos requeridos.');
+            toast.warning('Por favor, completa todos los campos requeridos.');
             return;
         }
         if (fromAccountId === toAccountId) {
-            alert('La cuenta de origen y destino no pueden ser la misma.');
+            toast.warning('La cuenta de origen y destino no pueden ser la misma.');
             return;
         }
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useCostsStore from '../store/useCostsStore';
 import {
     DollarSign,
@@ -28,7 +29,17 @@ const CostsPage = () => {
     const {
         expenses, fetchExpenses, addExpense, updateExpense, deleteExpense,
         isLoading, incidenceRate, metrics, fetchIncidenceRate
-    } = useCostsStore();
+    } = useCostsStore(useShallow(state => ({
+        expenses: state.expenses,
+        fetchExpenses: state.fetchExpenses,
+        addExpense: state.addExpense,
+        updateExpense: state.updateExpense,
+        deleteExpense: state.deleteExpense,
+        isLoading: state.isLoading,
+        incidenceRate: state.incidenceRate,
+        metrics: state.metrics,
+        fetchIncidenceRate: state.fetchIncidenceRate
+    })));
 
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [isModalOpen, setIsModalOpen] = useState(false);

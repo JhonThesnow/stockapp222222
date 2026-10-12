@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useInventoryStore from '../store/useInventoryStore';
 import { formatNumber, formatDateOnly } from '../utils/formatting';
 import { toast } from 'sonner';
@@ -70,7 +71,17 @@ const PriceIncreases = () => {
         deletePriceIncrease,
         globalSearchTerm,
         setGlobalSearchTerm
-    } = useInventoryStore();
+    } = useInventoryStore(useShallow(state => ({
+        allProducts: state.allProducts,
+        fetchAllProducts: state.fetchAllProducts,
+        loadingAllProducts: state.loadingAllProducts,
+        increasePrices: state.increasePrices,
+        fetchPriceIncreaseHistory: state.fetchPriceIncreaseHistory,
+        priceIncreaseHistory: state.priceIncreaseHistory,
+        deletePriceIncrease: state.deletePriceIncrease,
+        globalSearchTerm: state.globalSearchTerm,
+        setGlobalSearchTerm: state.setGlobalSearchTerm
+    })));
 
     // Navegación de vistas: 'form' | 'history'
     const [activeSubTab, setActiveSubTab] = useState('form');

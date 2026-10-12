@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useAccountStore from '../store/useAccountStore';
 import useCostsStore from '../store/useCostsStore';
 import { formatNumber } from '../utils/formatting';
@@ -6,14 +7,28 @@ import { X, CreditCard, DollarSign, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 
 const PayExpenseModal = ({ onClose, expense, onPaid }) => {
-    const { accounts, fetchAccounts } = useAccountStore();
-    const { payExpense } = useCostsStore();
+    const { accounts, fetchAccounts } = useAccountStore(useShallow(state => ({
+        accounts: state.accounts,
+        fetchAccounts: state.fetchAccounts
+    })));
+    const payExpense = useCostsStore(state => state.payExpense);
     const [accountId, setAccountId] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (accounts.length === 0) fetchAccounts();
     }, [accounts, fetchAccounts]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

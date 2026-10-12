@@ -1,16 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useAccountStore from '../store/useAccountStore';
 import { formatNumber } from '../utils/formatting';
 import { FiPlus, FiTrash, FiEdit2, FiCheck, FiX } from 'react-icons/fi';
 
 const PocketsModal = ({ onClose, accountName, totalBalance }) => {
-    const { pockets, createPocket, updatePocket, deletePocket } = useAccountStore();
+    const { pockets, createPocket, updatePocket, deletePocket } = useAccountStore(useShallow(state => ({
+        pockets: state.pockets,
+        createPocket: state.createPocket,
+        updatePocket: state.updatePocket,
+        deletePocket: state.deletePocket
+    })));
     const [isCreating, setIsCreating] = useState(false);
     const [newName, setNewName] = useState('');
     const [newAmount, setNewAmount] = useState('');
 
     const [editingId, setEditingId] = useState(null);
     const [editAmount, setEditAmount] = useState('');
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
 
     const totalInPockets = pockets.reduce((sum, p) => sum + p.amount, 0);
     const availableBalance = (totalBalance || 0) - totalInPockets;

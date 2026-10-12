@@ -1,14 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useSalesStore from '../store/useSalesStore';
 import { FiX, FiAlertTriangle } from 'react-icons/fi';
+import { toast } from 'sonner';
 
 const CancelSaleModal = ({ sale, onClose }) => {
-    const { cancelSale, loading, error } = useSalesStore();
+    const { cancelSale, loading, error } = useSalesStore(useShallow(state => ({
+        cancelSale: state.cancelSale,
+        loading: state.loading,
+        error: state.error
+    })));
     const [reason, setReason] = useState('');
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
 
     const handleConfirm = async () => {
         if (!reason.trim()) {
-            alert('Por favor, ingresa un motivo para la cancelación.');
+            toast.warning('Por favor, ingresa un motivo para la cancelación.');
             return;
         }
         const result = await cancelSale(sale.id, reason);
@@ -18,7 +35,12 @@ const CancelSaleModal = ({ sale, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+        <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+            onClick={(e) => {
+                if (e.target === e.currentTarget) onClose();
+            }}
+        >
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
                 <div className="flex justify-between items-center mb-4 border-b pb-3">
                     <h2 className="text-2xl font-bold text-red-600 flex items-center gap-2">

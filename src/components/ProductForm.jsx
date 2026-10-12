@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useInventoryStore from '../store/useInventoryStore.js';
 import {
     X,
@@ -30,7 +31,10 @@ const newVariationTemplate = {
 };
 
 const ProductForm = ({ productToEdit, onClose }) => {
-    const { addBatchProducts, updateProduct } = useInventoryStore();
+    const { addBatchProducts, updateProduct } = useInventoryStore(useShallow(state => ({
+        addBatchProducts: state.addBatchProducts,
+        updateProduct: state.updateProduct
+    })));
 
     const isEditMode = Boolean(productToEdit);
 
@@ -42,9 +46,10 @@ const ProductForm = ({ productToEdit, onClose }) => {
     const [activeScannerIndex, setActiveScannerIndex] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
 
-    // Refs para gestión de foco rápida
+    // Refs para gestión de foco rápida y callback estable
     const firstInputRef = useRef(null);
     const variationInputRefs = useRef([]);
+    const submitHandlerRef = useRef(null);
 
     // Ocultar scanner FAB global mientras el modal esté abierto
     useEffect(() => {
@@ -90,7 +95,7 @@ const ProductForm = ({ productToEdit, onClose }) => {
         }
     }, [productToEdit, isEditMode]);
 
-    // Atajos de teclado globales para el modal
+    // Atajos de teclado globales para el modal (listener estable sin re-montaje en cada tecla)
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.key === 'Escape') {
@@ -98,13 +103,15 @@ const ProductForm = ({ productToEdit, onClose }) => {
                 onClose();
             } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
-                handleSubmit(e);
+                if (submitHandlerRef.current) {
+                    submitHandlerRef.current(e);
+                }
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [variations, commonData, editData, notifyLowStock, isEditMode]);
+    }, [onClose]);
 
     const handleCommonChange = (e) => {
         setCommonData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -291,6 +298,7 @@ const ProductForm = ({ productToEdit, onClose }) => {
             setIsSaving(false);
         }
     };
+    submitHandlerRef.current = handleSubmit;
 
     // Totales rápidos para control cognitivo
     const totalVariationsCount = variations.length;

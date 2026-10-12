@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import BarcodeTag from './BarcodeTag';
 
 const LABELS_PER_A4_PAGE = 16;
@@ -15,26 +15,32 @@ const BarcodePrintSheet = React.forwardRef(({
     layout = 'a4',
     showCutGuide = true,
 }, ref) => {
-    // Aplanar los items según la cantidad de copias
-    const flatLabels = [];
-    items.forEach((item) => {
-        const count = Math.max(1, parseInt(item.copies) || 1);
-        for (let i = 0; i < count; i++) {
-            flatLabels.push({
-                ...item,
-                uniqueKey: `${item.id || item.code}-${i}`,
-            });
-        }
-    });
+    // Aplanar los items según la cantidad de copias (memoizado)
+    const flatLabels = useMemo(() => {
+        const list = [];
+        items.forEach((item) => {
+            const count = Math.max(1, parseInt(item.copies) || 1);
+            for (let i = 0; i < count; i++) {
+                list.push({
+                    ...item,
+                    uniqueKey: `${item.id || item.code}-${i}`,
+                });
+            }
+        });
+        return list;
+    }, [items]);
 
-    // Dividir en páginas A4 de 16 etiquetas cada una
-    const pages = [];
-    for (let i = 0; i < flatLabels.length; i += LABELS_PER_A4_PAGE) {
-        pages.push(flatLabels.slice(i, i + LABELS_PER_A4_PAGE));
-    }
-    if (pages.length === 0 && flatLabels.length === 0) {
-        pages.push([]);
-    }
+    // Dividir en páginas A4 de 16 etiquetas cada una (memoizado)
+    const pages = useMemo(() => {
+        const result = [];
+        for (let i = 0; i < flatLabels.length; i += LABELS_PER_A4_PAGE) {
+            result.push(flatLabels.slice(i, i + LABELS_PER_A4_PAGE));
+        }
+        if (result.length === 0 && flatLabels.length === 0) {
+            result.push([]);
+        }
+        return result;
+    }, [flatLabels]);
 
     return (
         <div ref={ref} className="barcode-print-root bg-white text-black p-0 m-0">
@@ -162,4 +168,4 @@ const BarcodePrintSheet = React.forwardRef(({
 
 BarcodePrintSheet.displayName = 'BarcodePrintSheet';
 
-export default BarcodePrintSheet;
+export default React.memo(BarcodePrintSheet);

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useSalesStore from '../store/useSalesStore';
 import {
     BarChart,
@@ -103,7 +104,13 @@ const CustomBarTooltip = ({ active, payload, label }) => {
 };
 
 const ReportsPage = () => {
-    const { reportData, loading, fetchReportData, reportFilters, setReportFilters } = useSalesStore();
+    const { reportData, loading, fetchReportData, reportFilters, setReportFilters } = useSalesStore(useShallow(state => ({
+        reportData: state.reportData,
+        loading: state.loading,
+        fetchReportData: state.fetchReportData,
+        reportFilters: state.reportFilters,
+        setReportFilters: state.setReportFilters
+    })));
 
     // Estados locales
     const [activePeriod, setActivePeriod] = useState('month'); // 'today', 'week', 'month', 'lastMonth', 'custom'

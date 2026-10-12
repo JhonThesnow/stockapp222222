@@ -1,7 +1,9 @@
 /* eslint-env node */
+const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
 
-const db = new sqlite3.Database('./inventory.db', (err) => {
+const dbPath = path.resolve(__dirname, 'inventory.db');
+const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error("Error al abrir la base de datos: " + err.message);
     } else {
@@ -297,8 +299,19 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
             db.run(`CREATE INDEX IF NOT EXISTS idx_custom_orders_status ON custom_orders(status)`);
 
             db.run(`CREATE INDEX IF NOT EXISTS idx_account_movements_account_id ON account_movements(accountId)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_account_movements_date ON account_movements(date)`);
             db.run(`CREATE INDEX IF NOT EXISTS idx_expenses_account_id ON expenses(accountId)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date)`);
             db.run(`CREATE INDEX IF NOT EXISTS idx_cash_closings_account_id ON cash_closings(accountId)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_combo_items_combo_id ON combo_items(combo_id)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_combo_items_product_id ON combo_items(product_id)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_operating_expenses_date ON operating_expenses(date)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_operating_expenses_status ON operating_expenses(status)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_price_increases_date ON price_increases(date)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_stock_entries_date ON stock_entries(date)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_promotions_active ON promotions(active)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_promotions_product_id ON promotions(product_id)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_sales_user_id ON sales(userId)`);
 
             // --- SEEDING DE DATOS INICIALES ESENCIALES ---
             const seedEssentialData = () => {

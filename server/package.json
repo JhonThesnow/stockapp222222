@@ -12,10 +12,12 @@
   "dependencies": {
     "@afipsdk/afip.js": "^1.2.3",
     "@prisma/client": "^5.22.0",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^18.0.7",
     "express": "^5.1.0",
     "googleapis": "^185.0.0",
+    "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.6.0",
     "prisma": "^5.22.0",
     "puppeteer": "^25.12.0",

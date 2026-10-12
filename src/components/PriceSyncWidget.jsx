@@ -1,9 +1,15 @@
 import React from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { FiLoader, FiCheckCircle } from 'react-icons/fi';
 import usePriceSyncStore from '../store/usePriceSyncStore';
 
 const PriceSyncWidget = () => {
-    const { queue, currentIndex, isSyncing, isPaused } = usePriceSyncStore();
+    const { queue, currentIndex, isSyncing, isPaused } = usePriceSyncStore(useShallow(state => ({
+        queue: state.queue,
+        currentIndex: state.currentIndex,
+        isSyncing: state.isSyncing,
+        isPaused: state.isPaused
+    })));
 
     if (queue.length === 0) return null;
 

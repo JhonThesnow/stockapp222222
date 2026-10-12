@@ -1,6 +1,7 @@
 import { startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, format } from 'date-fns';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { toast } from 'sonner';
 import useInventoryStore from './useInventoryStore';
 import useAccountStore from './useAccountStore';
 import { roundCash } from '../utils/formatting';
@@ -99,21 +100,23 @@ const useSalesStore = create(persist((set, get) => ({
                 return { cart: [...state.cart, { ...product, id: `qs-${Date.now()}` }] };
             }
             const itemInCart = state.cart.find((item) => item.id === product.id);
+            const stockAvailable = product.stockQuantity ?? product.quantity;
             if (itemInCart) {
-                if (itemInCart.quantity < product.quantity) {
+                const maxStock = itemInCart.stockQuantity ?? stockAvailable;
+                if (itemInCart.quantity < maxStock) {
                     return {
                         cart: state.cart.map(item =>
                             item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
                         )
                     };
                 }
-                alert('No hay más stock disponible para este producto.');
+                toast.warning('No hay más stock disponible para este producto.');
                 return {};
             }
-            if (product.quantity > 0) {
-                return { cart: [...state.cart, { ...product, quantity: 1 }] };
+            if (stockAvailable > 0) {
+                return { cart: [...state.cart, { ...product, stockQuantity: stockAvailable, quantity: 1 }] };
             }
-            alert('Producto sin stock.');
+            toast.warning('Producto sin stock.');
             return {};
         });
     },
@@ -121,13 +124,14 @@ const useSalesStore = create(persist((set, get) => ({
         set(state => ({ cart: state.cart.filter((item) => item.id !== productId) }));
     },
     updateItemQuantity: (productId, quantity) => {
-        const productInDB = useInventoryStore.getState().products.find(p => p.id === productId);
+        const invState = useInventoryStore.getState();
+        const productInDB = invState.products.find(p => p.id === productId) || invState.allProducts.find(p => p.id === productId);
         let newQuantity = parseInt(quantity, 10);
         if (isNaN(newQuantity) || newQuantity < 1) newQuantity = 1;
 
         if (productInDB) {
             if (newQuantity > productInDB.quantity) {
-                alert(`Solo hay ${productInDB.quantity} unidades en stock.`);
+                toast.warning(`Solo hay ${productInDB.quantity} unidades en stock.`);
                 newQuantity = productInDB.quantity;
             }
         }
@@ -391,7 +395,7 @@ const useSalesStore = create(persist((set, get) => ({
             return { success: true };
         } catch (e) {
             console.error("Error deleting pending sale:", e);
-            if (!skipConfirm) alert(e.message);
+            if (!skipConfirm) toast.error(e.message);
             return { success: false, error: e.message };
         }
     },
@@ -405,7 +409,7 @@ const useSalesStore = create(persist((set, get) => ({
             useAccountStore.getState().fetchDataForCurrentState();
         } catch (e) {
             console.error("Error deleting completed sale:", e);
-            alert(e.message);
+            toast.error(e.message);
         }
     },
 
@@ -434,7 +438,7 @@ const useSalesStore = create(persist((set, get) => ({
             useAccountStore.getState().fetchDataForCurrentState();
         } catch (e) {
             console.error("Error adding expense:", e);
-            alert(e.message);
+            toast.error(e.message);
         }
     },
 
@@ -447,7 +451,7 @@ const useSalesStore = create(persist((set, get) => ({
             useAccountStore.getState().fetchDataForCurrentState();
         } catch (e) {
             console.error("Error deleting expense:", e);
-            alert(e.message);
+            toast.error(e.message);
         }
     },
 
@@ -494,7 +498,7 @@ const useSalesStore = create(persist((set, get) => ({
             get().fetchPaymentMethods();
             return { success: true };
         } catch (e) {
-            alert(e.message);
+            toast.error(e.message);
             return { success: false };
         }
     }

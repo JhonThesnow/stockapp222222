@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useSalesStore from '../store/useSalesStore';
 import useInventoryStore from '../store/useInventoryStore';
 import Select from 'react-select';
@@ -7,7 +8,7 @@ import {
     FiTag, FiDollarSign, FiSearch, FiZap, FiPercent, FiPackage, 
     FiAlertCircle, FiRefreshCw 
 } from 'react-icons/fi';
-import { formatNumber } from '../utils/formatting';
+import { formatNumber, createQuickSaleItem } from '../utils/formatting';
 import { toast } from 'sonner';
 
 const customSelectStyles = {
@@ -55,12 +56,19 @@ const customSelectStyles = {
 };
 
 const EditPendingSaleModal = ({ sale, onClose }) => {
-    const { updatePendingSale, loading, error } = useSalesStore();
-    const { products, fetchProducts } = useInventoryStore();
+    const { updatePendingSale, loading, error } = useSalesStore(useShallow(state => ({
+        updatePendingSale: state.updatePendingSale,
+        loading: state.loading,
+        error: state.error
+    })));
+    const { allProducts, fetchAllProducts } = useInventoryStore(useShallow(state => ({
+        allProducts: state.allProducts,
+        fetchAllProducts: state.fetchAllProducts
+    })));
 
     useEffect(() => {
-        fetchProducts({ limit: 9999 });
-    }, [fetchProducts]);
+        fetchAllProducts();
+    }, [fetchAllProducts]);
 
     // Close on Escape key
     const handleKeyDown = useCallback((e) => {
@@ -101,12 +109,12 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
     const [qsQuantity, setQsQuantity] = useState(1);
 
     const productOptions = useMemo(() => {
-        return products.map(p => ({
+        return allProducts.map(p => ({
             value: p,
             label: `${p.brand ? '[' + p.brand + '] ' : ''}${p.name} ${p.subtype || ''}`,
             product: p
         }));
-    }, [products]);
+    }, [allProducts]);
 
     const handleAddProductFromStock = () => {
         if (!selectedProduct) {
@@ -149,17 +157,7 @@ const EditPendingSaleModal = ({ sale, onClose }) => {
             return;
         }
 
-        const quickSaleItem = {
-            id: `qs-${Date.now()}`,
-            productId: null,
-            name: qsDescription.trim() || 'Artículo Vario',
-            fullName: qsDescription.trim() || 'Artículo Vario',
-            subtype: '',
-            quantity: qty,
-            purchasePrice: 0,
-            unitPrice: finalPrice,
-            salePrices: [{ name: 'Minorista', price: finalPrice }],
-        };
+        const quickSaleItem = createQuickSaleItem(qsDescription, finalPrice, qty);
 
         setItems(prev => [...prev, quickSaleItem]);
         toast.success(`"${quickSaleItem.name}" agregado a la venta`);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { FiX, FiSearch, FiAlertTriangle, FiInfo, FiDollarSign } from 'react-icons/fi';
 import { toast } from 'sonner';
 import { formatNumber } from '../utils/formatting';
@@ -13,8 +14,11 @@ const TYPE_HINTS = {
 };
 
 const StockAdjustmentModal = ({ onClose, products, onSuccess }) => {
-    const { registerStockAdjustment } = useInventoryStore();
-    const { accounts, ensureAccountsLoaded } = useAccountStore();
+    const registerStockAdjustment = useInventoryStore(state => state.registerStockAdjustment);
+    const { accounts, ensureAccountsLoaded } = useAccountStore(useShallow(state => ({
+        accounts: state.accounts,
+        ensureAccountsLoaded: state.ensureAccountsLoaded
+    })));
 
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedProduct, setSelectedProduct] = useState(null);
@@ -32,6 +36,17 @@ const StockAdjustmentModal = ({ onClose, products, onSuccess }) => {
     useEffect(() => {
         ensureAccountsLoaded();
     }, [ensureAccountsLoaded]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
 
     const filteredProducts = products.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -76,7 +91,12 @@ const StockAdjustmentModal = ({ onClose, products, onSuccess }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+        <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4"
+            onClick={(e) => {
+                if (e.target === e.currentTarget) onClose();
+            }}
+        >
             <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
                 <div className="flex justify-between items-center p-6 border-b border-gray-100">
                     <div>

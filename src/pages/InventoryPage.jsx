@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import ProductForm from '../components/ProductForm.jsx';
 import RestockModal from '../components/RestockModal.jsx';
 import ConfirmModal from '../components/ConfirmModal.jsx';
@@ -68,7 +69,7 @@ const InventorySkeleton = () => (
 
 // Detalle expandido con panel financiero y de rentabilidad
 const ProductDetailView = ({ product }) => {
-    const { incidenceRate } = useCostsStore();
+    const incidenceRate = useCostsStore(state => state.incidenceRate);
 
     if (!product) return null;
 
@@ -244,7 +245,19 @@ const InventoryPage = () => {
         allProducts,
         fetchAllProducts,
         selectedProductsForIncome
-    } = useInventoryStore();
+    } = useInventoryStore(useShallow(state => ({
+        products: state.products,
+        totalPages: state.totalPages,
+        loading: state.loading,
+        error: state.error,
+        fetchProducts: state.fetchProducts,
+        deleteProduct: state.deleteProduct,
+        globalSearchTerm: state.globalSearchTerm,
+        setGlobalSearchTerm: state.setGlobalSearchTerm,
+        allProducts: state.allProducts,
+        fetchAllProducts: state.fetchAllProducts,
+        selectedProductsForIncome: state.selectedProductsForIncome
+    })));
 
     const stagedCount = useMemo(() => {
         return Object.keys(selectedProductsForIncome || {}).filter(k => selectedProductsForIncome[k] > 0).length;

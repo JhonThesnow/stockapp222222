@@ -1,9 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useAccountStore from '../store/useAccountStore';
 import { FiX } from 'react-icons/fi';
 
 const EditMovementDrawer = ({ movement, onClose }) => {
-    const { updateMovement, loading } = useAccountStore();
+    const { updateMovement, loading } = useAccountStore(useShallow(state => ({
+        updateMovement: state.updateMovement,
+        loading: state.loading
+    })));
     const [type, setType] = useState('deposit');
     const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('');
@@ -19,10 +23,21 @@ const EditMovementDrawer = ({ movement, onClose }) => {
         }
     }, [movement]);
 
-    const handleClose = () => {
+    const handleClose = useCallback(() => {
         setIsOpen(false);
         setTimeout(onClose, 300); // Wait for transition
-    };
+    }, [onClose]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                handleClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleClose]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

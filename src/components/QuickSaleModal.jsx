@@ -1,13 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useSalesStore from '../store/useSalesStore';
 import { FiX, FiShoppingCart, FiTag, FiDollarSign, FiHash, FiPlus } from 'react-icons/fi';
 import { toast } from 'sonner';
+import { createQuickSaleItem } from '../utils/formatting';
 
 const QuickSaleModal = ({ onClose }) => {
-    const { addItemToCart } = useSalesStore();
+    const addItemToCart = useSalesStore(state => state.addItemToCart);
     const [price, setPrice] = useState('');
     const [description, setDescription] = useState('Artículo Vario');
     const [quantity, setQuantity] = useState(1);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
 
     const handleAddItem = (e) => {
         e.preventDefault();
@@ -17,14 +26,7 @@ const QuickSaleModal = ({ onClose }) => {
             return;
         }
 
-        const quickSaleItem = {
-            id: `qs-${Date.now()}`,
-            name: description.trim() || 'Artículo Vario',
-            subtype: '',
-            quantity: parseInt(quantity, 10) || 1,
-            purchasePrice: 0,
-            salePrices: [{ name: 'Minorista', price: finalPrice }],
-        };
+        const quickSaleItem = createQuickSaleItem(description, finalPrice, quantity);
 
         addItemToCart(quickSaleItem);
         toast.success(`"${quickSaleItem.name}" agregado al carrito`);
@@ -32,8 +34,12 @@ const QuickSaleModal = ({ onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center z-50 p-4 animate-in fade-in duration-200">
+        <div
+            onClick={onClose}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex justify-center items-center z-50 p-4 animate-in fade-in duration-200"
+        >
             <form 
+                onClick={(e) => e.stopPropagation()}
                 onSubmit={handleAddItem} 
                 className="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-sm overflow-hidden transform transition-all"
             >

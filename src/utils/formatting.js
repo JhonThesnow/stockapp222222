@@ -26,11 +26,35 @@ export const roundCash = (amount) => {
 };
 
 /**
- * Formatea una fecha a `dd/MM/yyyy`.
+ * Formatea una fecha a `dd/MM/yyyy` evitando el desfase UTC en fechas ISO `YYYY-MM-DD`.
  * @param {string | Date} date - La fecha a formatear.
  * @returns {string} La fecha formateada.
  */
 export const formatDateOnly = (date) => {
     if (!date) return '';
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+        const [year, month, day] = date.trim().split('-').map(Number);
+        return new Date(year, month - 1, day).toLocaleDateString('es-AR');
+    }
     return new Date(date).toLocaleDateString('es-AR');
+};
+
+/**
+ * Construye un ítem de Venta Rápida estandarizado para el carrito y ventas pendientes.
+ */
+export const createQuickSaleItem = (description, price, quantity = 1) => {
+    const cleanName = (description || '').trim() || 'Artículo Vario';
+    const finalPrice = parseFloat(price);
+    const qty = parseInt(quantity, 10) || 1;
+    return {
+        id: `qs-${Date.now()}`,
+        productId: null,
+        name: cleanName,
+        fullName: cleanName,
+        subtype: '',
+        quantity: qty,
+        purchasePrice: 0,
+        unitPrice: finalPrice,
+        salePrices: [{ name: 'Minorista', price: finalPrice }],
+    };
 };

@@ -1,9 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useSalesStore from '../store/useSalesStore';
 import { FiX, FiSave, FiDollarSign } from 'react-icons/fi';
 
 const EditSaleDrawer = ({ sale, onClose }) => {
-    const { updateCompletedSale, paymentMethods, fetchPaymentMethods, loading, error } = useSalesStore();
+    const { updateCompletedSale, paymentMethods, fetchPaymentMethods, loading, error } = useSalesStore(useShallow(state => ({
+        updateCompletedSale: state.updateCompletedSale,
+        paymentMethods: state.paymentMethods,
+        fetchPaymentMethods: state.fetchPaymentMethods,
+        loading: state.loading,
+        error: state.error
+    })));
 
     const [paymentMethod, setPaymentMethod] = useState(sale.paymentMethod);
     const [finalAmount, setFinalAmount] = useState(sale.finalAmount);
@@ -16,10 +23,21 @@ const EditSaleDrawer = ({ sale, onClose }) => {
         setIsOpen(true);
     }, [paymentMethods, fetchPaymentMethods]);
 
-    const handleClose = () => {
+    const handleClose = useCallback(() => {
         setIsOpen(false);
         setTimeout(onClose, 300); // Wait for transition
-    };
+    }, [onClose]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                handleClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleClose]);
 
     const handleSave = async (e) => {
         e.preventDefault();

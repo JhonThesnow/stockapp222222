@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { FiPrinter, FiX, FiCheckCircle, FiShield, FiCalendar, FiClock, FiCreditCard } from 'react-icons/fi';
 import { formatNumber } from '../utils/formatting';
@@ -11,6 +11,18 @@ const SaleTicketModal = ({
     onClose 
 }) => {
     const ticketRef = useRef(null);
+
+    useEffect(() => {
+        if (!sale) return;
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                onClose?.();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [sale, onClose]);
 
     if (!sale) return null;
 

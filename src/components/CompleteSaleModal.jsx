@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useSalesStore from '../store/useSalesStore.js';
 import { 
     FiX, FiSave, FiPercent, FiFileText, FiDollarSign, FiCreditCard, 
@@ -41,7 +42,13 @@ const getPaymentMethodBadgeClass = (name = '', isSelected) => {
 };
 
 const CompleteSaleModal = ({ sale, onClose }) => {
-    const { completeSale, paymentMethods, fetchPaymentMethods, loading, error } = useSalesStore();
+    const { completeSale, paymentMethods, fetchPaymentMethods, loading, error } = useSalesStore(useShallow(state => ({
+        completeSale: state.completeSale,
+        paymentMethods: state.paymentMethods,
+        fetchPaymentMethods: state.fetchPaymentMethods,
+        loading: state.loading,
+        error: state.error
+    })));
 
     // Empezamos con el método que ya traía la venta, si no, vacío
     const initialMethod = sale.paymentMethod || '';

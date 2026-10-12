@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useDashboardStore from '../store/useDashboardStore';
 import { formatNumber } from '../utils/formatting';
 import { FiDollarSign, FiPackage, FiTrendingUp, FiTrendingDown, FiAlertTriangle } from 'react-icons/fi';
@@ -17,7 +18,11 @@ const StatCard = ({ title, value, icon, iconBg, subtitle }) => (
 );
 
 const DashboardPage = () => {
-    const { summary, loading, fetchDashboardSummary } = useDashboardStore();
+    const { summary, loading, fetchDashboardSummary } = useDashboardStore(useShallow(state => ({
+        summary: state.summary,
+        loading: state.loading,
+        fetchDashboardSummary: state.fetchDashboardSummary
+    })));
 
     useEffect(() => {
         fetchDashboardSummary();

@@ -113,13 +113,27 @@ exports.getCombos = async (req, res) => {
             return res.json({ message: 'success', data: [] });
         }
 
-        const data = await Promise.all(combos.map(async (combo) => {
-            const items = await prisma.$queryRawUnsafe(`
-                SELECT ci.id as combo_item_id, ci.quantity, p.id as product_id, p.name, p.subtype, p.brand, p.purchasePrice, p.salePrices, p.quantity as componentStock
-                FROM combo_items ci
-                JOIN products p ON ci.product_id = p.id
-                WHERE ci.combo_id = ?
-            `, combo.id);
+        const comboIds = combos.map(c => c.id);
+        const placeholders = comboIds.map(() => '?').join(',');
+        const allItems = await prisma.$queryRawUnsafe(`
+            SELECT ci.combo_id, ci.id as combo_item_id, ci.quantity, p.id as product_id, p.name, p.subtype, p.brand, p.purchasePrice, p.salePrices, p.quantity as componentStock
+            FROM combo_items ci
+            JOIN products p ON ci.product_id = p.id
+            WHERE ci.combo_id IN (${placeholders})
+        `, ...comboIds);
+
+        const itemsByComboId = new Map();
+        for (const row of allItems) {
+            const cId = Number(row.combo_id);
+            if (!itemsByComboId.has(cId)) {
+                itemsByComboId.set(cId, []);
+            }
+            const { combo_id, ...item } = row;
+            itemsByComboId.get(cId).push(item);
+        }
+
+        const data = combos.map((combo) => {
+            const items = itemsByComboId.get(Number(combo.id)) || [];
 
             const parsedSalePrices = typeof combo.salePrices === 'string' ? JSON.parse(combo.salePrices || '[]') : combo.salePrices;
             const comboPrice = parsedSalePrices[0]?.price || 0;
@@ -155,7 +169,7 @@ exports.getCombos = async (req, res) => {
                 grossProfit,
                 marginPercent
             };
-        }));
+        });
 
         res.json({ message: 'success', data });
     } catch (err) {

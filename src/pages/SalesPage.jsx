@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import useInventoryStore from '../store/useInventoryStore';
 import useSalesStore from '../store/useSalesStore';
 import { 
@@ -20,6 +21,7 @@ const SalesPage = () => {
     const [isSubmittingSale, setIsSubmittingSale] = useState(false);
 
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [selectedBrand, setSelectedBrand] = useState('Todas');
     const [selectedType, setSelectedType] = useState('Todos');
     const [comboFilter, setComboFilter] = useState('all'); // 'all' | 'products' | 'combos'
@@ -34,7 +36,14 @@ const SalesPage = () => {
         loading: productsLoading,
         allProducts,
         fetchAllProducts
-    } = useInventoryStore();
+    } = useInventoryStore(useShallow(state => ({
+        products: state.products,
+        totalPages: state.totalPages,
+        fetchProducts: state.fetchProducts,
+        loading: state.loading,
+        allProducts: state.allProducts,
+        fetchAllProducts: state.fetchAllProducts
+    })));
     const {
         cart,
         addItemToCart,
@@ -48,9 +57,30 @@ const SalesPage = () => {
         createPendingSale,
         currentShift,
         fetchCurrentShift
-    } = useSalesStore();
+    } = useSalesStore(useShallow(state => ({
+        cart: state.cart,
+        addItemToCart: state.addItemToCart,
+        removeItemFromCart: state.removeItemFromCart,
+        updateItemQuantity: state.updateItemQuantity,
+        clearCart: state.clearCart,
+        currentPaymentMethod: state.currentPaymentMethod,
+        setCurrentPaymentMethod: state.setCurrentPaymentMethod,
+        paymentMethods: state.paymentMethods,
+        fetchPaymentMethods: state.fetchPaymentMethods,
+        createPendingSale: state.createPendingSale,
+        currentShift: state.currentShift,
+        fetchCurrentShift: state.fetchCurrentShift
+    })));
 
     const [activePromotions, setActivePromotions] = useState([]);
+
+    // Debounce searchTerm para evitar peticiones en cada tecla presionada
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 300);
+        return () => clearTimeout(handler);
+    }, [searchTerm]);
 
     // Cargar promociones activas
     const fetchPromos = async () => {
@@ -84,10 +114,10 @@ const SalesPage = () => {
             limit: ITEMS_PER_PAGE,
             brand: selectedBrand,
             name: selectedType,
-            searchTerm,
+            searchTerm: debouncedSearchTerm,
             is_combo: isComboParam
         });
-    }, [fetchProducts, currentPage, selectedBrand, selectedType, searchTerm, comboFilter]);
+    }, [fetchProducts, currentPage, selectedBrand, selectedType, debouncedSearchTerm, comboFilter]);
 
     const brands = useMemo(() => {
         const brandSet = new Set(allProducts.map(p => p.brand).filter(Boolean));

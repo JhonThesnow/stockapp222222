@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import useInventoryStore from '../store/useInventoryStore.js';
 import {
     Search,
@@ -48,7 +49,20 @@ const StockIncome = () => {
         clearSelectedProductsForIncome,
         globalSearchTerm,
         setGlobalSearchTerm
-    } = useInventoryStore();
+    } = useInventoryStore(useShallow(state => ({
+        allProducts: state.allProducts,
+        fetchAllProducts: state.fetchAllProducts,
+        batchRestock: state.batchRestock,
+        fetchStockEntriesHistory: state.fetchStockEntriesHistory,
+        stockEntriesHistory: state.stockEntriesHistory,
+        deleteStockEntry: state.deleteStockEntry,
+        selectedProductsForIncome: state.selectedProductsForIncome,
+        setSelectedProductsForIncome: state.setSelectedProductsForIncome,
+        updateSelectedProductQuantity: state.updateSelectedProductQuantity,
+        clearSelectedProductsForIncome: state.clearSelectedProductsForIncome,
+        globalSearchTerm: state.globalSearchTerm,
+        setGlobalSearchTerm: state.setGlobalSearchTerm
+    })));
 
     // Filtros de búsqueda del catálogo
     const [searchTerm, setSearchTerm] = useState('');
@@ -156,20 +170,28 @@ const StockIncome = () => {
         });
     }, [allProducts, searchTerm, selectedBrand, onlyLowStock]);
 
-    // Productos en el borrador de ingreso
+    // Índice O(1) por ID de producto
+    const productByIdMap = useMemo(() => {
+        const map = new Map();
+        (allProducts || []).forEach(p => map.set(p.id, p));
+        return map;
+    }, [allProducts]);
+
+    // Productos en el borrador de ingreso (búsqueda O(1) con Map)
     const stagedItems = useMemo(() => {
         return Object.entries(selectedProducts)
             .filter(([, qty]) => qty > 0)
             .map(([id, qty]) => {
-                const prod = (allProducts || []).find(p => p.id === parseInt(id, 10));
+                const numericId = parseInt(id, 10);
+                const prod = productByIdMap.get(numericId);
                 return {
                     product: prod,
-                    id: parseInt(id, 10),
+                    id: numericId,
                     quantity: qty
                 };
             })
             .filter(item => Boolean(item.product));
-    }, [selectedProducts, allProducts]);
+    }, [selectedProducts, productByIdMap]);
 
     // Métricas del borrador
     const metrics = useMemo(() => {

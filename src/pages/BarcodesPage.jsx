@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import { useReactToPrint } from 'react-to-print';
 import { 
     FiSearch, 
@@ -56,7 +57,13 @@ const BarcodesPage = () => {
         loadingAllProducts, 
         updateProduct, 
         fetchProducts 
-    } = useInventoryStore();
+    } = useInventoryStore(useShallow(state => ({
+        allProducts: state.allProducts,
+        fetchAllProducts: state.fetchAllProducts,
+        loadingAllProducts: state.loadingAllProducts,
+        updateProduct: state.updateProduct,
+        fetchProducts: state.fetchProducts
+    })));
 
     const location = useLocation();
 

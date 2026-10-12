@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { FiAlertTriangle } from 'react-icons/fi';
 
 const ConfirmModal = ({ 
@@ -12,6 +12,18 @@ const ConfirmModal = ({
     confirmVariant = "danger",
     icon: CustomIcon
 }) => {
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                onCancel?.();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, onCancel]);
+
     if (!isOpen) return null;
 
     const variantStyles = {
@@ -29,8 +41,13 @@ const ConfirmModal = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100">
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
+            onClick={(e) => {
+                if (e.target === e.currentTarget) onCancel?.();
+            }}
+        >
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-scale-in">
                 <div className="p-6 flex gap-4">
                     <div className={`flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-2xl ${iconBgStyles[confirmVariant] || iconBgStyles.danger}`}>
                         {CustomIcon ? <CustomIcon size={24} /> : <FiAlertTriangle size={24} />}

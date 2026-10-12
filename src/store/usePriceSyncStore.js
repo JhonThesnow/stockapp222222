@@ -82,9 +82,10 @@ const usePriceSyncStore = create(persist((set, get) => ({
 
             if (!res.ok) throw new Error(data.error || 'Error fetching price');
 
+            const syncedPrice = data.provider_price ?? data.price;
             const now = new Date().toISOString();
             const updatedProductData = {
-                provider_price: data.price,
+                provider_price: syncedPrice,
                 last_price_check: now
             };
 
@@ -94,11 +95,18 @@ const usePriceSyncStore = create(persist((set, get) => ({
                  body: JSON.stringify(updatedProductData),
             });
 
-            // Update local store so UI updates immediately
-            inventoryStore.fetchProducts({ page: inventoryStore.currentPage, limit: 1000 });
+            // Update the specific product in memory immediately to avoid refetching 1000 products on every step
+            useInventoryStore.setState((invState) => ({
+                products: invState.products.map(p =>
+                    p.id === product.id ? { ...p, ...updatedProductData } : p
+                ),
+                allProducts: invState.allProducts.map(p =>
+                    p.id === product.id ? { ...p, ...updatedProductData } : p
+                )
+            }));
 
             set((s) => ({
-                results: { ...s.results, [productId]: { status: 'success', newPrice: data.price } }
+                results: { ...s.results, [productId]: { status: 'success', newPrice: syncedPrice } }
             }));
 
         } catch (error) {

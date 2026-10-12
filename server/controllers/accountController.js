@@ -236,19 +236,31 @@ exports.getAccountSummary = async (req, res) => {
             }
         }
 
-        const salesSql = `SELECT finalAmount FROM sales WHERE status = 'completed' AND date >= ? AND date <= ? ${accountFilter}`;
-        const expensesSql = `SELECT amount FROM expenses WHERE date >= ? AND date <= ? ${accountFilter}`;
-        const movementsSql = `SELECT type, amount FROM account_movements WHERE date >= ? AND date <= ? ${accountFilter}`;
+        const salesSql = `SELECT COALESCE(SUM(finalAmount), 0) as total FROM sales WHERE status = 'completed' AND date >= ? AND date <= ? ${accountFilter}`;
+        const expensesSql = `SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE date >= ? AND date <= ? ${accountFilter}`;
+        const movementsSql = `
+            SELECT
+                COALESCE(SUM(CASE WHEN type = 'deposit' THEN amount ELSE 0 END), 0) as deposits,
+                COALESCE(SUM(CASE WHEN type = 'withdrawal' THEN amount ELSE 0 END), 0) as withdrawals
+            FROM account_movements
+            WHERE date >= ? AND date <= ? ${accountFilter}
+        `;
 
-        const histSalesSql = `SELECT finalAmount FROM sales WHERE status = 'completed' AND date <= ? ${accountFilter}`;
-        const histExpensesSql = `SELECT amount FROM expenses WHERE date <= ? ${accountFilter}`;
-        const histMovementsSql = `SELECT type, amount FROM account_movements WHERE date <= ? ${accountFilter}`;
+        const histSalesSql = `SELECT COALESCE(SUM(finalAmount), 0) as total FROM sales WHERE status = 'completed' AND date <= ? ${accountFilter}`;
+        const histExpensesSql = `SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE date <= ? ${accountFilter}`;
+        const histMovementsSql = `
+            SELECT
+                COALESCE(SUM(CASE WHEN type = 'deposit' THEN amount ELSE 0 END), 0) as deposits,
+                COALESCE(SUM(CASE WHEN type = 'withdrawal' THEN amount ELSE 0 END), 0) as withdrawals
+            FROM account_movements
+            WHERE date <= ? ${accountFilter}
+        `;
         const histQueryParams = [String(endDate)];
         if (accountId && accountId !== 'mercado_pago') {
             histQueryParams.push(Number(accountId));
         }
 
-        const [sales, expenses, movements, histSales, histExpenses, histMovements] = await Promise.all([
+        const [salesRes, expensesRes, movementsRes, histSalesRes, histExpensesRes, histMovementsRes] = await Promise.all([
             prisma.$queryRawUnsafe(salesSql, ...queryParams),
             prisma.$queryRawUnsafe(expensesSql, ...queryParams),
             prisma.$queryRawUnsafe(movementsSql, ...queryParams),
@@ -257,18 +269,18 @@ exports.getAccountSummary = async (req, res) => {
             prisma.$queryRawUnsafe(histMovementsSql, ...histQueryParams),
         ]);
 
-        const totalSales = sales.reduce((sum, s) => sum + (s.finalAmount || 0), 0);
-        const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-        const totalDeposits = movements.filter(m => m.type === 'deposit').reduce((sum, m) => sum + (m.amount || 0), 0);
-        const totalWithdrawals = movements.filter(m => m.type === 'withdrawal').reduce((sum, m) => sum + (m.amount || 0), 0);
+        const totalSales = Number(salesRes[0]?.total || 0);
+        const totalExpenses = Number(expensesRes[0]?.total || 0);
+        const totalDeposits = Number(movementsRes[0]?.deposits || 0);
+        const totalWithdrawals = Number(movementsRes[0]?.withdrawals || 0);
 
         const totalIncome = totalSales + totalDeposits;
         const totalOutcome = totalExpenses + totalWithdrawals;
 
-        const totalHistSales = histSales.reduce((sum, s) => sum + (s.finalAmount || 0), 0);
-        const totalHistExpenses = histExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-        const totalHistDeposits = histMovements.filter(m => m.type === 'deposit').reduce((sum, m) => sum + (m.amount || 0), 0);
-        const totalHistWithdrawals = histMovements.filter(m => m.type === 'withdrawal').reduce((sum, m) => sum + (m.amount || 0), 0);
+        const totalHistSales = Number(histSalesRes[0]?.total || 0);
+        const totalHistExpenses = Number(histExpensesRes[0]?.total || 0);
+        const totalHistDeposits = Number(histMovementsRes[0]?.deposits || 0);
+        const totalHistWithdrawals = Number(histMovementsRes[0]?.withdrawals || 0);
 
         const historicalBalance = (totalHistSales + totalHistDeposits) - (totalHistExpenses + totalHistWithdrawals);
 

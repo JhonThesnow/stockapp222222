@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useShallow } from 'zustand/react/shallow';
 import useSalesStore from '../store/useSalesStore';
 import useAccountStore from '../store/useAccountStore';
 import { formatNumber } from '../utils/formatting';
@@ -20,9 +21,22 @@ const CajaPage = () => {
     const {
         currentShift, fetchCurrentShift, startShift, endShift,
         pendingSales, completedSales, fetchAllSales, loading, deletePendingSale
-    } = useSalesStore();
+    } = useSalesStore(useShallow(state => ({
+        currentShift: state.currentShift,
+        fetchCurrentShift: state.fetchCurrentShift,
+        startShift: state.startShift,
+        endShift: state.endShift,
+        pendingSales: state.pendingSales,
+        completedSales: state.completedSales,
+        fetchAllSales: state.fetchAllSales,
+        loading: state.loading,
+        deletePendingSale: state.deletePendingSale
+    })));
 
-    const { accounts, fetchAccounts } = useAccountStore();
+    const { accounts, fetchAccounts } = useAccountStore(useShallow(state => ({
+        accounts: state.accounts,
+        fetchAccounts: state.fetchAccounts
+    })));
 
     // Modals state
     const [saleToComplete, setSaleToComplete] = useState(null);
