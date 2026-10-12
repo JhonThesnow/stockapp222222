@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ProductForm from '../components/ProductForm.jsx';
 import RestockModal from '../components/RestockModal.jsx';
 import ConfirmModal from '../components/ConfirmModal.jsx';
@@ -211,6 +212,7 @@ const ProductDetailView = ({ product }) => {
 };
 
 const InventoryPage = () => {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('inventory');
     const [showForm, setShowForm] = useState(false);
     const [productToEdit, setProductToEdit] = useState(null);
@@ -240,8 +242,50 @@ const InventoryPage = () => {
         globalSearchTerm,
         setGlobalSearchTerm,
         allProducts,
-        fetchAllProducts
+        fetchAllProducts,
+        selectedProductsForIncome
     } = useInventoryStore();
+
+    const stagedCount = useMemo(() => {
+        return Object.keys(selectedProductsForIncome || {}).filter(k => selectedProductsForIncome[k] > 0).length;
+    }, [selectedProductsForIncome]);
+
+    const loadAllProducts = fetchAllProducts;
+    const searchInputRef = useRef(null);
+
+    // Atajos globales de teclado para InventoryPage
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target?.tagName);
+
+            if ((e.key === '/' || ((e.ctrlKey || e.metaKey) && e.key === 'k')) && !isTyping) {
+                e.preventDefault();
+                searchInputRef.current?.focus();
+            } else if (e.key === 'Escape') {
+                if (document.activeElement === searchInputRef.current) {
+                    searchInputRef.current?.blur();
+                    if (searchInput) setSearchInput('');
+                } else if (showFiltersPanel) {
+                    setShowFiltersPanel(false);
+                }
+            } else if (e.altKey && (e.key === 'n' || e.key === 'N')) {
+                e.preventDefault();
+                handleAddNew();
+            } else if (e.altKey && (e.key === 'a' || e.key === 'A')) {
+                e.preventDefault();
+                setIsStockAdjustmentModalOpen(true);
+            } else if (e.altKey && (e.key === 'i' || e.key === 'I')) {
+                e.preventDefault();
+                setActiveTab('stockIncome');
+            } else if (e.altKey && (e.key === 'p' || e.key === 'P')) {
+                e.preventDefault();
+                setActiveTab('priceIncreases');
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [searchInput, showFiltersPanel]);
 
     // Atajo cuando se busca desde otra pantalla
     useEffect(() => {
@@ -584,6 +628,18 @@ const InventoryPage = () => {
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
+                                        navigate('/codigos-barra', { state: { productId: product.id } });
+                                    }}
+                                    className="p-2 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 active:bg-indigo-200 border border-indigo-200/80 rounded-xl transition-all text-xs"
+                                    title="Imprimir / Generar Etiqueta y Código de Barras"
+                                    aria-label="Etiqueta"
+                                >
+                                    <Barcode size={16} />
+                                </button>
+
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
                                         handleEdit(product);
                                     }}
                                     className="p-2 text-amber-700 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 border border-amber-200/80 rounded-xl transition-all text-xs"
@@ -638,76 +694,130 @@ const InventoryPage = () => {
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
                     <button
+                        onClick={() => setActiveTab('stockIncome')}
+                        className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold shadow-sm transition-all active:scale-[0.99] cursor-pointer ${
+                            activeTab === 'stockIncome'
+                                ? 'bg-emerald-700 text-white shadow-emerald-600/30 ring-2 ring-emerald-500/30'
+                                : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-emerald-500/20'
+                        }`}
+                        title="Atajo de teclado: Alt+I"
+                    >
+                        <Boxes size={18} />
+                        <span>Ingresar Stock</span>
+                        {stagedCount > 0 && (
+                            <span className="w-5 h-5 rounded-full bg-white text-emerald-800 text-[11px] flex items-center justify-center font-extrabold shadow-2xs">
+                                {stagedCount}
+                            </span>
+                        )}
+                        <kbd className="hidden lg:inline-flex items-center text-[10px] font-mono bg-emerald-800/60 text-emerald-100 px-1.5 py-0.5 rounded ml-1">
+                            Alt+I
+                        </kbd>
+                    </button>
+
+                    <button
                         onClick={handleAddNew}
-                        className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold shadow-sm shadow-blue-500/20 transition-all active:scale-[0.99]"
+                        className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold shadow-sm shadow-blue-500/20 transition-all active:scale-[0.99] cursor-pointer"
+                        title="Atajo de teclado: Alt+N"
                     >
                         <Plus size={18} />
                         <span>Nuevo Producto</span>
+                        <kbd className="hidden lg:inline-flex items-center text-[10px] font-mono bg-blue-700/70 text-blue-100 px-1.5 py-0.5 rounded ml-1">
+                            Alt+N
+                        </kbd>
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/codigos-barra')}
+                        className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 active:bg-black text-white font-semibold shadow-sm transition-all active:scale-[0.99] cursor-pointer"
+                        title="Generar e imprimir códigos de barras y etiquetas de 4×3 cm"
+                    >
+                        <Barcode size={18} />
+                        <span>Etiquetas & Códigos</span>
                     </button>
 
                     <button
                         onClick={() => setIsStockAdjustmentModalOpen(true)}
-                        className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white font-semibold shadow-sm shadow-orange-500/20 transition-all active:scale-[0.99]"
+                        className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-orange-600 hover:bg-orange-700 active:bg-orange-800 text-white font-semibold shadow-sm shadow-orange-500/20 transition-all active:scale-[0.99] cursor-pointer"
+                        title="Atajo de teclado: Alt+A"
                     >
                         <SlidersHorizontal size={18} />
                         <span>Baja / Ajuste</span>
+                        <kbd className="hidden lg:inline-flex items-center text-[10px] font-mono bg-orange-700/70 text-orange-100 px-1.5 py-0.5 rounded ml-1">
+                            Alt+A
+                        </kbd>
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('priceIncreases')}
+                        className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold shadow-sm transition-all active:scale-[0.99] cursor-pointer ${
+                            activeTab === 'priceIncreases'
+                                ? 'bg-indigo-700 text-white shadow-indigo-600/30 ring-2 ring-indigo-500/30'
+                                : 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white shadow-indigo-500/20'
+                        }`}
+                        title="Aumento masivo de precios (Alt+P)"
+                    >
+                        <TrendingUp size={18} />
+                        <span>Aumentar Precios</span>
+                        <kbd className="hidden lg:inline-flex items-center text-[10px] font-mono bg-indigo-800/60 text-indigo-100 px-1.5 py-0.5 rounded ml-1">
+                            Alt+P
+                        </kbd>
                     </button>
                 </div>
             </div>
 
             {/* QUICK STATS CARDS (Métricas rápidas) */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-                <div className="bg-white p-3.5 md:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <div className="bg-white p-3.5 md:p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center flex-shrink-0 border border-blue-100">
                         <Package size={20} />
                     </div>
                     <div className="min-w-0">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 block truncate">
                             Variedades
                         </span>
-                        <span className="text-lg md:text-xl font-bold text-slate-900">
+                        <span className="text-lg md:text-xl font-bold text-slate-900 tabular-nums">
                             {stats.totalItems}
                         </span>
                     </div>
                 </div>
 
-                <div className="bg-white p-3.5 md:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                <div className="bg-white p-3.5 md:p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center flex-shrink-0 border border-indigo-100">
                         <Layers size={20} />
                     </div>
                     <div className="min-w-0">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 block truncate">
                             Unidades en Stock
                         </span>
-                        <span className="text-lg md:text-xl font-bold text-slate-900">
+                        <span className="text-lg md:text-xl font-bold text-slate-900 tabular-nums">
                             {stats.totalUnits}
                         </span>
                     </div>
                 </div>
 
-                <div className="bg-white p-3.5 md:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <div className="bg-white p-3.5 md:p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center flex-shrink-0 border border-amber-100">
                         <ShieldAlert size={20} />
                     </div>
                     <div className="min-w-0">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 block truncate">
                             Stock Bajo
                         </span>
-                        <span className="text-lg md:text-xl font-bold text-amber-600">
+                        <span className="text-lg md:text-xl font-bold text-amber-700 tabular-nums">
                             {stats.lowStockCount}
                         </span>
                     </div>
                 </div>
 
-                <div className="bg-white p-3.5 md:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center flex-shrink-0">
+                <div className="bg-white p-3.5 md:p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-rose-50 text-rose-700 flex items-center justify-center flex-shrink-0 border border-rose-100">
                         <AlertTriangle size={20} />
                     </div>
                     <div className="min-w-0">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 block truncate">
                             Agotados
                         </span>
-                        <span className="text-lg md:text-xl font-bold text-rose-600">
+                        <span className="text-lg md:text-xl font-bold text-rose-700 tabular-nums">
                             {stats.outOfStockCount}
                         </span>
                     </div>
@@ -715,13 +825,13 @@ const InventoryPage = () => {
             </div>
 
             {/* PESTAÑAS PRINCIPALES (Segmented Control moderno y touch-friendly) */}
-            <div className="bg-slate-200/60 p-1 rounded-2xl flex gap-1 mb-6 overflow-x-auto scrollbar-none">
+            <div className="bg-slate-200/70 p-1 rounded-xl flex gap-1 mb-6 overflow-x-auto scrollbar-none border border-slate-300/60">
                 <button
                     onClick={() => setActiveTab('inventory')}
-                    className={`flex items-center gap-2 py-2 px-4 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
+                    className={`flex items-center gap-2 py-2 px-4 rounded-lg text-xs md:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
                         activeTab === 'inventory'
-                            ? 'bg-white text-blue-600 shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900'
+                            ? 'bg-white text-blue-700 shadow-xs font-bold'
+                            : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/50'
                     }`}
                 >
                     <Package size={16} />
@@ -729,21 +839,26 @@ const InventoryPage = () => {
                 </button>
                 <button
                     onClick={() => setActiveTab('stockIncome')}
-                    className={`flex items-center gap-2 py-2 px-4 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
+                    className={`flex items-center gap-2 py-2 px-4 rounded-lg text-xs md:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
                         activeTab === 'stockIncome'
-                            ? 'bg-white text-blue-600 shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900'
+                            ? 'bg-white text-emerald-700 shadow-xs font-bold'
+                            : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/50'
                     }`}
                 >
-                    <Plus size={16} />
+                    <Boxes size={16} className={activeTab === 'stockIncome' ? 'text-emerald-600' : ''} />
                     <span>Ingresos de Stock</span>
+                    {stagedCount > 0 && (
+                        <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-[11px] flex items-center justify-center font-bold">
+                            {stagedCount}
+                        </span>
+                    )}
                 </button>
                 <button
                     onClick={() => setActiveTab('priceIncreases')}
-                    className={`flex items-center gap-2 py-2 px-4 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
+                    className={`flex items-center gap-2 py-2 px-4 rounded-lg text-xs md:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
                         activeTab === 'priceIncreases'
-                            ? 'bg-white text-blue-600 shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900'
+                            ? 'bg-white text-blue-700 shadow-xs font-bold'
+                            : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/50'
                     }`}
                 >
                     <TrendingUp size={16} />
@@ -751,10 +866,10 @@ const InventoryPage = () => {
                 </button>
                 <button
                     onClick={() => setActiveTab('stockAdjustments')}
-                    className={`flex items-center gap-2 py-2 px-4 rounded-xl text-sm font-semibold transition-all whitespace-nowrap ${
+                    className={`flex items-center gap-2 py-2 px-4 rounded-lg text-xs md:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
                         activeTab === 'stockAdjustments'
-                            ? 'bg-white text-blue-600 shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900'
+                            ? 'bg-white text-blue-700 shadow-xs font-bold'
+                            : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/50'
                     }`}
                 >
                     <SlidersHorizontal size={16} />
@@ -768,25 +883,32 @@ const InventoryPage = () => {
                     {/* BARRA DE BÚSQUEDA Y FILTROS */}
                     <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs mb-4">
                         <div className="flex flex-col md:flex-row gap-3">
-                            {/* Buscador interactivo con clear button */}
+                            {/* Buscador interactivo con clear button y atajo */}
                             <div className="relative flex-1">
                                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                                 <input
+                                    ref={searchInputRef}
                                     type="text"
                                     placeholder="Buscar por nombre, línea, aroma o código..."
                                     value={searchInput}
                                     onChange={handleSearchChange}
-                                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm md:text-base focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                                    className="w-full pl-10 pr-20 py-2.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm md:text-base focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                                 />
-                                {searchInput && (
-                                    <button
-                                        onClick={clearSearch}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full"
-                                        aria-label="Limpiar búsqueda"
-                                    >
-                                        <X size={16} />
-                                    </button>
-                                )}
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                                    {searchInput ? (
+                                        <button
+                                            onClick={clearSearch}
+                                            className="p-1 text-slate-400 hover:text-slate-600 rounded-full"
+                                            aria-label="Limpiar búsqueda"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    ) : (
+                                        <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[11px] font-mono text-slate-400 bg-slate-100 border border-slate-200 rounded select-none">
+                                            /
+                                        </kbd>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Botón para desplegar filtros en mobile y desktop */}

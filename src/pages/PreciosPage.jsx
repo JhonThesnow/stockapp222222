@@ -302,43 +302,43 @@ const PreciosPage = () => {
 
             {/* QUICK STATS */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center flex-shrink-0 border border-indigo-100">
                         <Layers size={20} />
                     </div>
                     <div className="min-w-0">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 block truncate">
                             Vinculados a Web
                         </span>
-                        <span className="text-lg md:text-xl font-bold text-slate-900">
+                        <span className="text-lg md:text-xl font-bold text-slate-900 tabular-nums">
                             {productsWithProvider.length} productos
                         </span>
                     </div>
                 </div>
 
-                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center flex-shrink-0 border border-amber-100">
                         <AlertCircle size={20} />
                     </div>
                     <div className="min-w-0">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 block truncate">
                             Con Variación de Precio
                         </span>
-                        <span className="text-lg md:text-xl font-bold text-amber-600">
+                        <span className="text-lg md:text-xl font-bold text-amber-700 tabular-nums">
                             {productsWithChangesCount} detectados
                         </span>
                     </div>
                 </div>
 
-                <div className="col-span-2 md:col-span-1 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                <div className="col-span-2 md:col-span-1 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center flex-shrink-0 border border-emerald-100">
                         <CheckSquare size={20} />
                     </div>
                     <div className="min-w-0">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 block truncate">
                             Selección Actual
                         </span>
-                        <span className="text-lg md:text-xl font-bold text-slate-900">
+                        <span className="text-lg md:text-xl font-bold text-slate-900 tabular-nums">
                             {selectedIds.size > 0 ? `${selectedIds.size} ítems` : 'Ninguno marcado'}
                         </span>
                     </div>

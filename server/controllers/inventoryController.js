@@ -523,7 +523,7 @@ exports.updateStockEntryHistory = async (req, res) => {
 };
 
 exports.increasePrices = async (req, res) => {
-    const { products, type, value, targets } = req.body;
+    const { products, type, value, targets, roundTo } = req.body;
 
     try {
         const productsForHistory = [];
@@ -531,8 +531,14 @@ exports.increasePrices = async (req, res) => {
             for (const originalProduct of products) {
                 let { purchasePrice, salePrices } = originalProduct;
 
-                const oldPurchasePrice = purchasePrice;
-                const oldRetailPrice = salePrices[0].price;
+                const oldPurchasePrice = Number(purchasePrice) || 0;
+                let parsedSalePrices = [];
+                if (typeof salePrices === 'string') {
+                    try { parsedSalePrices = JSON.parse(salePrices); } catch (e) { parsedSalePrices = []; }
+                } else if (Array.isArray(salePrices)) {
+                    parsedSalePrices = salePrices;
+                }
+                const oldRetailPrice = Number(parsedSalePrices[0]?.price) || 0;
 
                 let newPurchasePrice = oldPurchasePrice;
                 let newRetailPrice = oldRetailPrice;
@@ -548,7 +554,25 @@ exports.increasePrices = async (req, res) => {
                         : oldRetailPrice + value;
                 }
 
-                const newSalePrices = [{ ...salePrices[0], price: newRetailPrice }];
+                if (roundTo && roundTo !== 'none') {
+                    if (roundTo === 'integer') {
+                        if (targets.purchase) newPurchasePrice = Math.round(newPurchasePrice);
+                        if (targets.retail) newRetailPrice = Math.round(newRetailPrice);
+                    } else {
+                        const step = parseInt(roundTo, 10);
+                        if (!isNaN(step) && step > 0) {
+                            if (targets.purchase) newPurchasePrice = Math.round(newPurchasePrice / step) * step;
+                            if (targets.retail) newRetailPrice = Math.round(newRetailPrice / step) * step;
+                        }
+                    }
+                } else {
+                    newPurchasePrice = Math.round(newPurchasePrice * 100) / 100;
+                    newRetailPrice = Math.round(newRetailPrice * 100) / 100;
+                }
+
+                const newSalePrices = parsedSalePrices.length > 0
+                    ? parsedSalePrices.map((sp, idx) => idx === 0 ? { ...sp, price: newRetailPrice } : sp)
+                    : [{ name: 'Precio Minorista', price: newRetailPrice }];
 
                 await tx.products.update({
                     where: { id: parseInt(originalProduct.id, 10) },

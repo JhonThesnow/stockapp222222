@@ -361,17 +361,17 @@ const PedidosPage = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {/* Toggle pestañas moderno */}
-                    <div className="bg-slate-200/70 p-1 rounded-2xl flex gap-1 w-full sm:w-auto">
+                    {/* Toggle pestañas moderno (Segmented Control) */}
+                    <div className="bg-slate-200/70 p-1 rounded-xl flex gap-1 w-full sm:w-auto border border-slate-300/60">
                         <button
                             onClick={() => {
                                 if (editingOrder) resetForm();
                                 setActiveTab('nuevo');
                             }}
-                            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-sm font-semibold transition-all ${
+                            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-xs md:text-sm font-semibold transition-all cursor-pointer ${
                                 activeTab === 'nuevo'
-                                    ? 'bg-white text-blue-600 shadow-xs'
-                                    : 'text-slate-600 hover:text-slate-900'
+                                    ? 'bg-white text-blue-700 shadow-xs font-bold'
+                                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/50'
                             }`}
                         >
                             <Plus size={16} />
@@ -379,10 +379,10 @@ const PedidosPage = () => {
                         </button>
                         <button
                             onClick={() => setActiveTab('historial')}
-                            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-sm font-semibold transition-all ${
+                            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-xs md:text-sm font-semibold transition-all cursor-pointer ${
                                 activeTab === 'historial'
-                                    ? 'bg-white text-blue-600 shadow-xs'
-                                    : 'text-slate-600 hover:text-slate-900'
+                                    ? 'bg-white text-blue-700 shadow-xs font-bold'
+                                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/50'
                             }`}
                         >
                             <Clock size={16} />

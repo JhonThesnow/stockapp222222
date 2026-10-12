@@ -7,6 +7,7 @@ import {
 } from 'react-icons/fi';
 import { formatNumber, roundCash } from '../utils/formatting.js';
 import { toast } from 'sonner';
+import SaleTicketModal from './SaleTicketModal.jsx';
 
 const getPaymentMethodIcon = (name = '') => {
     const lower = name.toLowerCase();
@@ -52,6 +53,7 @@ const CompleteSaleModal = ({ sale, onClose }) => {
     );
     const [paidAmount, setPaidAmount] = useState('');
     const [showAllItems, setShowAllItems] = useState(false);
+    const [completedTicketData, setCompletedTicketData] = useState(null);
 
     useEffect(() => {
         if (paymentMethods.length === 0) {
@@ -139,7 +141,24 @@ const CompleteSaleModal = ({ sale, onClose }) => {
         });
         if (result && result.success) {
             toast.success(`Cobro de venta #${sale.id} confirmado con éxito`);
-            onClose();
+            
+            const norm = (paymentMethod || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            if (norm.includes('credito') || norm.includes('debito')) {
+                toast.info('Factura emitida y autorizada por ARCA (ex AFIP)', { icon: '🧾' });
+            }
+
+            setCompletedTicketData({
+                sale: result.sale || {
+                    ...sale,
+                    paymentMethod,
+                    finalDiscount: discountPercentage,
+                    finalAmount: finalTotal,
+                    date: new Date().toISOString()
+                },
+                fiscalData: result.fiscalData,
+                paidAmount: hasPaidInput ? paidAmount : null,
+                changeAmount: change > 0 ? change : null
+            });
         } else if (result && result.error) {
             toast.error(result.error);
         }
@@ -157,6 +176,19 @@ const CompleteSaleModal = ({ sale, onClose }) => {
 
     const visibleItems = showAllItems ? parsedItems : parsedItems.slice(0, 3);
     const discountPresets = [0, 5, 10, 15, 20];
+
+    // Si la venta ya fue confirmada, mostramos directamente el ticket con el desglose y la opción de imprimir
+    if (completedTicketData) {
+        return (
+            <SaleTicketModal
+                sale={completedTicketData.sale}
+                fiscalData={completedTicketData.fiscalData}
+                paidAmount={completedTicketData.paidAmount}
+                changeAmount={completedTicketData.changeAmount}
+                onClose={onClose}
+            />
+        );
+    }
 
     return (
         <div 

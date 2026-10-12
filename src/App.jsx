@@ -16,6 +16,7 @@ const PedidosPage = lazy(() => import('./pages/PedidosPage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const AjustesPage = lazy(() => import('./pages/AjustesPage'));
+const BarcodesPage = lazy(() => import('./pages/BarcodesPage'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -41,7 +42,8 @@ import {
   FiTruck, 
   FiShield, 
   FiLogOut,
-  FiSettings
+  FiSettings,
+  FiTag
 } from 'react-icons/fi';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useGlobalScanner, handleGlobalScan } from './hooks/useGlobalScanner';
@@ -133,6 +135,12 @@ const Navigation = ({ onLinkClick }) => {
             <NavLink to="/inventario" style={({ isActive }) => isActive ? activeLinkStyle : undefined} onClick={onLinkClick} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors">
               <FiBox />
               <span>Inventario</span>
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/codigos-barra" style={({ isActive }) => isActive ? activeLinkStyle : undefined} onClick={onLinkClick} className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-700 transition-colors">
+              <FiTag />
+              <span>Códigos & Etiquetas</span>
             </NavLink>
           </li>
           <li>
@@ -248,6 +256,8 @@ const AppLayout = () => {
               <Route path="/" element={<DashboardPage />} />
               <Route path="/cuenta" element={<AccountPage />} />
               <Route path="/inventario" element={<InventoryPage />} />
+              <Route path="/codigos-barra" element={<BarcodesPage />} />
+              <Route path="/etiquetas" element={<Navigate to="/codigos-barra" replace />} />
               <Route path="/precios" element={<PreciosPage />} />
               <Route path="/caja" element={<CajaPage />} />
               <Route path="/sales" element={<SalesPage />} />

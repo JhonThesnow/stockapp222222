@@ -182,64 +182,64 @@ const CostsPage = () => {
             {/* STATS & MÉTRICA DE INCIDENCIA */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
                 {/* Total Gastos */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center flex-shrink-0">
+                <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-rose-50 text-rose-700 flex items-center justify-center flex-shrink-0 border border-rose-100">
                         <TrendingDown size={20} />
                     </div>
                     <div className="min-w-0">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 block truncate">
                             Total del Mes
                         </span>
-                        <span className="text-lg md:text-xl font-extrabold text-slate-900">
+                        <span className="text-lg md:text-xl font-bold text-slate-900 tabular-nums">
                             ${formatNumber(totalExpenses)}
                         </span>
                     </div>
                 </div>
 
                 {/* Pagados */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center flex-shrink-0 border border-emerald-100">
                         <CheckCircle2 size={20} />
                     </div>
                     <div className="min-w-0">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 block truncate">
                             Abonados
                         </span>
-                        <span className="text-lg md:text-xl font-extrabold text-emerald-600">
+                        <span className="text-lg md:text-xl font-bold text-emerald-700 tabular-nums">
                             ${formatNumber(totalPaid)}
                         </span>
                     </div>
                 </div>
 
                 {/* Pendientes */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center flex-shrink-0 border border-amber-100">
                         <Clock size={20} />
                     </div>
                     <div className="min-w-0">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 block truncate">
                             Pendientes
                         </span>
-                        <span className="text-lg md:text-xl font-extrabold text-amber-600">
+                        <span className="text-lg md:text-xl font-bold text-amber-700 tabular-nums">
                             ${formatNumber(totalPending)}
                         </span>
                     </div>
                 </div>
 
                 {/* Tasa de Incidencia Operativa */}
-                <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center flex-shrink-0 border border-blue-100">
                         <Percent size={20} />
                     </div>
                     <div className="min-w-0">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 block truncate">
                             Incidencia Operativa
                         </span>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-lg md:text-xl font-extrabold text-blue-600">
+                            <span className="text-lg md:text-xl font-bold text-blue-700 tabular-nums">
                                 {(incidenceRate * 100).toFixed(1)}%
                             </span>
-                            <span className="text-[11px] text-slate-400 font-medium">s/ventas</span>
+                            <span className="text-[11px] text-slate-500 font-medium">s/ventas</span>
                         </div>
                     </div>
                 </div>

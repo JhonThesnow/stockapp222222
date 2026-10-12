@@ -64,21 +64,21 @@ const PIE_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B
 
 // Tarjeta KPI estilizada con indicador contextual
 const StatCard = ({ title, value, subtitle, icon, iconBg, iconColor, borderColor }) => (
-    <div className={`bg-white p-4 sm:p-5 rounded-2xl border ${borderColor || 'border-gray-100'} shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group`}>
+    <div className={`bg-white p-4 sm:p-5 rounded-xl border ${borderColor || 'border-slate-200/80'} shadow-xs hover:shadow-sm transition-all duration-200 flex flex-col justify-between group`}>
         <div className="flex items-start justify-between gap-3 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 leading-snug line-clamp-1" title={title}>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 leading-snug line-clamp-1" title={title}>
                 {title}
             </span>
-            <div className={`p-2.5 rounded-xl shrink-0 ${iconBg} ${iconColor} transition-transform group-hover:scale-105`}>
+            <div className={`p-2.5 rounded-lg shrink-0 ${iconBg} ${iconColor} border border-slate-100 transition-transform group-hover:scale-105`}>
                 {icon}
             </div>
         </div>
         <div>
-            <div className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight tabular-nums truncate" title={value}>
+            <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight tabular-nums truncate" title={value}>
                 {value}
             </div>
             {subtitle && (
-                <p className="text-[11px] sm:text-xs text-gray-400 font-medium mt-1 truncate" title={subtitle}>
+                <p className="text-[11px] sm:text-xs text-slate-500 font-medium mt-1 truncate" title={subtitle}>
                     {subtitle}
                 </p>
             )}

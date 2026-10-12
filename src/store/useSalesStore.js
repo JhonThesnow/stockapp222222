@@ -290,14 +290,30 @@ const useSalesStore = create(persist((set, get) => ({
                 const errorText = await response.json();
                 throw new Error(errorText.error || 'Falló al completar la venta');
             }
+            const resJson = await response.json();
             get().fetchAllSales();
             useInventoryStore.getState().invalidateProductsCache();
             useInventoryStore.getState().fetchProducts();
             useAccountStore.getState().fetchAccountSummary();
-            return { success: true };
+            return {
+                success: true,
+                sale: resJson.sale,
+                fiscalData: resJson.fiscalData
+            };
         } catch (e) {
             set({ loading: false, error: e.message });
             return { success: false, error: e.message };
+        }
+    },
+
+    getSaleReceipt: async (saleId) => {
+        try {
+            const response = await fetch(`${API_URL}/sales/${saleId}`);
+            if (!response.ok) return null;
+            const json = await response.json();
+            return json.data;
+        } catch {
+            return null;
         }
     },
 

@@ -339,7 +339,7 @@ const AjustesPage = () => {
                                 disabled={isBackingUp}
                                 className="px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2.5 disabled:opacity-60 cursor-pointer"
                             >
-                                <FiUploadCloud className={`w-5 h-5 ${isBackingUp ? 'animate-bounce' : ''}`} />
+                                <FiUploadCloud className={`w-5 h-5 ${isBackingUp ? 'animate-pulse text-blue-200' : ''}`} />
                                 <span>{isBackingUp ? 'Realizando Backup...' : 'Subir Backup Ahora'}</span>
                             </button>
 
@@ -363,12 +363,12 @@ const AjustesPage = () => {
                             <FiClock className="w-6 h-6" />
                         </div>
                         <div className="space-y-1">
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Último Backup Realizado</p>
-                            <p className="text-lg font-black text-gray-800">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Último Backup Realizado</p>
+                            <p className="text-lg font-bold text-slate-900 tabular-nums">
                                 {lastDate ? formatDate(lastDate) : 'Aún no realizado'}
                             </p>
                             {statusData?.fileName && (
-                                <p className="text-xs font-mono text-gray-500 truncate max-w-[200px]" title={statusData.fileName}>
+                                <p className="text-xs font-mono text-slate-500 truncate max-w-[200px]" title={statusData.fileName}>
                                     {statusData.fileName}
                                 </p>
                             )}
@@ -377,27 +377,27 @@ const AjustesPage = () => {
 
                     {/* Tamaño de la Base de Datos */}
                     <div className="p-6 flex items-start gap-4">
-                        <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+                        <div className="p-3 bg-indigo-50 text-indigo-700 rounded-xl border border-indigo-100">
                             <FiHardDrive className="w-6 h-6" />
                         </div>
                         <div className="space-y-1">
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tamaño del Respaldo</p>
-                            <p className="text-lg font-black text-gray-800">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tamaño del Respaldo</p>
+                            <p className="text-lg font-bold text-slate-900 tabular-nums">
                                 {statusData?.size ? formatBytes(statusData.size) : '1.67 MB'}
                             </p>
-                            <p className="text-xs text-gray-500">Base SQLite con transacciones compactadas (WAL flush)</p>
+                            <p className="text-xs text-slate-500">Base SQLite con transacciones compactadas (WAL flush)</p>
                         </div>
                     </div>
 
                     {/* Programación Automática */}
                     <div className="p-6 flex items-start gap-4">
-                        <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
+                        <div className="p-3 bg-purple-50 text-purple-700 rounded-xl border border-purple-100">
                             <FiServer className="w-6 h-6" />
                         </div>
                         <div className="space-y-1">
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Programación Automática</p>
-                            <p className="text-lg font-black text-gray-800">22:00 hs Diaria</p>
-                            <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-semibold">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Programación Automática</p>
+                            <p className="text-lg font-bold text-slate-900 tabular-nums">22:00 hs Diaria</p>
+                            <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-semibold">
                                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                                 Cron Job Activo en el Servidor
                             </span>

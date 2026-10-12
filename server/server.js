@@ -18,6 +18,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const accountRoutes = require('./routes/accountRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const backupRoutes = require('./routes/backupRoutes');
+const arcaRoutes = require('./routes/arcaRoutes');
 
 // Importación del servicio de backups automatizados
 const { initBackupScheduler } = require('./services/backupService');
@@ -41,6 +42,7 @@ app.use('/api', reportRoutes);
 app.use('/api', accountRoutes);
 app.use('/api', orderRoutes);
 app.use('/api/backup', backupRoutes);
+app.use('/api/arca', arcaRoutes);
 
 // Manejo de errores no capturados
 process.on('uncaughtException', (err) => {

@@ -1,4 +1,5 @@
 const prisma = require('../prismaClient');
+const arcaService = require('../services/arcaService');
 
 exports.createSale = async (req, res) => {
     const { items, subtotal, discount, totalAmount, paymentMethod, userId } = req.body;
@@ -200,7 +201,56 @@ exports.completeSale = async (req, res) => {
             }
         });
 
-        res.status(200).json({ message: 'Venta completada y stock actualizado' });
+        // Facturación Electrónica de ARCA (ex AFIP)
+        // Únicamente para ventas abonadas con tarjeta de Crédito o Débito
+        let fiscalResult = null;
+        if (arcaService.isEligibleForArcaBilling(paymentMethod)) {
+            try {
+                const completedSale = await prisma.sales.findUnique({ where: { id: saleId } });
+                const saleItems = JSON.parse(completedSale.items || '[]');
+                fiscalResult = await arcaService.generateInvoiceForSale({
+                    saleId: completedSale.id,
+                    totalAmount: completedSale.finalAmount || completedSale.totalAmount,
+                    paymentMethod: completedSale.paymentMethod,
+                    items: saleItems
+                });
+
+                if (fiscalResult && fiscalResult.success) {
+                    await prisma.sales.update({
+                        where: { id: saleId },
+                        data: {
+                            cae: fiscalResult.cae,
+                            caeDueDate: fiscalResult.caeDueDate,
+                            invoiceNumber: fiscalResult.invoiceNumber,
+                            pointOfSale: fiscalResult.pointOfSale,
+                            invoiceType: fiscalResult.invoiceType,
+                            fiscalStatus: 'facturado',
+                            fiscalQrData: fiscalResult.fiscalQrData,
+                            fiscalError: null
+                        }
+                    });
+                }
+            } catch (fiscalErr) {
+                console.error('[ARCA Error] Falló la facturación fiscal para venta #', saleId, fiscalErr.message);
+                await prisma.sales.update({
+                    where: { id: saleId },
+                    data: {
+                        fiscalStatus: 'error',
+                        fiscalError: fiscalErr.message
+                    }
+                }).catch(() => {});
+            }
+        }
+
+        const updatedSale = await prisma.sales.findUnique({
+            where: { id: saleId }
+        });
+
+        res.status(200).json({
+            message: 'Venta completada y stock actualizado',
+            sale: updatedSale,
+            fiscalData: fiscalResult
+        });
     } catch (error) {
         res.status(error.status || 500).json({ error: 'Error al actualizar el stock', details: error.message });
     }
@@ -375,6 +425,37 @@ exports.deleteSaleHistory = async (req, res) => {
         }
 
         res.json({ message: 'Venta del historial eliminada', changes: deleted.count });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getSaleById = async (req, res) => {
+    const saleId = parseInt(req.params.id, 10);
+    try {
+        const sale = await prisma.sales.findUnique({
+            where: { id: saleId }
+        });
+
+        if (!sale) {
+            return res.status(404).json({ error: 'Venta no encontrada.' });
+        }
+
+        let user = null;
+        if (sale.userId) {
+            user = await prisma.users.findUnique({
+                where: { id: sale.userId },
+                select: { id: true, name: true, username: true }
+            });
+        }
+
+        res.json({
+            success: true,
+            data: {
+                ...sale,
+                user
+            }
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

@@ -414,7 +414,7 @@ const SalesPage = () => {
                             )}
                             <button
                                 onClick={() => setShowQuickSale(true)}
-                                className="inline-flex items-center gap-1.5 text-xs md:text-sm font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3.5 py-1.5 md:py-2 rounded-xl hover:from-purple-700 hover:to-indigo-700 shadow-xs shadow-purple-600/20 active:scale-95 transition-all cursor-pointer"
+                                className="inline-flex items-center gap-1.5 text-xs md:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 md:py-2 rounded-xl shadow-xs active:scale-95 transition-all cursor-pointer"
                             >
                                 <FiPlusCircle className="w-4 h-4" />
                                 <span>Venta Rápida</span>
@@ -448,7 +448,7 @@ const SalesPage = () => {
                             onClick={() => setComboFilter('combos')}
                             className={`flex-1 py-1.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                                 comboFilter === 'combos'
-                                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs'
+                                    ? 'bg-indigo-600 text-white shadow-xs'
                                     : 'text-indigo-600 hover:text-indigo-800'
                             }`}
                         >
@@ -889,7 +889,11 @@ const SalesPage = () => {
                         <button
                             onClick={handleDirectCobrar}
                             disabled={cart.length === 0 || isSubmittingSale}
-                            className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-black text-base rounded-2xl shadow-lg shadow-emerald-600/25 disabled:bg-slate-200 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:cursor-not-allowed active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                            className={`w-full py-3.5 font-black text-base rounded-xl transition-all flex items-center justify-center gap-2 ${
+                                cart.length === 0 || isSubmittingSale
+                                    ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                                    : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-md shadow-emerald-600/20 cursor-pointer'
+                            }`}
                         >
                             {isSubmittingSale ? (
                                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -909,20 +913,20 @@ const SalesPage = () => {
                 <div className="lg:hidden fixed bottom-[68px] left-3 right-3 z-40 animate-in slide-in-from-bottom-5 duration-200">
                     <button
                         onClick={() => setShowCartOnMobile(true)}
-                        className="w-full py-3.5 px-5 bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-600 text-white font-bold rounded-2xl shadow-xl shadow-blue-600/30 flex items-center justify-between active:scale-98 transition-all cursor-pointer"
+                        className="w-full py-3.5 px-5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-bold rounded-xl shadow-lg shadow-blue-600/25 flex items-center justify-between transition-all cursor-pointer"
                     >
                         <div className="flex items-center gap-2.5">
                             <div className="relative">
                                 <FiShoppingCart className="w-5 h-5" />
-                                <span className="absolute -top-1.5 -right-2 bg-white text-blue-600 text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center">
+                                <span className="absolute -top-1.5 -right-2 bg-white text-blue-700 text-[10px] font-black rounded-full w-4 h-4 flex items-center justify-center shadow-xs">
                                     {cartCalculation.totalItemsCount}
                                 </span>
                             </div>
-                            <span className="text-sm uppercase tracking-wide">Ver Carrito</span>
+                            <span className="text-sm font-bold uppercase tracking-wider">Ver Carrito</span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-base font-black">
+                        <div className="flex items-center gap-1.5 text-base font-extrabold tabular-nums">
                             <span>${formatNumber(cartCalculation.finalTotal)}</span>
-                            <FiChevronRight className="w-4 h-4 opacity-80" />
+                            <FiChevronRight className="w-4 h-4 opacity-90" />
                         </div>
                     </button>
                 </div>

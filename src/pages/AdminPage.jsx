@@ -300,43 +300,43 @@ const AdminPage = () => {
             </div>
 
             {/* Quick Metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="bg-white p-5 rounded-xl shadow-xs border border-slate-200/80 flex items-center justify-between">
                     <div>
                         <p className="text-xs uppercase tracking-wider font-semibold text-slate-500">Facturación Filtrada</p>
-                        <h3 className="text-2xl font-bold text-slate-800 mt-1">{formatCurrency(totalRevenue)}</h3>
+                        <h3 className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">{formatCurrency(totalRevenue)}</h3>
                     </div>
-                    <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
+                    <div className="w-11 h-11 bg-emerald-50 text-emerald-700 rounded-xl flex items-center justify-center border border-emerald-100">
                         <FiDollarSign className="text-xl" />
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div className="bg-white p-5 rounded-xl shadow-xs border border-slate-200/80 flex items-center justify-between">
                     <div>
                         <p className="text-xs uppercase tracking-wider font-semibold text-slate-500">Total de Ventas</p>
-                        <h3 className="text-2xl font-bold text-slate-800 mt-1">{totalTransactions}</h3>
+                        <h3 className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">{totalTransactions}</h3>
                     </div>
-                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
+                    <div className="w-11 h-11 bg-blue-50 text-blue-700 rounded-xl flex items-center justify-center border border-blue-100">
                         <FiShoppingBag className="text-xl" />
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+                <div className="bg-white p-5 rounded-xl shadow-xs border border-slate-200/80 flex items-center justify-between">
                     <div>
                         <p className="text-xs uppercase tracking-wider font-semibold text-slate-500">Usuarios Registrados</p>
-                        <h3 className="text-2xl font-bold text-slate-800 mt-1">{users.length}</h3>
+                        <h3 className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">{users.length}</h3>
                     </div>
-                    <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center">
+                    <div className="w-11 h-11 bg-purple-50 text-purple-700 rounded-xl flex items-center justify-center border border-purple-100">
                         <FiUserCheck className="text-xl" />
                     </div>
                 </div>
             </div>
 
             {/* Sección de Gestión de Empleados */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <div className="bg-white rounded-xl shadow-xs border border-slate-200/80 p-5 md:p-6">
                 <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h2 className="text-lg font-bold text-slate-800">Cuentas y Empleados</h2>
+                        <h2 className="text-lg font-bold text-slate-900">Cuentas y Empleados</h2>
                         <p className="text-xs text-slate-500">Gestión de usuarios y sus accesos al sistema</p>
                     </div>
                 </div>
@@ -344,12 +344,12 @@ const AdminPage = () => {
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse text-sm">
                         <thead>
-                            <tr className="border-b border-slate-100 text-slate-400 font-semibold text-xs uppercase tracking-wider">
-                                <th className="pb-3 px-4">Nombre</th>
-                                <th className="pb-3 px-4">Usuario</th>
-                                <th className="pb-3 px-4">Rol</th>
-                                <th className="pb-3 px-4">Fecha Alta</th>
-                                <th className="pb-3 px-4 text-right">Acción</th>
+                            <tr className="border-b border-slate-200/80 text-slate-600 font-semibold text-xs uppercase tracking-wider bg-slate-50/70">
+                                <th className="py-2.5 px-4">Nombre</th>
+                                <th className="py-2.5 px-4">Usuario</th>
+                                <th className="py-2.5 px-4">Rol</th>
+                                <th className="py-2.5 px-4">Fecha Alta</th>
+                                <th className="py-2.5 px-4 text-right">Acción</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">

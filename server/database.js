@@ -193,6 +193,25 @@ const db = new sqlite3.Database('./inventory.db', (err) => {
                 }
             });
 
+            // Columnas para Facturación Electrónica ARCA (ex AFIP)
+            const arcaColumns = [
+                { name: 'cae', type: 'TEXT' },
+                { name: 'caeDueDate', type: 'TEXT' },
+                { name: 'invoiceNumber', type: 'INTEGER' },
+                { name: 'pointOfSale', type: 'INTEGER' },
+                { name: 'invoiceType', type: 'INTEGER' },
+                { name: 'fiscalStatus', type: 'TEXT' },
+                { name: 'fiscalQrData', type: 'TEXT' },
+                { name: 'fiscalError', type: 'TEXT' }
+            ];
+            arcaColumns.forEach(col => {
+                db.run(`ALTER TABLE sales ADD COLUMN ${col.name} ${col.type}`, (err) => {
+                    if (err && !err.message.includes("duplicate column")) {
+                        console.log(`Error adding ${col.name} to sales:`, err.message);
+                    }
+                });
+            });
+
                         db.run(`CREATE TABLE IF NOT EXISTS operating_expenses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 date TEXT NOT NULL,

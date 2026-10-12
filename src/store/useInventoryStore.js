@@ -178,11 +178,17 @@ const useInventoryStore = create((set, get) => ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(increaseData),
             });
-            if (!response.ok) throw new Error('Falló el aumento masivo de precios.');
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error || errData.message || 'Falló el aumento masivo de precios.');
+            }
             get().invalidateProductsCache();
+            await get().fetchAllProducts(true);
             get().fetchProducts({ page: get().currentPage });
+            set({ loading: false });
         } catch (e) {
             set({ loading: false, error: e.message });
+            throw e;
         }
     },
 

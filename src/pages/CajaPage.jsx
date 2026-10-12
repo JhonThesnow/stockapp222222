@@ -7,11 +7,12 @@ import {
     FiPlay, FiPower, FiTrash2, FiEdit3, FiAlertTriangle, FiDollarSign, 
     FiClock, FiSearch, FiChevronDown, FiChevronUp, FiCheckCircle, 
     FiRefreshCw, FiArrowRight, FiShoppingCart, FiTag, FiTrendingUp, 
-    FiCreditCard, FiLayers, FiInfo, FiX, FiCheck
+    FiCreditCard, FiLayers, FiInfo, FiX, FiCheck, FiPrinter, FiShield
 } from 'react-icons/fi';
 import CompleteSaleModal from '../components/CompleteSaleModal';
 import EditPendingSaleModal from '../components/EditPendingSaleModal';
 import ConfirmModal from '../components/ConfirmModal';
+import SaleTicketModal from '../components/SaleTicketModal';
 import { toast } from 'sonner';
 
 const CajaPage = () => {
@@ -27,6 +28,7 @@ const CajaPage = () => {
     const [saleToComplete, setSaleToComplete] = useState(null);
     const [saleToEdit, setSaleToEdit] = useState(null);
     const [saleToDelete, setSaleToDelete] = useState(null);
+    const [saleForTicket, setSaleForTicket] = useState(null);
     const [isEndShiftModalOpen, setIsEndShiftModalOpen] = useState(false);
     const [isEndingShift, setIsEndingShift] = useState(false);
 
@@ -556,6 +558,13 @@ const CajaPage = () => {
                 />
             )}
 
+            {saleForTicket && (
+                <SaleTicketModal
+                    sale={saleForTicket}
+                    onClose={() => setSaleForTicket(null)}
+                />
+            )}
+
             {/* Modal: Confirm Delete Pending Sale */}
             <ConfirmModal
                 isOpen={!!saleToDelete}
@@ -670,33 +679,33 @@ const CajaPage = () => {
             {/* TOP METRICS KPI CARDS */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {/* Total Facturado */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200/80 flex flex-col justify-between">
                     <div className="flex items-center justify-between text-slate-500 mb-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Facturado</span>
-                        <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Facturado</span>
+                        <div className="p-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-100">
                             <FiDollarSign className="w-4 h-4" />
                         </div>
                     </div>
                     <div>
-                        <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                        <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight tabular-nums">
                             ${formatNumber(dashboardData.total)}
                         </div>
                         <div className="text-[11px] text-slate-500 font-medium mt-1 flex items-center gap-1">
-                            <span className="font-semibold text-blue-600">{shiftSales.length}</span> ventas completadas
+                            <span className="font-semibold text-blue-700 tabular-nums">{shiftSales.length}</span> ventas completadas
                         </div>
                     </div>
                 </div>
 
                 {/* Dinero en Caja */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200/80 flex flex-col justify-between">
                     <div className="flex items-center justify-between text-slate-500 mb-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">En Caja (Físico + DNI)</span>
-                        <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">En Caja (Físico + DNI)</span>
+                        <div className="p-2 rounded-lg bg-purple-50 text-purple-700 border border-purple-100">
                             <FiCreditCard className="w-4 h-4" />
                         </div>
                     </div>
                     <div>
-                        <div className="text-xl sm:text-2xl font-black text-purple-900 tracking-tight">
+                        <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight tabular-nums">
                             ${formatNumber(dashboardData.cajaAmount)}
                         </div>
                         <div className="text-[11px] text-slate-500 font-medium mt-1">
@@ -706,18 +715,18 @@ const CajaPage = () => {
                 </div>
 
                 {/* Ganancia Estimada */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200/80 flex flex-col justify-between">
                     <div className="flex items-center justify-between text-slate-500 mb-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Ganancia Estimada</span>
-                        <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Ganancia Estimada</span>
+                        <div className="p-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">
                             <FiTrendingUp className="w-4 h-4" />
                         </div>
                     </div>
                     <div>
-                        <div className="text-xl sm:text-2xl font-black text-emerald-700 tracking-tight">
+                        <div className="text-xl sm:text-2xl font-bold text-emerald-700 tracking-tight tabular-nums">
                             ${formatNumber(dashboardData.profit)}
                         </div>
-                        <div className="text-[11px] text-emerald-600 font-semibold mt-1">
+                        <div className="text-[11px] text-emerald-700 font-semibold mt-1">
                             Margen bruto del turno
                         </div>
                     </div>
@@ -726,20 +735,20 @@ const CajaPage = () => {
                 {/* Pendientes de Cobro */}
                 <div 
                     onClick={() => setMobileTab('pending')}
-                    className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex flex-col justify-between hover:shadow-md transition-shadow cursor-pointer sm:cursor-default"
+                    className="bg-white rounded-xl p-4 shadow-sm border border-slate-200/80 flex flex-col justify-between cursor-pointer sm:cursor-default"
                 >
                     <div className="flex items-center justify-between text-slate-500 mb-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-400">A Cobrar</span>
-                        <div className={`p-2 rounded-xl ${pendingSales.length > 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">A Cobrar</span>
+                        <div className={`p-2 rounded-lg ${pendingSales.length > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
                             <FiClock className="w-4 h-4" />
                         </div>
                     </div>
                     <div>
-                        <div className={`text-xl sm:text-2xl font-black tracking-tight ${pendingSales.length > 0 ? 'text-amber-700' : 'text-slate-800'}`}>
+                        <div className={`text-xl sm:text-2xl font-bold tracking-tight tabular-nums ${pendingSales.length > 0 ? 'text-amber-800' : 'text-slate-800'}`}>
                             {pendingSales.length} {pendingSales.length === 1 ? 'ticket' : 'tickets'}
                         </div>
                         <div className="text-[11px] text-slate-500 font-medium mt-1">
-                            Por cobrar: <span className="font-bold text-gray-800">${formatNumber(pendingTotalAmount)}</span>
+                            Por cobrar: <span className="font-bold text-slate-800 tabular-nums">${formatNumber(pendingTotalAmount)}</span>
                         </div>
                     </div>
                 </div>
@@ -1075,13 +1084,32 @@ const CajaPage = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center gap-2.5 shrink-0">
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                {sale.cae && (
+                                                    <span 
+                                                        className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 shrink-0" 
+                                                        title={`Comprobante Fiscal ARCA Nº ${sale.invoiceNumber || ''} - CAE: ${sale.cae}`}
+                                                    >
+                                                        <FiShield className="w-2.5 h-2.5 text-emerald-600" /> ARCA
+                                                    </span>
+                                                )}
                                                 <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-md border ${getMethodBadgeClass(method)}`}>
                                                     {method}
                                                 </span>
                                                 <span className="text-sm font-black text-gray-900 tracking-tight">
                                                     ${formatNumber(sale.finalAmount || sale.totalAmount)}
                                                 </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSaleForTicket(sale);
+                                                    }}
+                                                    className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-200 cursor-pointer ml-0.5"
+                                                    title="Ver e Imprimir Ticket de Venta"
+                                                >
+                                                    <FiPrinter size={15} />
+                                                </button>
                                             </div>
                                         </div>
 
@@ -1097,6 +1125,26 @@ const CajaPage = () => {
                                                     )}
                                                 </div>
                                                 {renderSaleItems(sale.items)}
+
+                                                <div className="mt-2.5 pt-2 border-t border-slate-200 flex items-center justify-between flex-wrap gap-2 text-xs">
+                                                    {sale.cae ? (
+                                                        <div className="flex items-center gap-2 text-[11px] text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                                                            <FiShield className="text-emerald-600" />
+                                                            <span>Factura ARCA Nº <strong>{String(sale.pointOfSale || 1).padStart(4, '0')}-{String(sale.invoiceNumber || '').padStart(8, '0')}</strong> (CAE: {sale.cae})</span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[11px] text-slate-400">Venta no fiscal interna</span>
+                                                    )}
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSaleForTicket(sale)}
+                                                        className="px-2.5 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-700 font-semibold rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200"
+                                                    >
+                                                        <FiPrinter size={13} />
+                                                        <span>Imprimir Ticket</span>
+                                                    </button>
+                                                </div>
                                             </div>
                                         )}
                                     </div>

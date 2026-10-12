@@ -343,37 +343,37 @@ const AccountPage = () => {
                     </p>
                     <p className="relative z-10 text-[11px] text-blue-100/80 mt-2">Lo que debería haber hoy en la cuenta</p>
                 </div>
-                <div className="bg-white border border-gray-200 p-5 rounded-xl shadow-sm flex flex-col justify-between">
+                <div className="bg-white border border-slate-200/80 p-5 rounded-xl shadow-sm flex flex-col justify-between">
                     <div className="flex justify-between items-center mb-2">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Ingresos (Período)</p>
-                        <div className="p-2 bg-green-50 rounded-full text-green-600">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ingresos (Período)</p>
+                        <div className="p-2 bg-emerald-50 rounded-lg text-emerald-700 border border-emerald-100">
                             <FiTrendingUp size={18} />
                         </div>
                     </div>
-                    <p className="text-2xl font-extrabold text-green-600 tabular-nums">+${formatNumber(accountSummary.totalIncome)}</p>
-                    <p className="text-[11px] text-gray-400 mt-2">Ventas cobradas + ingresos manuales</p>
+                    <p className="text-2xl font-bold text-emerald-700 tabular-nums">+${formatNumber(accountSummary.totalIncome)}</p>
+                    <p className="text-[11px] text-slate-500 mt-2">Ventas cobradas + ingresos manuales</p>
                 </div>
-                <div className="bg-white border border-gray-200 p-5 rounded-xl shadow-sm flex flex-col justify-between">
+                <div className="bg-white border border-slate-200/80 p-5 rounded-xl shadow-sm flex flex-col justify-between">
                     <div className="flex justify-between items-center mb-2">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Egresos (Período)</p>
-                        <div className="p-2 bg-red-50 rounded-full text-red-600">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Egresos (Período)</p>
+                        <div className="p-2 bg-rose-50 rounded-lg text-rose-700 border border-rose-100">
                             <FiTrendingDown size={18} />
                         </div>
                     </div>
-                    <p className="text-2xl font-extrabold text-red-600 tabular-nums">-${formatNumber(accountSummary.totalOutcome)}</p>
-                    <p className="text-[11px] text-gray-400 mt-2">Gastos, retiros, pagos y transferencias enviadas</p>
+                    <p className="text-2xl font-bold text-rose-700 tabular-nums">-${formatNumber(accountSummary.totalOutcome)}</p>
+                    <p className="text-[11px] text-slate-500 mt-2">Gastos, retiros, pagos y transferencias enviadas</p>
                 </div>
-                <div className={`bg-white border p-5 rounded-xl shadow-sm flex flex-col justify-between ${accountSummary.periodResult >= 0 ? 'border-green-200' : 'border-red-200'}`}>
+                <div className={`bg-white border p-5 rounded-xl shadow-sm flex flex-col justify-between ${accountSummary.periodResult >= 0 ? 'border-emerald-200/80' : 'border-rose-200/80'}`}>
                     <div className="flex justify-between items-center mb-2">
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Resultado (Período)</p>
-                        <div className={`p-2 rounded-full ${accountSummary.periodResult >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Resultado (Período)</p>
+                        <div className={`p-2 rounded-lg ${accountSummary.periodResult >= 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'}`}>
                             <FiDollarSign size={18} />
                         </div>
                     </div>
-                    <p className={`text-2xl font-extrabold tabular-nums ${accountSummary.periodResult >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <p className={`text-2xl font-bold tabular-nums ${accountSummary.periodResult >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                         {accountSummary.periodResult >= 0 ? '$' : '-$'}{formatNumber(Math.abs(accountSummary.periodResult))}
                     </p>
-                    <p className="text-[11px] font-mono text-gray-400 mt-2">= Ingresos − Egresos</p>
+                    <p className="text-[11px] font-mono text-slate-500 mt-2">= Ingresos − Egresos</p>
                 </div>
             </div>
 

@@ -186,6 +186,14 @@ model sales {
   appliedTax         Float?    @default(0)
   cancellationReason String?
   userId             Int?
+  cae                String?
+  caeDueDate         String?
+  invoiceNumber      Int?
+  pointOfSale        Int?
+  invoiceType        Int?
+  fiscalStatus       String?
+  fiscalQrData       String?
+  fiscalError        String?
   shifts             shifts?   @relation(fields: [shiftId], references: [id], onUpdate: NoAction)
   accounts           accounts? @relation(fields: [accountId], references: [id], onUpdate: NoAction)
 

@@ -189,43 +189,43 @@ const EncargosPage = () => {
 
             {/* STATS RÁPIDOS */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-                <div className="bg-white p-3.5 md:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
+                <div className="bg-white p-3.5 md:p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center flex-shrink-0 border border-purple-100">
                         <ClipboardList size={20} />
                     </div>
                     <div className="min-w-0">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 block truncate">
                             {activeTab === 'activos' ? 'Encargos Pendientes' : 'Encargos Completados'}
                         </span>
-                        <span className="text-lg md:text-xl font-bold text-slate-900">
+                        <span className="text-lg md:text-xl font-bold text-slate-900 tabular-nums">
                             {stats.totalCount}
                         </span>
                     </div>
                 </div>
 
-                <div className="bg-white p-3.5 md:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                <div className="bg-white p-3.5 md:p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center flex-shrink-0 border border-emerald-100">
                         <DollarSign size={20} />
                     </div>
                     <div className="min-w-0">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 block truncate">
                             Total en Señas
                         </span>
-                        <span className="text-lg md:text-xl font-bold text-emerald-600">
+                        <span className="text-lg md:text-xl font-bold text-emerald-700 tabular-nums">
                             ${formatNumber(stats.totalAdvance)}
                         </span>
                     </div>
                 </div>
 
-                <div className="col-span-2 md:col-span-1 bg-white p-3.5 md:p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <div className="col-span-2 md:col-span-1 bg-white p-3.5 md:p-4 rounded-xl border border-slate-200/80 shadow-xs flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center flex-shrink-0 border border-blue-100">
                         <Sparkles size={20} />
                     </div>
                     <div className="min-w-0">
-                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 block truncate">
+                        <span className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 block truncate">
                             Estado General
                         </span>
-                        <span className="text-sm font-bold text-slate-700">
+                        <span className="text-sm font-bold text-slate-800">
                             {activeTab === 'activos' ? `${stats.totalCount} por resolver` : 'Histórico archivado'}
                         </span>
                     </div>
