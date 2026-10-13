@@ -40,3 +40,5 @@ server/oauth_tokens.json
 .env
 server/.env
 
+# Binaries
+*.exe
